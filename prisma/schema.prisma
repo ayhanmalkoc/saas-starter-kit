@@ -82,6 +82,7 @@ model Team {
   members         TeamMember[]
   invitations     Invitation[]
   apiKeys         ApiKey[]
+  subscriptions   Subscription[]
 
   @@index([billingId])
 }
@@ -146,17 +147,27 @@ model ApiKey {
 }
 
 model Subscription {
-  id         String    @id
-  customerId String
-  priceId    String
-  active     Boolean   @default(false)
-  startDate  DateTime
-  endDate    DateTime
-  cancelAt   DateTime?
-  createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @default(now())
+  id                 String    @id
+  teamId             String
+  customerId         String
+  status             String
+  quantity           Int?
+  currency           String?
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+  cancelAt           DateTime?
+  cancelAtPeriodEnd  Boolean   @default(false)
+  trialEnd           DateTime?
+  priceId            String?
+  productId          String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
 
   @@index([customerId])
+  @@index([teamId])
+  @@index([priceId])
 }
 
 model Service {
@@ -172,7 +183,7 @@ model Service {
 }
 
 model Price {
-  id            String   @id @default(uuid())
+  id            String   @id
   billingScheme String
   currency      String
   serviceId     String

@@ -1,11 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
-import { getStripeCustomerId } from '@/lib/stripe';
 import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
 import { getAllServices } from 'models/service';
 import { getAllPrices } from 'models/price';
-import { getByCustomerId } from 'models/subscription';
+import { getByTeamId } from 'models/subscription';
 
 export default async function handler(
   req: NextApiRequest,
@@ -36,10 +35,9 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!session?.user?.id) {
     throw Error('Could not get user');
   }
-  const customerId = await getStripeCustomerId(teamMember, session);
 
   const [subscriptions, products, prices] = await Promise.all([
-    getByCustomerId(customerId),
+    getByTeamId(teamMember.teamId),
     getAllServices(),
     getAllPrices(),
   ]);

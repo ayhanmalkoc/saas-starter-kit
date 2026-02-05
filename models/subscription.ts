@@ -1,29 +1,50 @@
 import { prisma } from '@/lib/prisma';
-import { Subscription } from '@prisma/client';
+import { Prisma, Subscription } from '@prisma/client';
 
 export const createStripeSubscription = async ({
-  customerId,
   id,
-  active,
-  startDate,
-  endDate,
+  teamId,
+  customerId,
+  status,
+  quantity,
+  currency,
+  currentPeriodStart,
+  currentPeriodEnd,
+  cancelAt,
+  cancelAtPeriodEnd,
+  trialEnd,
   priceId,
+  productId,
 }: {
-  customerId: string;
   id: string;
-  active: boolean;
-  startDate: Date;
-  endDate: Date;
-  priceId: string;
+  teamId: string;
+  customerId: string;
+  status: string;
+  quantity?: number | null;
+  currency?: string | null;
+  currentPeriodStart?: Date | null;
+  currentPeriodEnd?: Date | null;
+  cancelAt?: Date | null;
+  cancelAtPeriodEnd?: boolean;
+  trialEnd?: Date | null;
+  priceId?: string | null;
+  productId?: string | null;
 }) => {
   return await prisma.subscription.create({
     data: {
-      customerId,
       id,
-      active,
-      startDate,
-      endDate,
+      teamId,
+      customerId,
+      status,
+      quantity,
+      currency,
+      currentPeriodStart,
+      currentPeriodEnd,
+      cancelAt,
+      cancelAtPeriodEnd,
+      trialEnd,
       priceId,
+      productId,
     },
   });
 };
@@ -36,12 +57,23 @@ export const deleteStripeSubscription = async (id: string) => {
   });
 };
 
-export const updateStripeSubscription = async (id: string, data: any) => {
+export const updateStripeSubscription = async (
+  id: string,
+  data: Prisma.SubscriptionUpdateInput
+) => {
   return await prisma.subscription.update({
     where: {
       id,
     },
     data,
+  });
+};
+
+export const getByTeamId = async (teamId: string) => {
+  return await prisma.subscription.findMany({
+    where: {
+      teamId,
+    },
   });
 };
 
