@@ -10,6 +10,8 @@ import {
   updateStripeSubscription,
 } from 'models/subscription';
 import { getByCustomerId } from 'models/team';
+import { createWebhookEvent } from 'models/webhookEvent';
+import { Prisma } from '@prisma/client';
 
 export const config = {
   api: {
@@ -27,9 +29,17 @@ async function getRawBody(readable: Readable): Promise<Buffer> {
 }
 
 const relevantEvents: Stripe.Event.Type[] = [
+  'checkout.session.completed',
   'customer.subscription.created',
   'customer.subscription.updated',
   'customer.subscription.deleted',
+  'customer.updated',
+  'invoice.payment_failed',
+  'invoice.payment_succeeded',
+  'price.created',
+  'price.updated',
+  'product.created',
+  'product.updated',
 ];
 
 export default async function POST(req: NextApiRequest, res: NextApiResponse) {
@@ -41,18 +51,35 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     if (!sig || !webhookSecret) {
+      console.error('Stripe webhook missing signature or secret');
       return res.status(400).json({
         error: { message: 'Missing signature or webhook secret' },
       });
     }
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
+    console.error('Stripe webhook signature verification failed', err);
     return res.status(400).json({ error: { message: err.message } });
   }
 
   if (relevantEvents.includes(event.type)) {
     try {
+      await createWebhookEvent(event.id, event.type);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return res.status(200).json({ received: true });
+      }
+      console.error('Stripe webhook event insert failed', error);
+      return res.status(500).json({ error: 'Internal server error' });
+    }
+    try {
       switch (event.type) {
+        case 'checkout.session.completed':
+          await handleCheckoutSessionCompleted(event);
+          break;
         case 'customer.subscription.created':
           await handleSubscriptionCreated(event);
           break;
@@ -63,6 +90,23 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
           await deleteStripeSubscription(
             (event.data.object as Stripe.Subscription).id
           );
+          break;
+        case 'customer.updated':
+          await handleCustomerUpdated(event);
+          break;
+        case 'invoice.payment_failed':
+          await handleInvoicePaymentFailed(event);
+          break;
+        case 'invoice.payment_succeeded':
+          await handleInvoicePaymentSucceeded(event);
+          break;
+        case 'price.created':
+        case 'price.updated':
+          await handlePriceCreatedOrUpdated(event);
+          break;
+        case 'product.created':
+        case 'product.updated':
+          await handleProductCreatedOrUpdated(event);
           break;
         default:
           throw new Error('Unhandled relevant event!');
@@ -77,6 +121,30 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
     }
   }
   return res.status(200).json({ received: true });
+}
+
+async function handleCheckoutSessionCompleted(_event: Stripe.Event) {
+  console.warn('checkout.session.completed received but not handled');
+}
+
+async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
+  console.warn('invoice.payment_succeeded received but not handled');
+}
+
+async function handleInvoicePaymentFailed(_event: Stripe.Event) {
+  console.warn('invoice.payment_failed received but not handled');
+}
+
+async function handleCustomerUpdated(_event: Stripe.Event) {
+  console.warn('customer.updated received but not handled');
+}
+
+async function handleProductCreatedOrUpdated(_event: Stripe.Event) {
+  console.warn('product created/updated received but not handled');
+}
+
+async function handlePriceCreatedOrUpdated(_event: Stripe.Event) {
+  console.warn('price created/updated received but not handled');
 }
 
 async function handleSubscriptionUpdated(event: Stripe.Event) {
