@@ -6,6 +6,7 @@ import { ApiError } from '@/lib/errors';
 import { dsyncManager } from '@/lib/jackson/dsync';
 import { sendAudit } from '@/lib/retraced';
 import { throwIfNoAccessToDirectory } from '@/lib/guards/team-dsync';
+import { requireTeamEntitlement } from '@/lib/billing/entitlements';
 
 const dsync = dsyncManager();
 
@@ -48,6 +49,9 @@ export default async function handler(
 
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, {
+    feature: 'directory_sync',
+  });
 
   throwIfNotAllowed(teamMember, 'team_dsync', 'read');
 
@@ -65,6 +69,9 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, {
+    feature: 'directory_sync',
+  });
 
   throwIfNotAllowed(teamMember, 'team_dsync', 'read');
 
@@ -82,6 +89,9 @@ const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
 
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, {
+    feature: 'directory_sync',
+  });
 
   throwIfNotAllowed(teamMember, 'team_dsync', 'delete');
 

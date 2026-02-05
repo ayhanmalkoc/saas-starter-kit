@@ -1,11 +1,12 @@
 import { createApiKey, fetchApiKeys } from 'models/apiKey';
-import { getCurrentUserWithTeam, throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoTeamAccess } from 'models/team';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { createApiKeySchema, validateWithSchema } from '@/lib/zod';
+import { requireTeamEntitlement } from '@/lib/billing/entitlements';
 
 export default async function handler(
   req: NextApiRequest,
@@ -16,14 +17,15 @@ export default async function handler(
       throw new ApiError(404, 'Not Found');
     }
 
-    await throwIfNoTeamAccess(req, res);
+    const teamMember = await throwIfNoTeamAccess(req, res);
+    await requireTeamEntitlement(teamMember.team.id, { feature: 'api_keys' });
 
     switch (req.method) {
       case 'GET':
-        await handleGET(req, res);
+        await handleGET(req, res, teamMember);
         break;
       case 'POST':
-        await handlePOST(req, res);
+        await handlePOST(req, res, teamMember);
         break;
       default:
         res.setHeader('Allow', 'GET, POST');
@@ -40,12 +42,14 @@ export default async function handler(
 }
 
 // Get API keys
-const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const user = await getCurrentUserWithTeam(req, res);
+const handleGET = async (
+  req: NextApiRequest,
+  res: NextApiResponse,
+  teamMember: Awaited<ReturnType<typeof throwIfNoTeamAccess>>
+) => {
+  throwIfNotAllowed(teamMember, 'team_api_key', 'read');
 
-  throwIfNotAllowed(user, 'team_api_key', 'read');
-
-  const apiKeys = await fetchApiKeys(user.team.id);
+  const apiKeys = await fetchApiKeys(teamMember.team.id);
 
   recordMetric('apikey.fetched');
 
@@ -53,16 +57,18 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 // Create an API key
-const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  const user = await getCurrentUserWithTeam(req, res);
-
-  throwIfNotAllowed(user, 'team_api_key', 'create');
+const handlePOST = async (
+  req: NextApiRequest,
+  res: NextApiResponse,
+  teamMember: Awaited<ReturnType<typeof throwIfNoTeamAccess>>
+) => {
+  throwIfNotAllowed(teamMember, 'team_api_key', 'create');
 
   const { name } = validateWithSchema(createApiKeySchema, req.body);
 
   const apiKey = await createApiKey({
     name,
-    teamId: user.team.id,
+    teamId: teamMember.team.id,
   });
 
   recordMetric('apikey.created');

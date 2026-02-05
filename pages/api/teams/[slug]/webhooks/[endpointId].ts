@@ -12,6 +12,7 @@ import {
   updateWebhookEndpointSchema,
   validateWithSchema,
 } from '@/lib/zod';
+import { requireTeamEntitlement } from '@/lib/billing/entitlements';
 
 export default async function handler(
   req: NextApiRequest,
@@ -48,6 +49,7 @@ export default async function handler(
 // Get a Webhook
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, { feature: 'webhooks' });
   throwIfNotAllowed(teamMember, 'team_webhook', 'read');
 
   const { endpointId } = validateWithSchema(
@@ -73,6 +75,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 // Update a Webhook
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, { feature: 'webhooks' });
   throwIfNotAllowed(teamMember, 'team_webhook', 'update');
 
   const { name, url, eventTypes, endpointId } = validateWithSchema(

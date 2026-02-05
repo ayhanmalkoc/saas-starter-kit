@@ -7,6 +7,7 @@ import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { deleteApiKeySchema, validateWithSchema } from '@/lib/zod';
 import { throwIfNoAccessToApiKey } from '@/lib/guards/team-api-key';
+import { requireTeamEntitlement } from '@/lib/billing/entitlements';
 
 export default async function handler(
   req: NextApiRequest,
@@ -17,7 +18,8 @@ export default async function handler(
       throw new ApiError(404, 'Not Found');
     }
 
-    await throwIfNoTeamAccess(req, res);
+    const teamMember = await throwIfNoTeamAccess(req, res);
+    await requireTeamEntitlement(teamMember.teamId, { feature: 'api_keys' });
 
     switch (req.method) {
       case 'DELETE':
