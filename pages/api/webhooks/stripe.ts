@@ -72,7 +72,8 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
       ) {
         return res.status(200).json({ received: true });
       }
-      throw error;
+      console.error('Stripe webhook event insert failed', error);
+      return res.status(500).json({ error: 'Internal server error' });
     }
     try {
       switch (event.type) {
