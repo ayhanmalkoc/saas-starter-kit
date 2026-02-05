@@ -123,27 +123,27 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
 }
 
 async function handleCheckoutSessionCompleted(_event: Stripe.Event) {
-  return;
+  console.warn('checkout.session.completed received but not handled');
 }
 
 async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
-  return;
+  console.warn('invoice.payment_succeeded received but not handled');
 }
 
 async function handleInvoicePaymentFailed(_event: Stripe.Event) {
-  return;
+  console.warn('invoice.payment_failed received but not handled');
 }
 
 async function handleCustomerUpdated(_event: Stripe.Event) {
-  return;
+  console.warn('customer.updated received but not handled');
 }
 
 async function handleProductCreatedOrUpdated(_event: Stripe.Event) {
-  return;
+  console.warn('product created/updated received but not handled');
 }
 
 async function handlePriceCreatedOrUpdated(_event: Stripe.Event) {
-  return;
+  console.warn('price created/updated received but not handled');
 }
 
 async function handleSubscriptionUpdated(event: Stripe.Event) {
