@@ -12,6 +12,8 @@ import {
 import { getByCustomerId } from 'models/team';
 import { createWebhookEvent } from 'models/webhookEvent';
 import { Prisma } from '@prisma/client';
+import { upsertServiceFromStripe } from 'models/service';
+import { upsertPriceFromStripe } from 'models/price';
 
 export const config = {
   api: {
@@ -140,11 +142,13 @@ async function handleCustomerUpdated(_event: Stripe.Event) {
 }
 
 async function handleProductCreatedOrUpdated(_event: Stripe.Event) {
-  console.warn('product created/updated received but not handled');
+  const product = _event.data.object as Stripe.Product;
+  await upsertServiceFromStripe(product);
 }
 
 async function handlePriceCreatedOrUpdated(_event: Stripe.Event) {
-  console.warn('price created/updated received but not handled');
+  const price = _event.data.object as Stripe.Price;
+  await upsertPriceFromStripe(price);
 }
 
 async function handleSubscriptionUpdated(event: Stripe.Event) {
