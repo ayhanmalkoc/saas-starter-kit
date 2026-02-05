@@ -18,7 +18,7 @@ export default async function handler(
     }
 
     const teamMember = await throwIfNoTeamAccess(req, res);
-    await requireTeamEntitlement(teamMember.teamId, { feature: 'api_keys' });
+    await requireTeamEntitlement(teamMember.team.id, { feature: 'api_keys' });
 
     switch (req.method) {
       case 'GET':
