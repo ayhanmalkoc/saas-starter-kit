@@ -183,7 +183,7 @@ model Service {
 }
 
 model Price {
-  id            String   @id @default(uuid())
+  id            String   @id
   billingScheme String
   currency      String
   serviceId     String
