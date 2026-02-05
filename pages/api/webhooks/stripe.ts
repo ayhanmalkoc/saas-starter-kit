@@ -10,7 +10,8 @@ import {
   updateStripeSubscription,
 } from 'models/subscription';
 import { getByCustomerId } from 'models/team';
-import { createWebhookEvent, getWebhookEventById } from 'models/webhookEvent';
+import { createWebhookEvent } from 'models/webhookEvent';
+import { Prisma } from '@prisma/client';
 
 export const config = {
   api: {
@@ -62,9 +63,16 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (relevantEvents.includes(event.type)) {
-    const existingEvent = await getWebhookEventById(event.id);
-    if (existingEvent) {
-      return res.status(200).json({ received: true });
+    try {
+      await createWebhookEvent(event.id, event.type);
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return res.status(200).json({ received: true });
+      }
+      throw error;
     }
     try {
       switch (event.type) {
@@ -102,7 +110,6 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         default:
           throw new Error('Unhandled relevant event!');
       }
-      await createWebhookEvent(event.id, event.type);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return res.status(400).json({
