@@ -4,10 +4,15 @@ import { stripe } from '@/lib/stripe';
 import { buildServiceUpsert } from 'models/service';
 import { buildPriceUpsert } from 'models/price';
 
-const listStripeProducts = () =>
-  stripe.products.list({ active: true, limit: 100 });
+const listStripeProducts = async () =>
+  await stripe.products
+    .list({ active: true })
+    .autoPagingToArray({ limit: 10000 });
 
-const listStripePrices = () => stripe.prices.list({ active: true, limit: 100 });
+const listStripePrices = async () =>
+  await stripe.prices
+    .list({ active: true })
+    .autoPagingToArray({ limit: 10000 });
 
 const validateSecret = (req: NextApiRequest) => {
   const secret = process.env.STRIPE_SYNC_SECRET;
@@ -37,8 +42,8 @@ export default async function handler(
     ]);
 
     const operations = [
-      ...products.data.map(buildServiceUpsert),
-      ...prices.data.map(buildPriceUpsert),
+      ...products.map(buildServiceUpsert),
+      ...prices.map(buildPriceUpsert),
     ];
 
     if (operations.length > 0) {
@@ -47,8 +52,8 @@ export default async function handler(
 
     return res.status(200).json({
       synced: true,
-      products: products.data.length,
-      prices: prices.data.length,
+      products: products.length,
+      prices: prices.length,
     });
   } catch (error) {
     console.error('Stripe sync failed', error);
