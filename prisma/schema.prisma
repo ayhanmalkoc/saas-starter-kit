@@ -184,6 +184,7 @@ model Service {
   description String
   features    String[]
   image       String
+  metadata    Json?
   name        String
   created     DateTime
   createdAt   DateTime @default(now())
