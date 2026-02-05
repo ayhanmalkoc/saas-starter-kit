@@ -75,7 +75,12 @@ const parseMetadataEntitlements = (
         .map((item) => item.trim())
         .filter(Boolean)
         .forEach((entry) => {
-          const [limitKey, limitValue] = entry.split('=');
+          const eqIndex = entry.indexOf('=');
+          if (eqIndex === -1) {
+            return;
+          }
+          const limitKey = entry.slice(0, eqIndex);
+          const limitValue = entry.slice(eqIndex + 1);
           const parsed = Number(limitValue);
           if (!Number.isNaN(parsed)) {
             entitlements.limits[normalizeKey(limitKey)] = parsed;
@@ -155,6 +160,7 @@ const getEntitlementsFromStripeProduct = async (productId: string) => {
     const product = await stripe.products.retrieve(productId);
     return parseMetadataEntitlements(product.metadata);
   } catch (error) {
+    console.error(`Failed to retrieve Stripe product ${productId}:`, error);
     return null;
   }
 };
@@ -163,26 +169,34 @@ const getEntitlementsFromDatabasePlan = async (
   productId: string | null,
   priceId: string | null
 ) => {
-  let serviceId = productId ?? null;
+  try {
+    let serviceId = productId ?? null;
 
-  if (!serviceId && priceId) {
-    const price = await prisma.price.findUnique({
-      where: { id: priceId },
-      select: { serviceId: true },
+    if (!serviceId && priceId) {
+      const price = await prisma.price.findUnique({
+        where: { id: priceId },
+        select: { serviceId: true },
+      });
+      serviceId = price?.serviceId ?? null;
+    }
+
+    if (!serviceId) {
+      return null;
+    }
+
+    const service = await prisma.service.findUnique({
+      where: { id: serviceId },
+      select: { features: true },
     });
-    serviceId = price?.serviceId ?? null;
-  }
 
-  if (!serviceId) {
+    return parseServiceEntitlements(service);
+  } catch (error) {
+    console.error(
+      `Failed to retrieve database plan for product=${productId}, price=${priceId}:`,
+      error
+    );
     return null;
   }
-
-  const service = await prisma.service.findUnique({
-    where: { id: serviceId },
-    select: { features: true },
-  });
-
-  return parseServiceEntitlements(service);
 };
 
 export const getTeamEntitlements = async (
@@ -199,32 +213,38 @@ export const getTeamEntitlements = async (
     return entitlements;
   }
 
-  for (const subscription of activeSubscriptions) {
-    const { productId, priceId } = subscription;
-    let planEntitlements: EntitlementValues | null = null;
-    let source = 'database';
+  const results = await Promise.all(
+    activeSubscriptions.map(async (subscription) => {
+      const { productId, priceId } = subscription;
+      let planEntitlements: EntitlementValues | null = null;
+      let source = 'database';
 
-    if (productId) {
-      const stripeEntitlements = await getEntitlementsFromStripeProduct(
-        productId
-      );
-      if (
-        stripeEntitlements &&
-        (Object.keys(stripeEntitlements.features).length > 0 ||
-          Object.keys(stripeEntitlements.limits).length > 0)
-      ) {
-        planEntitlements = stripeEntitlements;
-        source = 'stripe';
+      if (productId) {
+        const stripeEntitlements = await getEntitlementsFromStripeProduct(
+          productId
+        );
+        if (
+          stripeEntitlements &&
+          (Object.keys(stripeEntitlements.features).length > 0 ||
+            Object.keys(stripeEntitlements.limits).length > 0)
+        ) {
+          planEntitlements = stripeEntitlements;
+          source = 'stripe';
+        }
       }
-    }
 
-    if (!planEntitlements) {
-      planEntitlements = await getEntitlementsFromDatabasePlan(
-        productId,
-        priceId
-      );
-    }
+      if (!planEntitlements) {
+        planEntitlements = await getEntitlementsFromDatabasePlan(
+          productId,
+          priceId
+        );
+      }
 
+      return { planEntitlements, productId, source };
+    })
+  );
+
+  for (const { planEntitlements, productId, source } of results) {
     if (!planEntitlements) {
       continue;
     }
@@ -276,6 +296,9 @@ export const hasTeamEntitlement = async (
     await requireTeamEntitlement(teamId, requirement);
     return true;
   } catch (error) {
-    return false;
+    if (error instanceof ApiError && error.status === 403) {
+      return false;
+    }
+    throw error;
   }
 };
