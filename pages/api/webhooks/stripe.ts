@@ -80,11 +80,13 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
 async function handleSubscriptionUpdated(event: Stripe.Event) {
   const {
     cancel_at,
+    cancel_at_period_end,
     id,
     status,
     current_period_end,
     current_period_start,
     customer,
+    trial_end,
     items,
   } = event.data.object as Stripe.Subscription;
 
@@ -97,33 +99,74 @@ async function handleSubscriptionUpdated(event: Stripe.Event) {
       await handleSubscriptionCreated(event);
     }
   } else {
-    const priceId = items.data.length > 0 ? items.data[0].plan?.id : '';
+    const subscriptionItem = items.data[0];
+    const priceId = subscriptionItem?.price?.id ?? null;
+    const productId =
+      typeof subscriptionItem?.price?.product === 'string'
+        ? subscriptionItem.price.product
+        : null;
     //type Stripe.Subscription.Status = "active" | "canceled" | "incomplete" | "incomplete_expired" | "past_due" | "paused" | "trialing" | "unpaid"
     await updateStripeSubscription(id, {
-      active: status === 'active',
-      endDate: current_period_end
+      status,
+      quantity: subscriptionItem?.quantity ?? null,
+      currency: subscriptionItem?.price?.currency ?? null,
+      currentPeriodEnd: current_period_end
         ? new Date(current_period_end * 1000)
         : undefined,
-      startDate: current_period_start
+      currentPeriodStart: current_period_start
         ? new Date(current_period_start * 1000)
         : undefined,
       cancelAt: cancel_at ? new Date(cancel_at * 1000) : undefined,
+      cancelAtPeriodEnd: cancel_at_period_end ?? undefined,
+      trialEnd: trial_end ? new Date(trial_end * 1000) : undefined,
       priceId,
+      productId,
     });
   }
 }
 
 async function handleSubscriptionCreated(event: Stripe.Event) {
-  const { customer, id, current_period_start, current_period_end, items } =
-    event.data.object as Stripe.Subscription;
+  const {
+    customer,
+    id,
+    status,
+    current_period_start,
+    current_period_end,
+    cancel_at,
+    cancel_at_period_end,
+    trial_end,
+    items,
+  } = event.data.object as Stripe.Subscription;
+
+  const team = await getByCustomerId(customer as string);
+  if (!team) {
+    return;
+  }
+
+  const subscriptionItem = items.data[0];
+  const priceId = subscriptionItem?.price?.id ?? null;
+  const productId =
+    typeof subscriptionItem?.price?.product === 'string'
+      ? subscriptionItem.price.product
+      : null;
 
   await createStripeSubscription({
-    customerId: customer as string,
     id,
-
-    active: true,
-    startDate: new Date(current_period_start * 1000),
-    endDate: new Date(current_period_end * 1000),
-    priceId: items.data.length > 0 ? items.data[0].plan?.id : '',
+    teamId: team.id,
+    customerId: customer as string,
+    status,
+    quantity: subscriptionItem?.quantity ?? null,
+    currency: subscriptionItem?.price?.currency ?? null,
+    currentPeriodStart: current_period_start
+      ? new Date(current_period_start * 1000)
+      : null,
+    currentPeriodEnd: current_period_end
+      ? new Date(current_period_end * 1000)
+      : null,
+    cancelAt: cancel_at ? new Date(cancel_at * 1000) : null,
+    cancelAtPeriodEnd: cancel_at_period_end ?? false,
+    trialEnd: trial_end ? new Date(trial_end * 1000) : null,
+    priceId,
+    productId,
   });
 }
