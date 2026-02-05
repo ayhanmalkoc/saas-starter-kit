@@ -6,6 +6,7 @@ import { sendAudit } from '@/lib/retraced';
 import { throwIfNoTeamAccess } from 'models/team';
 import { throwIfNotAllowed } from 'models/user';
 import { ssoManager } from '@/lib/jackson/sso/index';
+import { requireTeamEntitlement } from '@/lib/billing/entitlements';
 import {
   extractClientId,
   throwIfNoAccessToConnection,
@@ -56,6 +57,7 @@ export default async function handler(
 // Get the SSO connection for the team.
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
 
   throwIfNotAllowed(teamMember, 'team_sso', 'read');
 
@@ -79,6 +81,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 // Create a SSO connection for the team
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
 
   throwIfNotAllowed(teamMember, 'team_sso', 'create');
 
@@ -102,6 +105,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
 
   throwIfNotAllowed(teamMember, 'team_sso', 'create');
 
@@ -128,6 +132,7 @@ const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
 
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
 
   throwIfNotAllowed(teamMember, 'team_sso', 'delete');
 
