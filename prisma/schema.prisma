@@ -170,6 +170,15 @@ model Subscription {
   @@index([priceId])
 }
 
+model WebhookEvent {
+  id        String   @id @default(uuid())
+  eventId   String   @unique
+  eventType String
+  createdAt DateTime @default(now())
+
+  @@index([eventType])
+}
+
 model Service {
   id          String   @id @default(uuid())
   description String

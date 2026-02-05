@@ -10,6 +10,7 @@ import {
   updateStripeSubscription,
 } from 'models/subscription';
 import { getByCustomerId } from 'models/team';
+import { createWebhookEvent, getWebhookEventById } from 'models/webhookEvent';
 
 export const config = {
   api: {
@@ -27,9 +28,17 @@ async function getRawBody(readable: Readable): Promise<Buffer> {
 }
 
 const relevantEvents: Stripe.Event.Type[] = [
+  'checkout.session.completed',
   'customer.subscription.created',
   'customer.subscription.updated',
   'customer.subscription.deleted',
+  'customer.updated',
+  'invoice.payment_failed',
+  'invoice.payment_succeeded',
+  'price.created',
+  'price.updated',
+  'product.created',
+  'product.updated',
 ];
 
 export default async function POST(req: NextApiRequest, res: NextApiResponse) {
@@ -41,18 +50,27 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     if (!sig || !webhookSecret) {
+      console.error('Stripe webhook missing signature or secret');
       return res.status(400).json({
         error: { message: 'Missing signature or webhook secret' },
       });
     }
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
+    console.error('Stripe webhook signature verification failed', err);
     return res.status(400).json({ error: { message: err.message } });
   }
 
   if (relevantEvents.includes(event.type)) {
+    const existingEvent = await getWebhookEventById(event.id);
+    if (existingEvent) {
+      return res.status(200).json({ received: true });
+    }
     try {
       switch (event.type) {
+        case 'checkout.session.completed':
+          await handleCheckoutSessionCompleted(event);
+          break;
         case 'customer.subscription.created':
           await handleSubscriptionCreated(event);
           break;
@@ -64,9 +82,27 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
             (event.data.object as Stripe.Subscription).id
           );
           break;
+        case 'customer.updated':
+          await handleCustomerUpdated(event);
+          break;
+        case 'invoice.payment_failed':
+          await handleInvoicePaymentFailed(event);
+          break;
+        case 'invoice.payment_succeeded':
+          await handleInvoicePaymentSucceeded(event);
+          break;
+        case 'price.created':
+        case 'price.updated':
+          await handlePriceCreatedOrUpdated(event);
+          break;
+        case 'product.created':
+        case 'product.updated':
+          await handleProductCreatedOrUpdated(event);
+          break;
         default:
           throw new Error('Unhandled relevant event!');
       }
+      await createWebhookEvent(event.id, event.type);
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       return res.status(400).json({
@@ -77,6 +113,30 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
     }
   }
   return res.status(200).json({ received: true });
+}
+
+async function handleCheckoutSessionCompleted(_event: Stripe.Event) {
+  return;
+}
+
+async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
+  return;
+}
+
+async function handleInvoicePaymentFailed(_event: Stripe.Event) {
+  return;
+}
+
+async function handleCustomerUpdated(_event: Stripe.Event) {
+  return;
+}
+
+async function handleProductCreatedOrUpdated(_event: Stripe.Event) {
+  return;
+}
+
+async function handlePriceCreatedOrUpdated(_event: Stripe.Event) {
+  return;
 }
 
 async function handleSubscriptionUpdated(event: Stripe.Event) {
