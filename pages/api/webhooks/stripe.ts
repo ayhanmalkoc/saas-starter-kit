@@ -41,7 +41,9 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
 
   try {
     if (!sig || !webhookSecret) {
-      return;
+      return res.status(400).json({
+        error: { message: 'Missing signature or webhook secret' },
+      });
     }
     event = stripe.webhooks.constructEvent(rawBody, sig, webhookSecret);
   } catch (err: any) {
