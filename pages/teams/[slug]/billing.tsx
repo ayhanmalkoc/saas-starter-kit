@@ -18,7 +18,7 @@ const Payments = ({ teamFeatures }) => {
   const { t } = useTranslation('common');
   const { canAccess } = useCanAccess();
   const { isLoading, isError, team } = useTeam();
-  const { data } = useSWR(
+  const { data, isLoading: isBillingLoading } = useSWR(
     team?.slug ? `/api/teams/${team?.slug}/payments/products` : null,
     fetcher
   );
@@ -35,8 +35,43 @@ const Payments = ({ teamFeatures }) => {
     return <Error message={t('team-not-found')} />;
   }
 
+  const isBillingDataLoading = isBillingLoading || data === undefined;
   const plans = data?.data?.products || [];
   const subscriptions = data?.data?.subscriptions || [];
+  const invoices = data?.data?.invoices || [];
+  const activeSubscription = !isBillingDataLoading
+    ? subscriptions.find((subscription) =>
+        ['active', 'trialing', 'past_due'].includes(subscription.status)
+      )
+    : null;
+
+  const formatAmount = (amount: number, currency: string) => {
+    const normalizedCurrency = currency.toUpperCase();
+    const zeroDecimalCurrencies = new Set([
+      'BIF',
+      'CLP',
+      'DJF',
+      'GNF',
+      'JPY',
+      'KMF',
+      'KRW',
+      'MGA',
+      'PYG',
+      'RWF',
+      'UGX',
+      'VND',
+      'VUV',
+      'XAF',
+      'XOF',
+      'XPF',
+    ]);
+    const divisor = zeroDecimalCurrencies.has(normalizedCurrency) ? 1 : 100;
+
+    return new Intl.NumberFormat(undefined, {
+      style: 'currency',
+      currency: normalizedCurrency,
+    }).format(amount / divisor);
+  };
 
   return (
     <>
@@ -53,11 +88,104 @@ const Payments = ({ teamFeatures }) => {
             <Help />
           </div>
 
-          <div className="py-6">
-            <Subscriptions subscriptions={subscriptions} />
-          </div>
+          {isBillingDataLoading ? (
+            <div className="py-6">
+              <Loading />
+            </div>
+          ) : (
+            <>
+              <div className="py-6">
+                <Subscriptions subscriptions={subscriptions} />
+              </div>
 
-          <ProductPricing plans={plans} subscriptions={subscriptions} />
+              <div className="py-6">
+                <div className="space-y-3">
+                  <h2 className="card-title text-xl font-medium leading-none tracking-tight">
+                    {t('active-subscription')}
+                  </h2>
+                  {activeSubscription ? (
+                    <div className="rounded-lg border p-4 text-sm">
+                      <div className="font-medium">
+                        {activeSubscription.product?.name || t('plan')}
+                      </div>
+                      <div className="text-muted-foreground">
+                        {t('status')}: {activeSubscription.status}
+                      </div>
+                      {activeSubscription.currentPeriodEnd && (
+                        <div className="text-muted-foreground">
+                          {t('end-date')}:{' '}
+                          {new Date(
+                            activeSubscription.currentPeriodEnd
+                          ).toLocaleDateString()}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                      {t('no-active-subscription')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <div className="py-6">
+                <div className="space-y-3">
+                  <h2 className="card-title text-xl font-medium leading-none tracking-tight">
+                    {t('invoices')}
+                  </h2>
+                  {invoices.length > 0 ? (
+                    <table className="table w-full text-sm border">
+                      <thead>
+                        <tr>
+                          <th>ID</th>
+                          <th>{t('status')}</th>
+                          <th>{t('amount')}</th>
+                          <th>{t('due-date')}</th>
+                          <th>{t('invoice')}</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {invoices.map((invoice) => (
+                          <tr key={invoice.id}>
+                            <td>{invoice.id}</td>
+                            <td>{invoice.status}</td>
+                            <td>
+                              {formatAmount(invoice.amount, invoice.currency)}
+                            </td>
+                            <td>
+                              {invoice.dueDate
+                                ? new Date(invoice.dueDate).toLocaleDateString()
+                                : t('not-applicable')}
+                            </td>
+                            <td>
+                              {invoice.hostedInvoiceUrl ? (
+                                <a
+                                  className="link"
+                                  href={invoice.hostedInvoiceUrl}
+                                  rel="noreferrer"
+                                  target="_blank"
+                                >
+                                  {t('view')}
+                                </a>
+                              ) : (
+                                t('not-applicable')
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    <div className="rounded-lg border p-4 text-sm text-muted-foreground">
+                      {t('no-invoices')}
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              <ProductPricing plans={plans} subscriptions={subscriptions} />
+            </>
+          )}
         </>
       )}
     </>

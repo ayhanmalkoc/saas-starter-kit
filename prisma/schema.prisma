@@ -83,6 +83,7 @@ model Team {
   invitations     Invitation[]
   apiKeys         ApiKey[]
   subscriptions   Subscription[]
+  invoices        Invoice[]
 
   @@index([billingId])
 }
@@ -168,6 +169,23 @@ model Subscription {
   @@index([customerId])
   @@index([teamId])
   @@index([priceId])
+}
+
+model Invoice {
+  id               String   @id
+  teamId           String
+  status           String
+  amount           Int
+  currency         String
+  dueDate          DateTime?
+  hostedInvoiceUrl String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+
+  @@index([teamId])
+  @@index([status])
 }
 
 model WebhookEvent {
