@@ -52,10 +52,6 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     price,
     quantity,
 
-    // {CHECKOUT_SESSION_ID} is a string literal; do not change it!
-    // the actual Session ID is returned in the query parameter when your customer
-    // is redirected to the success page.
-
     successUrl: `${env.appUrl}/teams/${teamMember.team.slug}/billing`,
     cancelUrl: `${env.appUrl}/teams/${teamMember.team.slug}/billing`,
   });
