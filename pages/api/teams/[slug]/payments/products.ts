@@ -5,6 +5,7 @@ import { throwIfNoTeamAccess } from 'models/team';
 import { getAllServices } from 'models/service';
 import { getAllPrices } from 'models/price';
 import { getByTeamId } from 'models/subscription';
+import { getByTeamId as getInvoicesByTeamId } from 'models/invoice';
 
 export default async function handler(
   req: NextApiRequest,
@@ -36,10 +37,11 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     throw Error('Could not get user');
   }
 
-  const [subscriptions, products, prices] = await Promise.all([
+  const [subscriptions, products, prices, invoices] = await Promise.all([
     getByTeamId(teamMember.teamId),
     getAllServices(),
     getAllPrices(),
+    getInvoicesByTeamId(teamMember.teamId),
   ]);
 
   // create a unified object with prices associated with the product
@@ -67,6 +69,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     data: {
       products: productsWithPrices,
       subscriptions: (_subscriptions || []).filter((s) => !!s),
+      invoices,
     },
   });
 };

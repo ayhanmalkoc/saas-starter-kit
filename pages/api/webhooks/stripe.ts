@@ -14,6 +14,7 @@ import { createWebhookEvent } from 'models/webhookEvent';
 import { Prisma } from '@prisma/client';
 import { upsertServiceFromStripe } from 'models/service';
 import { upsertPriceFromStripe } from 'models/price';
+import { upsertInvoiceFromStripe } from 'models/invoice';
 
 export const config = {
   api: {
@@ -130,11 +131,29 @@ async function handleCheckoutSessionCompleted(_event: Stripe.Event) {
 }
 
 async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
-  console.warn('invoice.payment_succeeded received but not handled');
+  const invoice = _event.data.object as Stripe.Invoice;
+  const customerId = invoice.customer as string | null;
+  if (!customerId) {
+    return;
+  }
+  const team = await getByCustomerId(customerId);
+  if (!team) {
+    return;
+  }
+  await upsertInvoiceFromStripe(invoice, team.id);
 }
 
 async function handleInvoicePaymentFailed(_event: Stripe.Event) {
-  console.warn('invoice.payment_failed received but not handled');
+  const invoice = _event.data.object as Stripe.Invoice;
+  const customerId = invoice.customer as string | null;
+  if (!customerId) {
+    return;
+  }
+  const team = await getByCustomerId(customerId);
+  if (!team) {
+    return;
+  }
+  await upsertInvoiceFromStripe(invoice, team.id);
 }
 
 async function handleCustomerUpdated(_event: Stripe.Event) {
