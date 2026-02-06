@@ -7,7 +7,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (!env.teamFeatures.sso) {
-    res.status(404).json({ error: { message: 'Not Found' } });
+    return res.status(404).json({ error: { message: 'Not Found' } });
   }
 
   const { method } = req;
