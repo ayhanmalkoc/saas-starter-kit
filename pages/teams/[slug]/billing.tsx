@@ -42,11 +42,33 @@ const Payments = ({ teamFeatures }) => {
     ['active', 'trialing', 'past_due'].includes(subscription.status)
   );
 
-  const formatAmount = (amount: number, currency: string) =>
-    new Intl.NumberFormat(undefined, {
+  const formatAmount = (amount: number, currency: string) => {
+    const normalizedCurrency = currency.toUpperCase();
+    const zeroDecimalCurrencies = new Set([
+      'BIF',
+      'CLP',
+      'DJF',
+      'GNF',
+      'JPY',
+      'KMF',
+      'KRW',
+      'MGA',
+      'PYG',
+      'RWF',
+      'UGX',
+      'VND',
+      'VUV',
+      'XAF',
+      'XOF',
+      'XPF',
+    ]);
+    const divisor = zeroDecimalCurrencies.has(normalizedCurrency) ? 1 : 100;
+
+    return new Intl.NumberFormat(undefined, {
       style: 'currency',
-      currency: currency.toUpperCase(),
-    }).format(amount / 100);
+      currency: normalizedCurrency,
+    }).format(amount / divisor);
+  };
 
   return (
     <>
