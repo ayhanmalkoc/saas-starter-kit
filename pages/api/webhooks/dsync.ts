@@ -5,6 +5,47 @@ import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { handleEvents } from '@/lib/jackson/dsyncEvents';
 
+const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
+const SIGNATURE_HEX_LENGTH = 64;
+
+type ReplayCache = {
+  has: (key: string) => boolean | Promise<boolean>;
+  set: (key: string, ttlInSeconds: number) => void | Promise<void>;
+};
+
+const inMemoryReplayEntries = new Map<string, number>();
+
+const inMemoryReplayCache: ReplayCache = {
+  has(key: string) {
+    const now = Math.floor(Date.now() / 1000);
+
+    for (const [cacheKey, expiresAt] of inMemoryReplayEntries.entries()) {
+      if (expiresAt <= now) {
+        inMemoryReplayEntries.delete(cacheKey);
+      }
+    }
+
+    const expiresAt = inMemoryReplayEntries.get(key);
+
+    return typeof expiresAt === 'number' && expiresAt > now;
+  },
+  set(key: string, ttlInSeconds: number) {
+    const expiresAt = Math.floor(Date.now() / 1000) + ttlInSeconds;
+
+    inMemoryReplayEntries.set(key, expiresAt);
+  },
+};
+
+/**
+ * Optional replay cache hook for distributed deployments (e.g. Redis).
+ * Set this from app bootstrap to enforce replay prevention across instances.
+ */
+let replayCache: ReplayCache | undefined;
+
+export const setWebhookReplayCache = (cache?: ReplayCache) => {
+  replayCache = cache;
+};
+
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -14,7 +55,7 @@ export default async function handler(
       throw new ApiError(400, `Method ${req.method} Not Allowed`);
     }
 
-    if (!verifyWebhookSignature(req)) {
+    if (!(await verifyWebhookSignature(req))) {
       console.error('Signature verification failed.');
       res.end();
       return;
@@ -29,21 +70,101 @@ export default async function handler(
   }
 }
 
-const verifyWebhookSignature = (req: NextApiRequest) => {
+const parseSignatureHeader = (signatureHeader: string) => {
+  const parsedHeader = signatureHeader.split(',').reduce<Record<string, string>>(
+    (acc, part) => {
+      const [rawKey, ...rawValueParts] = part.split('=');
+      const key = rawKey?.trim();
+      const value = rawValueParts.join('=').trim();
+
+      if (!key || !value) {
+        throw new Error('Invalid signature header part.');
+      }
+
+      acc[key] = value;
+
+      return acc;
+    },
+    {}
+  );
+
+  const timestamp = Number.parseInt(parsedHeader.t, 10);
+  const signature = parsedHeader.s;
+
+  if (!Number.isFinite(timestamp) || !signature) {
+    throw new Error('Missing timestamp/signature in signature header.');
+  }
+
+  return {
+    timestamp,
+    signature,
+  };
+};
+
+const isReplayAttempt = async (timestamp: number, signature: string) => {
+  const cache = replayCache ?? inMemoryReplayCache;
+  const replayCacheKey = `${timestamp}:${signature}`;
+
+  if (await cache.has(replayCacheKey)) {
+    return true;
+  }
+
+  await cache.set(replayCacheKey, SIGNATURE_TOLERANCE_SECONDS);
+
+  return false;
+};
+
+export const verifyWebhookSignature = async (req: NextApiRequest) => {
   const signatureHeader = req.headers['boxyhq-signature'] as string;
 
   if (!signatureHeader) {
     return false;
   }
 
-  const [t, s] = signatureHeader.split(',');
-  const timestamp = parseInt(t.split('=')[1]);
-  const signature = s.split('=')[1];
+  let timestamp: number;
+  let signature: string;
+
+  try {
+    ({ timestamp, signature } = parseSignatureHeader(signatureHeader));
+  } catch {
+    return false;
+  }
+
+  if (
+    signature.length !== SIGNATURE_HEX_LENGTH ||
+    !/^[0-9a-f]+$/i.test(signature)
+  ) {
+    return false;
+  }
+
+  const nowInSeconds = Math.floor(Date.now() / 1000);
+  if (Math.abs(nowInSeconds - timestamp) > SIGNATURE_TOLERANCE_SECONDS) {
+    return false;
+  }
 
   const expectedSignature = crypto
     .createHmac('sha256', env.jackson.dsync.webhook_secret as string)
     .update(`${timestamp}.${JSON.stringify(req.body)}`)
     .digest('hex');
 
-  return signature === expectedSignature;
+  if (expectedSignature.length !== signature.length) {
+    return false;
+  }
+
+  const expectedSignatureBuffer = Buffer.from(expectedSignature, 'hex');
+  const receivedSignatureBuffer = Buffer.from(signature, 'hex');
+
+  if (expectedSignatureBuffer.length !== receivedSignatureBuffer.length) {
+    return false;
+  }
+
+  if (!crypto.timingSafeEqual(expectedSignatureBuffer, receivedSignatureBuffer)) {
+    return false;
+  }
+
+  if (await isReplayAttempt(timestamp, signature)) {
+    return false;
+  }
+
+  return true;
 };
