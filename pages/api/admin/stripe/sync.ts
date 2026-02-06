@@ -45,6 +45,14 @@ const validateSecret = (req: NextApiRequest) => {
   };
 };
 
+/**
+ * Synchronizes active Stripe products and prices into the local database after validating a pre-shared secret header.
+ *
+ * Rejects non-POST requests and requests missing or failing the timing-safe secret validation, returning the corresponding HTTP status and error JSON. On success, upserts fetched products and prices in a single transaction and responds with counts of synced items.
+ *
+ * @param req - Incoming Next.js API request; must be a POST and include the `x-stripe-sync-secret` header with the pre-shared secret.
+ * @param res - Next.js API response used to send status and JSON results.
+ */
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
