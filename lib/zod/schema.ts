@@ -16,6 +16,7 @@ import {
   recaptchaToken,
   priceId,
   quantity,
+  subscriptionId,
   memberId,
   inviteToken,
   url,
@@ -115,6 +116,12 @@ export const resendEmailToken = z.object({
 });
 
 export const checkoutSessionSchema = z.object({
+  price: priceId,
+  quantity: quantity.optional(),
+});
+
+export const updateSubscriptionSchema = z.object({
+  subscriptionId,
   price: priceId,
   quantity: quantity.optional(),
 });
