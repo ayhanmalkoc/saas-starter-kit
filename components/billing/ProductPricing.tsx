@@ -3,9 +3,9 @@ import { Button } from 'react-daisyui';
 import { useTranslation } from 'next-i18next';
 
 import useTeam from 'hooks/useTeam';
-import { Price } from '@prisma/client';
+import { Price, Prisma, Service, Subscription } from '@prisma/client';
 import PaymentButton from './PaymentButton';
-import { Service, Subscription } from '@prisma/client';
+import { handlePlanChange } from './planService';
 
 interface ProductPricingProps {
   plans: any[];
@@ -16,33 +16,63 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
   const { team } = useTeam();
   const { t } = useTranslation('common');
 
-  const initiateCheckout = async (price: string, quantity?: number) => {
-    const res = await fetch(
-      `/api/teams/${team?.slug}/payments/create-checkout-session`,
-      {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ price, quantity }),
-      }
-    );
+  const initiatePlanChange = async (
+    priceId: string,
+    quantity?: number,
+    subscriptionId?: string | null
+  ) => {
+    if (!team?.slug) {
+      toast.error(t('stripe-checkout-fallback-error'));
+      return;
+    }
 
-    const data = await res.json();
+    const data = await handlePlanChange({
+      teamSlug: team.slug,
+      priceId,
+      quantity,
+      subscriptionId,
+    });
 
     if (data?.data?.url) {
       window.open(data.data.url, '_blank', 'noopener,noreferrer');
-    } else {
-      toast.error(
-        data?.error?.message ||
-          data?.error?.raw?.message ||
-          t('stripe-checkout-fallback-error')
-      );
+      return;
     }
+
+    if (data?.data?.id) {
+      toast.success(t('successfully-updated'));
+      return;
+    }
+
+    toast.error(
+      data?.error?.message ||
+        data?.error?.raw?.message ||
+        t('stripe-checkout-fallback-error')
+    );
   };
 
   const hasActiveSubscription = (price: Price) =>
     subscriptions.some((s) => s.priceId === price.id);
+
+  const activeSubscription =
+    subscriptions.find((subscription) =>
+      ['active', 'trialing', 'past_due', 'incomplete'].includes(
+        subscription.status
+      )
+    ) ?? subscriptions[0];
+
+  const isSeatBasedPrice = (price: Price) => {
+    const metadata = price.metadata as Prisma.JsonObject;
+    const recurring = metadata?.recurring as Prisma.JsonObject | undefined;
+    const usageType =
+      (recurring?.usage_type as string | undefined) ??
+      (metadata?.usage_type as string | undefined);
+
+    return (
+      (price.billingScheme === 'per_unit' ||
+        price.billingScheme === 'tiered') &&
+      usageType !== 'metered'
+    );
+  };
 
   return (
     <section className="py-3">
@@ -79,7 +109,15 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
                       key={price.id}
                       plan={plan}
                       price={price}
-                      initiateCheckout={initiateCheckout}
+                      onPlanChange={(priceId, quantity) => {
+                        initiatePlanChange(
+                          priceId,
+                          isSeatBasedPrice(price)
+                            ? activeSubscription?.quantity ?? quantity ?? 1
+                            : undefined,
+                          activeSubscription?.id
+                        );
+                      }}
                     />
                   )
                 )}

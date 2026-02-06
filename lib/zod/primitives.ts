@@ -166,6 +166,13 @@ export const priceId = z
   })
   .min(1, 'PriceId is required');
 
+export const subscriptionId = z
+  .string({
+    required_error: 'Subscription Id is required',
+    invalid_type_error: 'Subscription Id must be a string',
+  })
+  .min(1, 'Subscription Id is required');
+
 export const quantity = z.number({
   invalid_type_error: 'Quantity must be a number',
 });
