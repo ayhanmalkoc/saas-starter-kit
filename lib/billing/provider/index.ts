@@ -7,8 +7,11 @@ export const getBillingProvider = (
   billingProvider?: string | null
 ): BillingProvider => {
   switch (billingProvider) {
+    case undefined:
+    case null:
     case 'stripe':
-    default:
       return stripeBillingProvider;
+    default:
+      throw new Error(`Unsupported billing provider: ${billingProvider}`);
   }
 };

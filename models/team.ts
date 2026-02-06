@@ -276,6 +276,25 @@ export const updateTeam = async (slug: string, data: Partial<Team>) => {
   });
 };
 
+export const setTeamBillingIfEmpty = async (
+  slug: string,
+  billingId: string,
+  billingProvider: string
+) => {
+  const result = await prisma.team.updateMany({
+    where: {
+      slug,
+      billingId: null,
+    },
+    data: {
+      billingId,
+      billingProvider,
+    },
+  });
+
+  return result.count > 0;
+};
+
 /*
 Aggregate  (cost=124.01..124.02 rows=1 width=8) (actual time=0.216..0.216 rows=1 loops=1)
   ->  Seq Scan on "Team"  (cost=0.00..123.82 rows=15 width=32) (actual time=0.083..0.213 rows=1 loops=1)

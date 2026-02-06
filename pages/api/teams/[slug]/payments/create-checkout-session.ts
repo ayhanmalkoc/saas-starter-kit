@@ -3,6 +3,10 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
 import { getBillingProvider } from '@/lib/billing/provider';
+import type {
+  BillingSession,
+  BillingTeamMember,
+} from '@/lib/billing/provider/types';
 import env from '@/lib/env';
 import { checkoutSessionSchema, validateWithSchema } from '@/lib/zod';
 
@@ -38,7 +42,10 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
   const session = await getSession(req, res);
   const billingProvider = getBillingProvider(teamMember.team.billingProvider);
-  const customerId = await billingProvider.getCustomerId(teamMember, session);
+  const customerId = await billingProvider.getCustomerId(
+    teamMember as BillingTeamMember,
+    session as BillingSession
+  );
 
   const checkoutSession = await billingProvider.createCheckoutSession({
     customerId,
