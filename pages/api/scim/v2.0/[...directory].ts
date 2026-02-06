@@ -11,7 +11,7 @@ export default async function handler(
   res: NextApiResponse
 ) {
   if (!env.teamFeatures.dsync) {
-    res.status(404).json({ error: { message: 'Not Found' } });
+    return res.status(404).json({ error: { message: 'Not Found' } });
   }
 
   const { directorySync } = await jackson();
