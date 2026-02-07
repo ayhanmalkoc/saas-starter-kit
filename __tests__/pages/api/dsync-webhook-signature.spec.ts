@@ -1,4 +1,5 @@
 import crypto from 'crypto';
+import { Readable } from 'stream';
 
 jest.mock('@/lib/env', () => ({
   __esModule: true,
@@ -18,22 +19,32 @@ jest.mock('@/lib/jackson/dsyncEvents', () => ({
 
 import env from '@/lib/env';
 import handler, {
+  getRawBody,
   setWebhookReplayCache,
   verifyWebhookSignature,
 } from '@/pages/api/webhooks/dsync';
 import { handleEvents } from '@/lib/jackson/dsyncEvents';
 
-const makeRequest = (signatureHeader?: string, body: unknown = { foo: 'bar' }) =>
+const makeRequest = (signatureHeader?: string) =>
   ({
     headers: signatureHeader ? { 'boxyhq-signature': signatureHeader } : {},
-    body,
   }) as any;
 
-const createSignature = (timestamp: number, body: unknown) =>
+const createSignature = (timestamp: number, rawBody: string) =>
   crypto
     .createHmac('sha256', 'test-webhook-secret')
-    .update(`${timestamp}.${JSON.stringify(body)}`)
+    .update(`${timestamp}.${rawBody}`)
     .digest('hex');
+
+describe('getRawBody', () => {
+  it('concatenates string and buffer stream chunks', async () => {
+    const readable = Readable.from(['{"foo":', Buffer.from('"bar"}')]);
+
+    const rawBody = await getRawBody(readable);
+
+    expect(rawBody.toString('utf8')).toBe('{"foo":"bar"}');
+  });
+});
 
 describe('verifyWebhookSignature', () => {
   const replayCacheHasMock = jest.fn();
@@ -56,28 +67,33 @@ describe('verifyWebhookSignature', () => {
   });
 
   it('returns false when signature header is missing', async () => {
-    const result = await verifyWebhookSignature(makeRequest());
+    const result = await verifyWebhookSignature(makeRequest(), '{"foo":"bar"}');
 
     expect(result).toBe(false);
   });
 
   it('returns false when signature header is malformed', async () => {
-    const result = await verifyWebhookSignature(makeRequest('invalid-header'));
+    const result = await verifyWebhookSignature(
+      makeRequest('invalid-header'),
+      '{"foo":"bar"}'
+    );
 
     expect(result).toBe(false);
   });
 
   it('returns false when t= or s= is missing', async () => {
-    const body = { foo: 'bar' };
     const timestamp = 1_700_000_000;
-    const signature = createSignature(timestamp, body);
+    const rawBody = '{"foo":"bar"}';
+    const signature = createSignature(timestamp, rawBody);
 
     const withoutTimestamp = await verifyWebhookSignature(
-      makeRequest(`s=${signature}`, body)
+      makeRequest(`s=${signature}`),
+      rawBody
     );
 
     const withoutSignature = await verifyWebhookSignature(
-      makeRequest(`t=${timestamp}`, body)
+      makeRequest(`t=${timestamp}`),
+      rawBody
     );
 
     expect(withoutTimestamp).toBe(false);
@@ -88,47 +104,48 @@ describe('verifyWebhookSignature', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
 
     const oldTimestamp = 1_700_000_000 - 301;
-    const body = { foo: 'bar' };
-    const signature = createSignature(oldTimestamp, body);
+    const rawBody = '{"foo":"bar"}';
+    const signature = createSignature(oldTimestamp, rawBody);
 
     const result = await verifyWebhookSignature(
-      makeRequest(`t=${oldTimestamp},s=${signature}`, body)
+      makeRequest(`t=${oldTimestamp},s=${signature}`),
+      rawBody
     );
 
     expect(result).toBe(false);
   });
 
-
   it('returns false when signature is not valid hex or has invalid length', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
 
     const timestamp = 1_700_000_000;
-    const body = { foo: 'bar' };
+    const rawBody = '{"foo":"bar"}';
 
     const invalidHex = await verifyWebhookSignature(
-      makeRequest(`t=${timestamp},s=${'z'.repeat(64)}`, body)
+      makeRequest(`t=${timestamp},s=${'z'.repeat(64)}`),
+      rawBody
     );
 
     const invalidLength = await verifyWebhookSignature(
-      makeRequest(`t=${timestamp},s=${'a'.repeat(63)}`, body)
+      makeRequest(`t=${timestamp},s=${'a'.repeat(63)}`),
+      rawBody
     );
 
     expect(invalidHex).toBe(false);
     expect(invalidLength).toBe(false);
   });
 
-
-
   it('returns false when signature is detected as replayed', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
     replayCacheHasMock.mockResolvedValue(true);
 
     const timestamp = 1_700_000_000;
-    const body = { foo: 'bar' };
-    const signature = createSignature(timestamp, body);
+    const rawBody = '{"foo":"bar"}';
+    const signature = createSignature(timestamp, rawBody);
 
     const result = await verifyWebhookSignature(
-      makeRequest(`t=${timestamp},s=${signature}`, body)
+      makeRequest(`t=${timestamp},s=${signature}`),
+      rawBody
     );
 
     expect(result).toBe(false);
@@ -139,11 +156,12 @@ describe('verifyWebhookSignature', () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
 
     const timestamp = 1_700_000_000;
-    const body = { foo: 'bar' };
-    const signature = createSignature(timestamp, body);
+    const rawBody = '{"foo":"bar"}';
+    const signature = createSignature(timestamp, rawBody);
 
     const result = await verifyWebhookSignature(
-      makeRequest(`t=${timestamp},s=${signature}`, body)
+      makeRequest(`t=${timestamp},s=${signature}`),
+      rawBody
     );
 
     expect(result).toBe(true);
@@ -153,18 +171,19 @@ describe('verifyWebhookSignature', () => {
     );
   });
 
-
   it('throws an ApiError when webhook secret is missing', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
     (env as any).jackson.dsync.webhook_secret = '';
 
     const timestamp = 1_700_000_000;
-    const body = { foo: 'bar' };
-    const signature = createSignature(timestamp, body);
+    const rawBody = '{"foo":"bar"}';
+    const signature = createSignature(timestamp, rawBody);
 
     await expect(
-      verifyWebhookSignature(makeRequest(`t=${timestamp},s=${signature}`, body))
-    ).rejects.toThrow('JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.');
+      verifyWebhookSignature(makeRequest(`t=${timestamp},s=${signature}`), rawBody)
+    ).rejects.toThrow(
+      'JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.'
+    );
   });
 
   it('returns false when signature is invalid', async () => {
@@ -172,16 +191,46 @@ describe('verifyWebhookSignature', () => {
 
     const timestamp = 1_700_000_000;
     const badSignature = 'a'.repeat(64);
-    const body = { foo: 'bar' };
 
     const result = await verifyWebhookSignature(
-      makeRequest(`t=${timestamp},s=${badSignature}`, body)
+      makeRequest(`t=${timestamp},s=${badSignature}`),
+      '{"foo":"bar"}'
     );
 
     expect(result).toBe(false);
   });
-});
 
+  it('fails verification when semantic payload is same but raw field order differs', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+
+    const timestamp = 1_700_000_000;
+    const signedRawBody = '{"a":1,"b":2}';
+    const deliveredRawBody = '{"b":2,"a":1}';
+    const signature = createSignature(timestamp, signedRawBody);
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${signature}`),
+      deliveredRawBody
+    );
+
+    expect(result).toBe(false);
+  });
+
+  it('passes verification only for byte-identical raw payload', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+
+    const timestamp = 1_700_000_000;
+    const rawBody = '{"b":2,"a":1}';
+    const signature = createSignature(timestamp, rawBody);
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${signature}`),
+      rawBody
+    );
+
+    expect(result).toBe(true);
+  });
+});
 
 describe('dsync webhook handler', () => {
   const makeResponse = () => {
@@ -193,6 +242,14 @@ describe('dsync webhook handler', () => {
     res.setHeader = jest.fn().mockReturnValue(res);
 
     return res;
+  };
+
+  const makePostRequest = (rawBody: string, signatureHeader: string) => {
+    const readable = Readable.from([rawBody]) as any;
+    readable.method = 'POST';
+    readable.headers = { 'boxyhq-signature': signatureHeader };
+
+    return readable;
   };
 
   beforeEach(() => {
@@ -210,7 +267,7 @@ describe('dsync webhook handler', () => {
   });
 
   it('returns 405 with Allow header when method is not POST', async () => {
-    const req = { method: 'GET', headers: {}, body: {} } as any;
+    const req = { method: 'GET', headers: {} } as any;
     const res = makeResponse();
 
     await handler(req, res);
@@ -222,33 +279,42 @@ describe('dsync webhook handler', () => {
     });
   });
 
-
   it('returns 200 when webhook is processed successfully', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
-    const body = { foo: 'bar' };
+    const rawBody = '{"foo":"bar"}';
     const timestamp = 1_700_000_000;
-    const signature = createSignature(timestamp, body);
-    const req = {
-      method: 'POST',
-      headers: { 'boxyhq-signature': `t=${timestamp},s=${signature}` },
-      body,
-    } as any;
+    const signature = createSignature(timestamp, rawBody);
+    const req = makePostRequest(rawBody, `t=${timestamp},s=${signature}`);
     const res = makeResponse();
 
     await handler(req, res);
 
-    expect(handleEvents).toHaveBeenCalledWith(body);
+    expect(handleEvents).toHaveBeenCalledWith({ foo: 'bar' });
     expect(res.status).toHaveBeenCalledWith(200);
     expect(res.end).toHaveBeenCalled();
   });
 
+  it('returns 400 when payload is not valid JSON after signature verification', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    const rawBody = '{"foo":}';
+    const timestamp = 1_700_000_000;
+    const signature = createSignature(timestamp, rawBody);
+    const req = makePostRequest(rawBody, `t=${timestamp},s=${signature}`);
+    const res = makeResponse();
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: 'Invalid JSON payload.' },
+    });
+    expect(handleEvents).not.toHaveBeenCalled();
+  });
+
   it('returns 401 when signature verification fails', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
-    const req = {
-      method: 'POST',
-      headers: { 'boxyhq-signature': `t=1700000000,s=${'a'.repeat(64)}` },
-      body: { foo: 'bar' },
-    } as any;
+    const rawBody = '{"foo":"bar"}';
+    const req = makePostRequest(rawBody, `t=1700000000,s=${'a'.repeat(64)}`);
     const res = makeResponse();
 
     await handler(req, res);
