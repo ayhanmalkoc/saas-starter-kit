@@ -40,7 +40,7 @@ jest.mock('@/lib/metrics', () => ({
 
 jest.mock('models/invitation', () => ({
   getInvitation: jest.fn(),
-  isInvitationExpired: jest.fn(() => false),
+  isInvitationExpired: jest.fn().mockResolvedValue(false),
 }));
 
 jest.mock('@/lib/recaptcha', () => ({

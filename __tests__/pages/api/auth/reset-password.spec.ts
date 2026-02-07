@@ -1,16 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 
-jest.mock('next/dist/server/api-utils', () => ({
-  ApiError: class ApiError extends Error {
-    status: number;
-
-    constructor(status: number, message: string) {
-      super(message);
-      this.status = status;
-    }
-  },
-}));
-
 jest.mock('@/lib/auth', () => ({
   hashPassword: jest.fn(async (password: string) => `hashed-${password}`),
 }));
