@@ -30,7 +30,13 @@ export class BillingPage {
   }
 
   async goto() {
-    await this.page.goto(`/teams/${this.teamSlug}/billing`);
+    const billingDataResponse = this.waitForBillingDataLoad();
+
+    await Promise.all([
+      billingDataResponse,
+      this.page.goto(`/teams/${this.teamSlug}/billing`),
+    ]);
+
     await this.page.waitForURL(`/teams/${this.teamSlug}/billing`);
   }
 

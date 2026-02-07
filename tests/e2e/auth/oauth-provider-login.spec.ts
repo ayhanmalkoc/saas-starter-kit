@@ -18,8 +18,16 @@ test.describe('OAuth provider login', () => {
       name: 'Continue with GitHub',
     });
 
+    let isGithubProviderVisible = true;
+
+    try {
+      await githubButton.waitFor({ state: 'visible', timeout: 1000 });
+    } catch {
+      isGithubProviderVisible = false;
+    }
+
     test.skip(
-      !(await githubButton.isVisible()),
+      !isGithubProviderVisible,
       'GitHub provider is disabled in this environment.'
     );
 

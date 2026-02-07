@@ -76,7 +76,6 @@ test('happy path: should render active subscription and invoices', async ({
   billingPage,
 }) => {
   await billingPage.goto();
-  await billingPage.waitForBillingDataLoad();
   await billingPage.expectBillingSectionsVisible();
 });
 
@@ -98,7 +97,6 @@ test('fail path: should show error toast when billing portal API fails', async (
   );
 
   await billingPage.goto();
-  await billingPage.waitForBillingDataLoad();
 
   await billingPage.openBillingPortal();
   await billingPage.expectPortalErrorVisible('Unable to create billing portal link');
