@@ -46,7 +46,13 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const user = await getUser({ email });
 
   if (!user) {
-    throw new ApiError(422, `We can't find a user with that e-mail address`);
+    recordMetric('user.password.request.user_not_found');
+    recordMetric('user.password.request');
+
+    return res.status(200).json({
+      message:
+        'If an account exists for this e-mail, password reset instructions have been sent.',
+    });
   }
 
   const resetToken = generateToken();
@@ -63,5 +69,8 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 
   recordMetric('user.password.request');
 
-  res.json({});
+  res.status(200).json({
+    message:
+      'If an account exists for this e-mail, password reset instructions have been sent.',
+  });
 };
