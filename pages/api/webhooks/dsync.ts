@@ -1,9 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import crypto from 'crypto';
+import type { Readable } from 'node:stream';
 
 import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { handleEvents } from '@/lib/jackson/dsyncEvents';
+
+export const config = {
+  api: {
+    bodyParser: false,
+  },
+};
 
 const SIGNATURE_TOLERANCE_SECONDS = 5 * 60;
 const SIGNATURE_HEX_LENGTH = 64;
@@ -56,13 +63,24 @@ export default async function handler(
       throw new ApiError(405, `Method ${req.method} Not Allowed`);
     }
 
-    if (!(await verifyWebhookSignature(req))) {
+    const rawBody = (await getRawBody(req)).toString('utf8');
+
+    if (!(await verifyWebhookSignature(req, rawBody))) {
       console.error('Signature verification failed.');
       res.status(401).json({ error: { message: 'Invalid webhook signature.' } });
       return;
     }
 
-    await handleEvents(req.body);
+    let parsedBody: unknown;
+
+    try {
+      parsedBody = JSON.parse(rawBody);
+    } catch {
+      res.status(400).json({ error: { message: 'Invalid JSON payload.' } });
+      return;
+    }
+
+    await handleEvents(parsedBody);
 
     res.status(200).end();
   } catch (error: any) {
@@ -75,6 +93,16 @@ export default async function handler(
 
     res.status(500).json({ error: { message: 'Internal Server Error' } });
   }
+}
+
+export async function getRawBody(readable: Readable): Promise<Buffer> {
+  const chunks: Buffer[] = [];
+
+  for await (const chunk of readable) {
+    chunks.push(typeof chunk === 'string' ? Buffer.from(chunk) : chunk);
+  }
+
+  return Buffer.concat(chunks);
 }
 
 const parseSignatureHeader = (signatureHeader: string) => {
@@ -121,7 +149,10 @@ const isReplayAttempt = async (timestamp: number, signature: string) => {
   return false;
 };
 
-export const verifyWebhookSignature = async (req: NextApiRequest) => {
+export const verifyWebhookSignature = async (
+  req: NextApiRequest,
+  rawBody: string
+) => {
   const signatureHeader = req.headers['boxyhq-signature'] as string;
 
   if (!signatureHeader) {
@@ -157,7 +188,7 @@ export const verifyWebhookSignature = async (req: NextApiRequest) => {
 
   const expectedSignature = crypto
     .createHmac('sha256', webhookSecret)
-    .update(`${timestamp}.${JSON.stringify(req.body)}`)
+    .update(`${timestamp}.${rawBody}`)
     .digest('hex');
 
   if (expectedSignature.length !== signature.length) {
