@@ -79,7 +79,7 @@
   "pricing": "Pricing",
   "buy-now": "Buy now",
   "features": "Features",
-  "password-reset-link-sent": "Password reset link sent",
+  "password-reset-link-sent": "If an account exists for this e-mail, password reset instructions have been sent.",
   "email-password-reset-link": "Email Password Reset Link",
   "reset-password": "Reset Password",
   "forgot-password": "Forgot your password?",

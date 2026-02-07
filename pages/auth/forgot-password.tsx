@@ -53,7 +53,9 @@ const ForgotPassword: NextPageWithLayout<
         return;
       }
 
-      toast.success(t('password-reset-link-sent'));
+      toast.success(
+        (json as { message?: string }).message || t('password-reset-link-sent')
+      );
     },
   });
 

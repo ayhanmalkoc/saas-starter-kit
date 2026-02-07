@@ -41,6 +41,7 @@ export type AppEvent =
   | 'member.role.updated'
   | 'user.password.updated'
   | 'user.password.request'
+  | 'user.password.request.user_not_found'
   | 'user.updated'
   | 'user.signup'
   | 'user.password.reset'
