@@ -42,6 +42,7 @@ import { getSession } from '@/lib/session';
 import { sendEvent } from '@/lib/svix';
 import { sendAudit } from '@/lib/retraced';
 import { recordMetric } from '@/lib/metrics';
+import { extractEmailDomain } from '@/lib/email/utils';
 
 const createRes = () => ({
   statusCode: 200,
@@ -115,6 +116,42 @@ describe('/api/teams/[slug]/invitations', () => {
     expect(sendAudit).toHaveBeenCalled();
     expect(recordMetric).toHaveBeenCalledWith('invitation.removed');
   });
+
+  it('PUT returns 401 for unauthenticated accept invitation', async () => {
+    (getInvitation as jest.Mock).mockResolvedValueOnce({
+      token: 'tok',
+      expires: new Date().toISOString(),
+      sentViaEmail: false,
+      allowedDomains: ['corp.com'],
+      team: { id: 'team-1' },
+      role: 'MEMBER',
+    });
+    (getSession as jest.Mock).mockResolvedValueOnce(null);
+    const res = createRes();
+    await handler({ method: 'PUT', body: { inviteToken: 'tok' } } as any, res);
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toEqual({ error: { message: 'You must be logged in to accept this invitation.' } });
+    expect(addTeamMember).not.toHaveBeenCalled();
+  });
+
+  it('PUT returns 401 for missing session user fields', async () => {
+    (getInvitation as jest.Mock).mockResolvedValueOnce({
+      token: 'tok',
+      expires: new Date().toISOString(),
+      sentViaEmail: false,
+      allowedDomains: ['corp.com'],
+      team: { id: 'team-1' },
+      role: 'MEMBER',
+    });
+    (getSession as jest.Mock).mockResolvedValueOnce({ user: { id: 'user-2' } });
+    const res = createRes();
+    await handler({ method: 'PUT', body: { inviteToken: 'tok' } } as any, res);
+    expect(res.statusCode).toBe(401);
+    expect(res.body).toEqual({ error: { message: 'You must be logged in to accept this invitation.' } });
+    expect(extractEmailDomain).not.toHaveBeenCalled();
+    expect(addTeamMember).not.toHaveBeenCalled();
+  });
+
 
   it('PUT accepts invitation', async () => {
     (getInvitation as jest.Mock).mockResolvedValueOnce({

@@ -269,7 +269,12 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const session = await getSession(req, res);
-  const email = session?.user.email as string;
+
+  if (!session || !session.user || !session.user.id || !session.user.email) {
+    throw new ApiError(401, 'You must be logged in to accept this invitation.');
+  }
+
+  const { id: userId, email } = session.user;
 
   // Make sure the user is logged in with the invited email address (Join via email)
   if (invitation.sentViaEmail && invitation.email !== email) {
@@ -296,7 +301,7 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
 
   const teamMember = await addTeamMember(
     invitation.team.id,
-    session?.user?.id as string,
+    userId,
     invitation.role
   );
 
