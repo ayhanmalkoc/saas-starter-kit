@@ -60,7 +60,7 @@ describe('UpdatePassword', () => {
     await userEvent.type(newPasswordInput, '123');
     fireEvent.blur(newPasswordInput);
 
-    expect(submitButton).toBeDisabled();
+    await waitFor(() => expect(submitButton).toBeDisabled());
   });
 
   it('shows server error when update fails', async () => {
