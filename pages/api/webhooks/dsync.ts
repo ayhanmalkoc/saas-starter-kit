@@ -51,19 +51,20 @@ export default async function handler(
   res: NextApiResponse
 ) {
   try {
-    if (req.method != 'POST') {
-      throw new ApiError(400, `Method ${req.method} Not Allowed`);
+    if (req.method !== 'POST') {
+      res.setHeader('Allow', 'POST');
+      throw new ApiError(405, `Method ${req.method} Not Allowed`);
     }
 
     if (!(await verifyWebhookSignature(req))) {
       console.error('Signature verification failed.');
-      res.end();
+      res.status(401).json({ error: { message: 'Invalid webhook signature.' } });
       return;
     }
 
     await handleEvents(req.body);
 
-    res.end();
+    res.status(200).end();
   } catch (error: any) {
     console.error(error);
 

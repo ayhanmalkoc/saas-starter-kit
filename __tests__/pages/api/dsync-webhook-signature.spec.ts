@@ -17,10 +17,11 @@ jest.mock('@/lib/jackson/dsyncEvents', () => ({
 }));
 
 import env from '@/lib/env';
-import {
+import handler, {
   setWebhookReplayCache,
   verifyWebhookSignature,
 } from '@/pages/api/webhooks/dsync';
+import { handleEvents } from '@/lib/jackson/dsyncEvents';
 
 const makeRequest = (signatureHeader?: string, body: unknown = { foo: 'bar' }) =>
   ({
@@ -178,5 +179,84 @@ describe('verifyWebhookSignature', () => {
     );
 
     expect(result).toBe(false);
+  });
+});
+
+
+describe('dsync webhook handler', () => {
+  const makeResponse = () => {
+    const res: any = {};
+
+    res.status = jest.fn().mockReturnValue(res);
+    res.json = jest.fn().mockReturnValue(res);
+    res.end = jest.fn().mockReturnValue(res);
+    res.setHeader = jest.fn().mockReturnValue(res);
+
+    return res;
+  };
+
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    (env as any).jackson.dsync.webhook_secret = 'test-webhook-secret';
+    (handleEvents as jest.Mock).mockReset().mockResolvedValue(undefined);
+    setWebhookReplayCache({
+      has: jest.fn().mockResolvedValue(false),
+      set: jest.fn().mockResolvedValue(undefined),
+    });
+  });
+
+  afterEach(() => {
+    setWebhookReplayCache(undefined);
+  });
+
+  it('returns 405 with Allow header when method is not POST', async () => {
+    const req = { method: 'GET', headers: {}, body: {} } as any;
+    const res = makeResponse();
+
+    await handler(req, res);
+
+    expect(res.setHeader).toHaveBeenCalledWith('Allow', 'POST');
+    expect(res.status).toHaveBeenCalledWith(405);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: 'Method GET Not Allowed' },
+    });
+  });
+
+
+  it('returns 200 when webhook is processed successfully', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    const body = { foo: 'bar' };
+    const timestamp = 1_700_000_000;
+    const signature = createSignature(timestamp, body);
+    const req = {
+      method: 'POST',
+      headers: { 'boxyhq-signature': `t=${timestamp},s=${signature}` },
+      body,
+    } as any;
+    const res = makeResponse();
+
+    await handler(req, res);
+
+    expect(handleEvents).toHaveBeenCalledWith(body);
+    expect(res.status).toHaveBeenCalledWith(200);
+    expect(res.end).toHaveBeenCalled();
+  });
+
+  it('returns 401 when signature verification fails', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    const req = {
+      method: 'POST',
+      headers: { 'boxyhq-signature': `t=1700000000,s=${'a'.repeat(64)}` },
+      body: { foo: 'bar' },
+    } as any;
+    const res = makeResponse();
+
+    await handler(req, res);
+
+    expect(res.status).toHaveBeenCalledWith(401);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: 'Invalid webhook signature.' },
+    });
+    expect(handleEvents).not.toHaveBeenCalled();
   });
 });
