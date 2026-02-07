@@ -40,7 +40,11 @@ export default async function handler(
     }
   } catch (err: any) {
     const message = err?.body?.detail || err.message || 'Something went wrong';
-    const status = err.status || err.code || 500;
+    const hasHttpStatus =
+      typeof err?.status === 'number' && err.status >= 400 && err.status < 600;
+    const hasHttpCode =
+      typeof err?.code === 'number' && err.code >= 400 && err.code < 600;
+    const status = hasHttpStatus ? err.status : hasHttpCode ? err.code : 500;
 
     res.status(status).json({ error: { message } });
   }
@@ -62,7 +66,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const app = await findOrCreateApp(teamMember.team.name, teamMember.team.id);
 
   if (!app) {
-    throw new ApiError(200, 'Bad request.');
+    throw new ApiError(400, 'Bad request.');
   }
 
   const webhook = await findWebhook(app.id, endpointId as string);
@@ -89,7 +93,7 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const app = await findOrCreateApp(teamMember.team.name, teamMember.team.id);
 
   if (!app) {
-    throw new ApiError(200, 'Bad request.');
+    throw new ApiError(400, 'Bad request.');
   }
 
   const data: EndpointIn = {
