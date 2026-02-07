@@ -109,7 +109,7 @@ const isReplayAttempt = async (timestamp: number, signature: string) => {
     return true;
   }
 
-  await cache.set(replayCacheKey, SIGNATURE_TOLERANCE_SECONDS);
+  await cache.set(replayCacheKey, 2 * SIGNATURE_TOLERANCE_SECONDS);
 
   return false;
 };

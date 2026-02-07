@@ -34,11 +34,17 @@ const createSignature = (timestamp: number, body: unknown) =>
     .digest('hex');
 
 describe('verifyWebhookSignature', () => {
+  const replayCacheHasMock = jest.fn();
+  const replayCacheSetMock = jest.fn();
+
   beforeEach(() => {
     jest.restoreAllMocks();
+    replayCacheHasMock.mockReset().mockResolvedValue(false);
+    replayCacheSetMock.mockReset().mockResolvedValue(undefined);
+
     setWebhookReplayCache({
-      has: jest.fn().mockResolvedValue(false),
-      set: jest.fn().mockResolvedValue(undefined),
+      has: replayCacheHasMock,
+      set: replayCacheSetMock,
     });
   });
 
@@ -106,6 +112,25 @@ describe('verifyWebhookSignature', () => {
 
     expect(invalidHex).toBe(false);
     expect(invalidLength).toBe(false);
+  });
+
+
+  it('stores replay cache entry with double tolerance TTL on valid signature', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+
+    const timestamp = 1_700_000_000;
+    const body = { foo: 'bar' };
+    const signature = createSignature(timestamp, body);
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${signature}`, body)
+    );
+
+    expect(result).toBe(true);
+    expect(replayCacheSetMock).toHaveBeenCalledWith(
+      `${timestamp}:${signature}`,
+      600
+    );
   });
 
   it('returns false when signature is invalid', async () => {
