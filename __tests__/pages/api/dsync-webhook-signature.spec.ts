@@ -1,0 +1,182 @@
+import crypto from 'crypto';
+
+jest.mock('@/lib/env', () => ({
+  __esModule: true,
+  default: {
+    jackson: {
+      dsync: {
+        webhook_secret: 'test-webhook-secret',
+      },
+    },
+  },
+}));
+
+jest.mock('@/lib/jackson/dsyncEvents', () => ({
+  __esModule: true,
+  handleEvents: jest.fn(),
+}));
+
+import env from '@/lib/env';
+import {
+  setWebhookReplayCache,
+  verifyWebhookSignature,
+} from '@/pages/api/webhooks/dsync';
+
+const makeRequest = (signatureHeader?: string, body: unknown = { foo: 'bar' }) =>
+  ({
+    headers: signatureHeader ? { 'boxyhq-signature': signatureHeader } : {},
+    body,
+  }) as any;
+
+const createSignature = (timestamp: number, body: unknown) =>
+  crypto
+    .createHmac('sha256', 'test-webhook-secret')
+    .update(`${timestamp}.${JSON.stringify(body)}`)
+    .digest('hex');
+
+describe('verifyWebhookSignature', () => {
+  const replayCacheHasMock = jest.fn();
+  const replayCacheSetMock = jest.fn();
+
+  beforeEach(() => {
+    jest.restoreAllMocks();
+    (env as any).jackson.dsync.webhook_secret = 'test-webhook-secret';
+    replayCacheHasMock.mockReset().mockResolvedValue(false);
+    replayCacheSetMock.mockReset().mockResolvedValue(undefined);
+
+    setWebhookReplayCache({
+      has: replayCacheHasMock,
+      set: replayCacheSetMock,
+    });
+  });
+
+  afterEach(() => {
+    setWebhookReplayCache(undefined);
+  });
+
+  it('returns false when signature header is missing', async () => {
+    const result = await verifyWebhookSignature(makeRequest());
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false when signature header is malformed', async () => {
+    const result = await verifyWebhookSignature(makeRequest('invalid-header'));
+
+    expect(result).toBe(false);
+  });
+
+  it('returns false when t= or s= is missing', async () => {
+    const body = { foo: 'bar' };
+    const timestamp = 1_700_000_000;
+    const signature = createSignature(timestamp, body);
+
+    const withoutTimestamp = await verifyWebhookSignature(
+      makeRequest(`s=${signature}`, body)
+    );
+
+    const withoutSignature = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp}`, body)
+    );
+
+    expect(withoutTimestamp).toBe(false);
+    expect(withoutSignature).toBe(false);
+  });
+
+  it('returns false when timestamp is outside tolerance window', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+
+    const oldTimestamp = 1_700_000_000 - 301;
+    const body = { foo: 'bar' };
+    const signature = createSignature(oldTimestamp, body);
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${oldTimestamp},s=${signature}`, body)
+    );
+
+    expect(result).toBe(false);
+  });
+
+
+  it('returns false when signature is not valid hex or has invalid length', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+
+    const timestamp = 1_700_000_000;
+    const body = { foo: 'bar' };
+
+    const invalidHex = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${'z'.repeat(64)}`, body)
+    );
+
+    const invalidLength = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${'a'.repeat(63)}`, body)
+    );
+
+    expect(invalidHex).toBe(false);
+    expect(invalidLength).toBe(false);
+  });
+
+
+
+  it('returns false when signature is detected as replayed', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    replayCacheHasMock.mockResolvedValue(true);
+
+    const timestamp = 1_700_000_000;
+    const body = { foo: 'bar' };
+    const signature = createSignature(timestamp, body);
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${signature}`, body)
+    );
+
+    expect(result).toBe(false);
+    expect(replayCacheHasMock).toHaveBeenCalledWith(`${timestamp}:${signature}`);
+  });
+
+  it('stores replay cache entry with double tolerance TTL on valid signature', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+
+    const timestamp = 1_700_000_000;
+    const body = { foo: 'bar' };
+    const signature = createSignature(timestamp, body);
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${signature}`, body)
+    );
+
+    expect(result).toBe(true);
+    expect(replayCacheSetMock).toHaveBeenCalledWith(
+      `${timestamp}:${signature}`,
+      600
+    );
+  });
+
+
+  it('throws an ApiError when webhook secret is missing', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    (env as any).jackson.dsync.webhook_secret = '';
+
+    const timestamp = 1_700_000_000;
+    const body = { foo: 'bar' };
+    const signature = createSignature(timestamp, body);
+
+    await expect(
+      verifyWebhookSignature(makeRequest(`t=${timestamp},s=${signature}`, body))
+    ).rejects.toThrow('JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.');
+  });
+
+  it('returns false when signature is invalid', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+
+    const timestamp = 1_700_000_000;
+    const badSignature = 'a'.repeat(64);
+    const body = { foo: 'bar' };
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${badSignature}`, body)
+    );
+
+    expect(result).toBe(false);
+  });
+});
