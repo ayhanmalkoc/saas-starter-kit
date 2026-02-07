@@ -49,9 +49,18 @@ jest.mock('@prisma/client', () => ({
   Prisma: {
     PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {
       code: string;
-      constructor(message: string, code: string) {
+      clientVersion?: string;
+      constructor(
+        message: string,
+        options: {
+          code: string;
+          clientVersion?: string;
+          [k: string]: any;
+        }
+      ) {
         super(message);
-        this.code = code;
+        this.code = options.code;
+        this.clientVersion = options.clientVersion;
       }
     },
   },
@@ -137,7 +146,7 @@ describe('POST /api/webhooks/stripe', () => {
   it('short-circuits idempotently when event already processed', async () => {
     const duplicateError = new Prisma.PrismaClientKnownRequestError(
       'Unique failed',
-      'P2002'
+      { code: 'P2002', clientVersion: '6.x.x' }
     );
 
     (stripe.webhooks.constructEvent as jest.Mock).mockReturnValueOnce({
