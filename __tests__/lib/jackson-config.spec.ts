@@ -22,13 +22,18 @@ describe('lib/jackson/config options', () => {
     });
   });
 
-  it('falls back to undefined api key when not set', async () => {
+  it('omits authorization header when api key is missing', async () => {
     jest.resetModules();
     process.env = { ...originalEnv };
     delete process.env.JACKSON_API_KEY;
 
     const { options } = await import('@/lib/jackson/config');
 
-    expect(options.headers.Authorization).toBe('Bearer undefined');
+    expect(options).toEqual({
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    });
+    expect(options.headers).not.toHaveProperty('Authorization');
   });
 });

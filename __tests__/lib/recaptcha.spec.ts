@@ -1,5 +1,6 @@
 describe('lib/recaptcha validateRecaptcha', () => {
   const originalEnv = process.env;
+  const originalFetch = global.fetch;
 
   beforeEach(() => {
     jest.resetModules();
@@ -11,6 +12,7 @@ describe('lib/recaptcha validateRecaptcha', () => {
 
   afterAll(() => {
     process.env = originalEnv;
+    global.fetch = originalFetch;
   });
 
   it('skips validation when recaptcha keys are not configured', async () => {
