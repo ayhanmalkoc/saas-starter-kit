@@ -1,10 +1,13 @@
 import type { SessionStrategy } from 'next-auth';
 
+export const toBooleanEnv = (value: string | undefined): boolean =>
+  value === 'true';
+
 const env = {
   databaseUrl: `${process.env.DATABASE_URL}`,
   appUrl: `${process.env.APP_URL}`,
   redirectIfAuthenticated: '/dashboard',
-  securityHeadersEnabled: process.env.SECURITY_HEADERS_ENABLED ?? false,
+  securityHeadersEnabled: toBooleanEnv(process.env.SECURITY_HEADERS_ENABLED),
 
   // SMTP configuration for NextAuth
   smtp: {
