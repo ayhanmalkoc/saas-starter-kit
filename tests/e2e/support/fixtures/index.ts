@@ -6,3 +6,6 @@ export * from './member-page';
 export * from './security-page';
 export * from './settings-page';
 export * from './sso-page';
+
+export * from './billing-page';
+export * from './webhooks-page';
