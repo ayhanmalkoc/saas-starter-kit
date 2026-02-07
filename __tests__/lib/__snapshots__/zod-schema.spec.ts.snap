@@ -1,0 +1,22 @@
+// Jest Snapshot v1, https://jestjs.io/docs/snapshot-testing
+
+exports[`lib/zod schema validation captures invalid createTeam payload as snapshot 1`] = `
+{
+  "_errors": [],
+  "name": {
+    "_errors": [
+      "Team Name is required",
+    ],
+  },
+}
+`;
+
+exports[`lib/zod schema validation captures valid ssoVerify payload as snapshot 1`] = `
+{
+  "data": {
+    "email": "owner@example.com",
+    "slug": "",
+  },
+  "success": true,
+}
+`;
