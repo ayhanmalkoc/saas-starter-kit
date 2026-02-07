@@ -66,7 +66,13 @@ export default async function handler(
     res.end();
   } catch (error: any) {
     console.error(error);
-    res.end();
+
+    if (error instanceof ApiError) {
+      res.status(error.status).json({ error: { message: error.message } });
+      return;
+    }
+
+    res.status(500).json({ error: { message: 'Internal Server Error' } });
   }
 }
 
@@ -142,8 +148,14 @@ export const verifyWebhookSignature = async (req: NextApiRequest) => {
     return false;
   }
 
+  const webhookSecret = env.jackson.dsync.webhook_secret;
+  if (!webhookSecret) {
+    console.error('Missing JACKSON_WEBHOOK_SECRET: cannot verify DSync webhook signature.');
+    throw new ApiError(500, 'JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.');
+  }
+
   const expectedSignature = crypto
-    .createHmac('sha256', env.jackson.dsync.webhook_secret as string)
+    .createHmac('sha256', webhookSecret)
     .update(`${timestamp}.${JSON.stringify(req.body)}`)
     .digest('hex');
 

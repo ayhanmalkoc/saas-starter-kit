@@ -16,6 +16,7 @@ jest.mock('@/lib/jackson/dsyncEvents', () => ({
   handleEvents: jest.fn(),
 }));
 
+import env from '@/lib/env';
 import {
   setWebhookReplayCache,
   verifyWebhookSignature,
@@ -39,6 +40,7 @@ describe('verifyWebhookSignature', () => {
 
   beforeEach(() => {
     jest.restoreAllMocks();
+    (env as any).jackson.dsync.webhook_secret = 'test-webhook-secret';
     replayCacheHasMock.mockReset().mockResolvedValue(false);
     replayCacheSetMock.mockReset().mockResolvedValue(undefined);
 
@@ -115,6 +117,23 @@ describe('verifyWebhookSignature', () => {
   });
 
 
+
+  it('returns false when signature is detected as replayed', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    replayCacheHasMock.mockResolvedValue(true);
+
+    const timestamp = 1_700_000_000;
+    const body = { foo: 'bar' };
+    const signature = createSignature(timestamp, body);
+
+    const result = await verifyWebhookSignature(
+      makeRequest(`t=${timestamp},s=${signature}`, body)
+    );
+
+    expect(result).toBe(false);
+    expect(replayCacheHasMock).toHaveBeenCalledWith(`${timestamp}:${signature}`);
+  });
+
   it('stores replay cache entry with double tolerance TTL on valid signature', async () => {
     jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
 
@@ -131,6 +150,20 @@ describe('verifyWebhookSignature', () => {
       `${timestamp}:${signature}`,
       600
     );
+  });
+
+
+  it('throws an ApiError when webhook secret is missing', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    (env as any).jackson.dsync.webhook_secret = '';
+
+    const timestamp = 1_700_000_000;
+    const body = { foo: 'bar' };
+    const signature = createSignature(timestamp, body);
+
+    await expect(
+      verifyWebhookSignature(makeRequest(`t=${timestamp},s=${signature}`, body))
+    ).rejects.toThrow('JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.');
   });
 
   it('returns false when signature is invalid', async () => {
