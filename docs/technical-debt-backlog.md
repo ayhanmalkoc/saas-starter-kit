@@ -64,6 +64,7 @@ Use the following fields for every backlog entry:
 - **Action Items:**
   1. Replace middleware route matching based on `micromatch` with an Edge-safe pattern (native matcher / `startsWith` / controlled regex).
   2. Update middleware unit tests and run regression tests.
+  3. Add a risk guardrail: preserve auth-protected route behavior (no bypass regression) while confirming Edge Runtime build warning removal.
 - **Validation:**
   - `npm run build` log no longer reports Edge Runtime Node API warnings originating from `micromatch/picomatch`.
   - `npm test -- middleware` (or project-equivalent middleware tests) passes.

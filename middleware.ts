@@ -1,9 +1,9 @@
-import micromatch from 'micromatch';
 import { getToken } from 'next-auth/jwt';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 import env from './lib/env';
+import { isUnAuthenticatedRoute } from './lib/middleware/route-match';
 
 // Constants for security headers
 const SECURITY_HEADERS = {
@@ -85,25 +85,6 @@ const applySecurityHeaders = (
   });
 };
 
-// Add routes that don't require authentication
-const unAuthenticatedRoutes = [
-  '/api/hello',
-  '/api/health',
-  '/api/auth/**',
-  '/api/oauth/**',
-  '/api/scim/v2.0/**',
-  '/api/invitations/*',
-  '/api/webhooks/stripe',
-  '/api/webhooks/dsync',
-  '/api/security/csp-report',
-  '/auth/**',
-  '/invitations/*',
-  '/terms-condition',
-  '/unlock-account',
-  '/login/saml',
-  '/.well-known/*',
-];
-
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
@@ -121,7 +102,7 @@ export default async function middleware(req: NextRequest) {
   requestHeaders.set('Report-To', reportTo);
 
   // Bypass routes that don't require authentication checks, but still apply headers
-  if (micromatch.isMatch(pathname, unAuthenticatedRoutes)) {
+  if (isUnAuthenticatedRoute(pathname)) {
     const bypassResponse = NextResponse.next({
       request: { headers: requestHeaders },
     });
