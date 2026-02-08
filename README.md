@@ -222,6 +222,7 @@ The default login options are email and GitHub. Configure below:
 - Dark mode
 - Email notifications
 - E2E tests
+- Unit and integration tests
 - Docker compose
 - Prisma Studio
 - Update member role
@@ -230,13 +231,8 @@ The default login options are email and GitHub. Configure below:
 - SAML SSO
 - Audit Log
 - Webhook
-- Payments
+- Billing & subscriptions (Stripe payments)
 - Security Headers
-
-## ➡️ Coming Soon
-
-- Billing & subscriptions
-- Unit and integration tests
 
 ## ✨ Contributing
 
