@@ -27,7 +27,14 @@ const sanitizeString = (value: unknown, maxLength = MAX_FIELD_LENGTH) => {
     return '';
   }
 
-  return value.replace(/[\u0000-\u001F\u007F]/g, '').slice(0, maxLength);
+  const sanitized = Array.from(value)
+    .filter((char) => {
+      const code = char.charCodeAt(0);
+      return code >= 0x20 && code !== 0x7f;
+    })
+    .join('');
+
+  return sanitized.slice(0, maxLength);
 };
 
 const toNumberIfFinite = (value: unknown): number | undefined => {

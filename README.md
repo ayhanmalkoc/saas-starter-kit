@@ -29,6 +29,7 @@ Project docs:
 - [Billing & Subscription Integration](docs/billing-subscriptions.md)
 - [Deployment Guide](docs/deployment.md)
 - [Migration Operations Runbook](docs/operations-migration-runbook.md)
+- [Technical Debt Backlog](docs/technical-debt-backlog.md)
 
 Next.js-based SaaS starter kit saves you months of development by starting you off with all the features that are the same in every product, so you can focus on what makes your app unique.
 
