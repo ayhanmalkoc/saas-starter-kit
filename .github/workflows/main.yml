@@ -78,6 +78,8 @@ jobs:
       - run: npm run check-format
       - run: npm run check-locale
       - run: npm run test
+      - name: Production security headers configuration test
+        run: NODE_ENV=production npm run test -- __tests__/middleware.security-headers.spec.ts
       - run: npm run migrate:deploy
       - run: npm run build-ci
       - run: npm run check-types

@@ -58,6 +58,9 @@ describe('middleware security headers flag', () => {
       process.env.NODE_ENV = nodeEnv;
     }
 
+    process.env.DATABASE_URL = 'postgres://localhost:5432/app';
+    process.env.APP_URL = 'https://example.com';
+    process.env.NEXTAUTH_SECRET = 'test-secret';
     process.env.NEXTAUTH_SESSION_STRATEGY = 'jwt';
 
     let middleware: typeof import('../middleware').default;
@@ -73,17 +76,40 @@ describe('middleware security headers flag', () => {
 
   afterEach(() => {
     delete process.env.SECURITY_HEADERS_ENABLED;
+    delete process.env.DATABASE_URL;
+    delete process.env.APP_URL;
+    delete process.env.NEXTAUTH_SECRET;
     delete process.env.NEXTAUTH_SESSION_STRATEGY;
     delete process.env.NODE_ENV;
     jest.clearAllMocks();
   });
 
-  it('does not set optional security headers when env is undefined', async () => {
-    const middleware = loadMiddleware({ securityHeadersEnabled: undefined });
+  it('sets critical security headers in production when env is undefined', async () => {
+    const middleware = loadMiddleware({
+      securityHeadersEnabled: undefined,
+      nodeEnv: 'production',
+    });
     const response = await middleware(baseRequest);
 
-    expect(response.headers.get('Referrer-Policy')).toBeNull();
-    expect(response.headers.get('Content-Security-Policy')).toBeNull();
+    expect(response.headers.get('Referrer-Policy')).toBe(
+      'strict-origin-when-cross-origin'
+    );
+    expect(response.headers.get('Content-Security-Policy')).toContain(
+      "default-src 'self'"
+    );
+  });
+
+  it('always sets CSP and report headers in production', async () => {
+    const middleware = loadMiddleware({
+      securityHeadersEnabled: 'false',
+      nodeEnv: 'production',
+    });
+    const response = await middleware(baseRequest);
+
+    expect(response.headers.get('Content-Security-Policy')).toContain(
+      "default-src 'self'"
+    );
+    expect(response.headers.get('Report-To')).toContain('csp-endpoint');
   });
 
   it('sets security headers with nonce-based CSP when enabled', async () => {
@@ -119,7 +145,6 @@ describe('middleware security headers flag', () => {
     );
   });
 
-
   it('sets CSP headers for unauthenticated routes too when enabled', async () => {
     const middleware = loadMiddleware({
       securityHeadersEnabled: 'true',
@@ -136,16 +161,26 @@ describe('middleware security headers flag', () => {
     );
   });
 
-  it('does not set optional security headers when env is "false"', async () => {
-    const middleware = loadMiddleware({ securityHeadersEnabled: 'false' });
+  it('still sets critical security headers in production when env is "false"', async () => {
+    const middleware = loadMiddleware({
+      securityHeadersEnabled: 'false',
+      nodeEnv: 'production',
+    });
     const response = await middleware(baseRequest);
 
-    expect(response.headers.get('Referrer-Policy')).toBeNull();
-    expect(response.headers.get('Content-Security-Policy')).toBeNull();
+    expect(response.headers.get('Referrer-Policy')).toBe(
+      'strict-origin-when-cross-origin'
+    );
+    expect(response.headers.get('Content-Security-Policy')).toContain(
+      "default-src 'self'"
+    );
   });
 
-  it('does not set optional security headers for unexpected env values', async () => {
-    const middleware = loadMiddleware({ securityHeadersEnabled: 'enabled' });
+  it('does not set optional security headers in development for unexpected env values', async () => {
+    const middleware = loadMiddleware({
+      securityHeadersEnabled: 'enabled',
+      nodeEnv: 'development',
+    });
     const response = await middleware(baseRequest);
 
     expect(response.headers.get('Referrer-Policy')).toBeNull();

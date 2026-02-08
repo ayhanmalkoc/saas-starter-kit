@@ -4,6 +4,17 @@ import { z } from 'zod';
 export const toBooleanEnv = (value: string | undefined): boolean =>
   value === 'true';
 
+const resolveSecurityHeadersEnabled = (
+  value: string | undefined,
+  nodeEnv: string | undefined
+): boolean => {
+  if (value !== undefined) {
+    return toBooleanEnv(value);
+  }
+
+  return nodeEnv === 'production';
+};
+
 const envSchema = z.object({
   DATABASE_URL: z.string().min(1, 'DATABASE_URL is required'),
   APP_URL: z.string().url('APP_URL must be a valid URL'),
@@ -85,7 +96,8 @@ if (!parsedEnv.success) {
 
 const rawEnv = parsedEnv.data;
 
-const trimTrailingSlashes = (value: string): string => value.replace(/\/+$/, '');
+const trimTrailingSlashes = (value: string): string =>
+  value.replace(/\/+$/, '');
 
 const normalizedAppUrl = trimTrailingSlashes(rawEnv.APP_URL);
 const normalizedRetracedUrl = rawEnv.RETRACED_URL
@@ -96,7 +108,10 @@ const env = {
   databaseUrl: rawEnv.DATABASE_URL,
   appUrl: normalizedAppUrl,
   redirectIfAuthenticated: '/dashboard',
-  securityHeadersEnabled: toBooleanEnv(rawEnv.SECURITY_HEADERS_ENABLED),
+  securityHeadersEnabled: resolveSecurityHeadersEnabled(
+    rawEnv.SECURITY_HEADERS_ENABLED,
+    process.env.NODE_ENV
+  ),
 
   // SMTP configuration for NextAuth
   smtp: {
@@ -134,7 +149,9 @@ const env = {
 
   // Retraced configuration
   retraced: {
-    url: normalizedRetracedUrl ? `${normalizedRetracedUrl}/auditlog` : undefined,
+    url: normalizedRetracedUrl
+      ? `${normalizedRetracedUrl}/auditlog`
+      : undefined,
     apiKey: rawEnv.RETRACED_API_KEY,
     projectId: rawEnv.RETRACED_PROJECT_ID,
   },
@@ -169,7 +186,8 @@ const env = {
     token: rawEnv.NEXT_PUBLIC_MIXPANEL_TOKEN,
   },
 
-  disableNonBusinessEmailSignup: rawEnv.DISABLE_NON_BUSINESS_EMAIL_SIGNUP === 'true',
+  disableNonBusinessEmailSignup:
+    rawEnv.DISABLE_NON_BUSINESS_EMAIL_SIGNUP === 'true',
 
   authProviders: rawEnv.AUTH_PROVIDERS || 'github,credentials',
 

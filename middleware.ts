@@ -14,7 +14,8 @@ const SECURITY_HEADERS = {
   'Cross-Origin-Resource-Policy': 'same-site',
 } as const;
 
-const isDevelopment = process.env.NODE_ENV !== 'production';
+const isProduction = process.env.NODE_ENV === 'production';
+const isDevelopment = !isProduction;
 
 const generateNonce = (): string => {
   const nonce = new Uint8Array(16);
@@ -73,7 +74,7 @@ const applySecurityHeaders = (
   csp: string,
   reportTo: string
 ) => {
-  if (!env.securityHeadersEnabled) {
+  if (!isProduction && !env.securityHeadersEnabled) {
     return;
   }
 
