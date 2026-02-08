@@ -151,10 +151,10 @@ This project includes unit, integration, and E2E tests.
 
 Quick difference:
 
-| Test type | Scope | Main command | Test location |
-| --- | --- | --- | --- |
-| Unit + Integration | Validates isolated functions/components and internal module interactions. Fast feedback during development. | `npm test` | `__tests__/` |
-| E2E (Playwright) | Validates complete user flows in a real browser (UI + backend + routing). Closer to real user behavior. | `npm run test:e2e` | `tests/e2e/` |
+| Test type          | Scope                                                                                                       | Main command       | Test location |
+| ------------------ | ----------------------------------------------------------------------------------------------------------- | ------------------ | ------------- |
+| Unit + Integration | Validates isolated functions/components and internal module interactions. Fast feedback during development. | `npm test`         | `__tests__/`  |
+| E2E (Playwright)   | Validates complete user flows in a real browser (UI + backend + routing). Closer to real user behavior.     | `npm run test:e2e` | `tests/e2e/`  |
 
 Test folder structure in this repo:
 
@@ -218,16 +218,13 @@ The default login options are email and GitHub. Configure below:
 1. Create an account on [Sentry](https://sentry.io/), skip the onboarding and create a new Next.js project.
 2. At the bottom of the page, get the DSN and add it to the `.env` file as `SENTRY_DSN`. The other variables are optional.
 
-#### Fully customizable boilerplate out of the box, see images below 👇👇👇
-
-![saas-starter-kit-poster](/public/saas-starter-kit-poster.png)
-
 ## 🥇 Features
 
 - Create account
 - Sign in with Email and Password
 - Sign in with Magic Link
 - Sign in with SAML SSO
+- SAML SSO
 - Sign in with Google [[Setting up Google OAuth](https://support.google.com/cloud/answer/6158849?hl=en)]
 - Sign in with GitHub [[Creating a Github OAuth App](https://docs.github.com/en/developers/apps/building-oauth-apps/creating-an-oauth-app)]
 - Directory Sync (SCIM)
@@ -237,24 +234,26 @@ The default login options are email and GitHub. Configure below:
 - Invite users to the team
 - Manage team members
 - Update team settings
+- Update member role
 - Webhooks & Events
+- Webhook
+- Directory Sync Events
 - Internationalization
-- Audit logs
 - Roles and Permissions
+- Audit logs
+- Avatar Upload
 - Dark mode
 - Email notifications
-- E2E tests
-- Unit and integration tests
-- Docker compose
-- Prisma Studio
-- Update member role
-- Directory Sync Events
-- Avatar Upload
-- SAML SSO
-- Audit Log
-- Webhook
 - Billing & subscriptions (Stripe payments)
 - Security Headers
+- Docker compose
+- Prisma Studio
+- E2E tests
+- Unit and integration tests
+
+### Fully customizable boilerplate out of the box
+
+![saas-starter-kit-poster](/public/saas-starter-kit-poster.png)
 
 ## ✨ Contributing
 
