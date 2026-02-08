@@ -90,7 +90,7 @@ const buildServiceData = (product: Stripe.Product) => {
   const { featureFlags, limits, features } = parsePlanMetadata(
     product.metadata
   );
-  const mergedFeatures = Array.from(new Set(features));
+  const mergedFeatures = features;
 
   return {
     id: product.id,

@@ -19,7 +19,10 @@ const buildPriceData = (price: Stripe.Price) => {
     billingScheme: price.billing_scheme,
     currency: price.currency,
     serviceId,
-    amount: price.unit_amount ? price.unit_amount / 100 : undefined,
+    amount:
+      typeof price.unit_amount === 'number'
+        ? price.unit_amount / 100
+        : undefined,
     metadata: {
       ...price.metadata,
       recurring: recurringMetadata,
