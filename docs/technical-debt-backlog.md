@@ -20,26 +20,36 @@ Use the following fields for every backlog entry:
 ## 1) Sentry modern instrumentation migration
 
 - **Priority:** P1
-- **Status:** Open
+- **Status:** In Progress
 - **Last Updated:** 2026-02-08
 - **Owner:** Platform / Observability
 - **Target Sprint:** 2026-S07
 - **Observation:** Build output shows a deprecation warning for `sentry.client.config.ts` and recommends using the `onRequestError` hook.
 - **Risk:** Potential observability gaps or incomplete error capture in future Next.js / Sentry versions.
 - **Action Items:**
-  1. Move the contents of `sentry.client.config.ts` to `instrumentation-client.ts`.
-  2. Add Sentry capture integration for `onRequestError`.
-  3. Validate event delivery with client + server error smoke tests.
+  1. Inventory existing init points across `instrumentation.ts`, `sentry.client.config.ts`, and any `sentry.server.config.*` files.
+  2. Move the client init flow to `instrumentation-client.ts` and keep a short-lived deprecation shim in `sentry.client.config.ts` (removal target: 2026-03-31).
+  3. Add Sentry capture integration for `onRequestError` and standardize request-error capture in one hook.
+  4. Validate `withSentryConfig` options (`silent`, source map behavior) and ensure no overlap with runtime init paths.
+  5. Validate event delivery with client, API route, and middleware/edge smoke tests.
 - **Validation:**
   - `npm run build` log no longer contains Sentry deprecation warning for `sentry.client.config.ts`.
   - Trigger a controlled 500 and confirm corresponding event in Sentry project issue stream.
+- **Done Criteria:**
+  - `npm run build` no longer contains Sentry deprecation warning for `sentry.client.config.ts`.
+  - Deprecation shim warning is no longer observed after `sentry.client.config.ts` removal in the follow-up PR.
+  - Event delivery success rate stays at or above 99% for the first 24h after rollout.
+  - Rollback steps are documented and can be executed in a single revert.
 - **Rollback:**
   - Revert instrumentation changes and restore previous `sentry.client.config.ts` setup; temporarily disable new `onRequestError` hook wiring if error volume/regression is detected.
 - **Dependencies:**
   - `@sentry/nextjs`
   - Next.js instrumentation hooks
 - **Related Files:**
+  - `instrumentation.ts`
+  - `instrumentation-client.ts`
   - `sentry.client.config.ts`
+  - `sentry.shared.config.ts`
   - `next.config.js`
 
 ## 2) Edge Runtime compatibility: `micromatch` dependency in middleware
@@ -82,10 +92,10 @@ Use the following fields for every backlog entry:
   4. Track CLI output drift with a comparison matrix and open follow-up tasks for any rule coverage mismatch.
 - **Comparison Matrix (2026-02-08):**
 
-  | Command | Next.js plugin detected | Rule findings | Warning/Error count | Runtime |
-  | --- | --- | --- | --- | --- |
-  | `npm run check-lint` (`eslint .`) | N/A (no framework detector) | No findings | 0 warnings / 0 errors | 10.46s |
-  | `npx next lint` (with flat config + explicit plugin registration) | **No** (detector warning still emitted) | No findings | 1 framework warning + 0 lint findings | 9.81s |
+  | Command                                                           | Next.js plugin detected                 | Rule findings | Warning/Error count                   | Runtime |
+  | ----------------------------------------------------------------- | --------------------------------------- | ------------- | ------------------------------------- | ------- |
+  | `npm run check-lint` (`eslint .`)                                 | N/A (no framework detector)             | No findings   | 0 warnings / 0 errors                 | 10.46s  |
+  | `npx next lint` (with flat config + explicit plugin registration) | **No** (detector warning still emitted) | No findings   | 1 framework warning + 0 lint findings | 9.81s   |
 
 - **Follow-up Backlog Tasks (from matrix):**
   1. Investigate why `next lint` still reports plugin detection warning despite `@next/next` plugin + rules appearing in `eslint --print-config`.
