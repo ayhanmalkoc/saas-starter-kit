@@ -42,7 +42,7 @@ Use the following fields for every backlog entry:
   - `sentry.client.config.ts`
   - `next.config.js`
 
-## 2) Edge Runtime uyumluluğu: middleware içinde `micromatch` bağımlılığı
+## 2) Edge Runtime compatibility: `micromatch` dependency in middleware
 
 - **Priority:** P1
 - **Status:** In Progress
@@ -66,7 +66,7 @@ Use the following fields for every backlog entry:
   - `middleware.ts`
   - `package.json`
 
-## 3) ESLint Next plugin uyumlandırması
+## 3) ESLint Next plugin alignment
 
 - **Priority:** P2
 - **Status:** Open
@@ -87,7 +87,7 @@ Use the following fields for every backlog entry:
   - ESLint configuration files (`eslint.config.*` or `.eslintrc*`)
   - `eslint-config-next`
 
-## 4) `baseline-browser-mapping` güncelliği
+## 4) `baseline-browser-mapping` currency
 
 - **Priority:** P3
 - **Status:** Open
