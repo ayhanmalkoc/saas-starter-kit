@@ -196,10 +196,16 @@ The default login options are email and GitHub. Configure below:
 
 ### Stripe Payments
 
-1. Create an account on [Stripe](https://stripe.com/)
+1. Create an account on [Stripe](https://stripe.com/).
 2. Add the [Stripe API secret key](https://dashboard.stripe.com/apikeys) to the `.env` file as `STRIPE_SECRET_KEY`.
-3. Create a webhook in the [Stripe dashboard](https://dashboard.stripe.com/webhooks). The URL is your app hostname plus `/api/webhooks/stripe`. If you want to set this up locally you will need to use the [Stripe CLI forwarder](https://docs.stripe.com/webhooks#test-webhook).
-4. Once created, add the signing secret to the `.env` file as `STRIPE_WEBHOOK_SECRET`.
+3. Create Stripe product and price definitions in your Stripe dashboard.
+4. Set `STRIPE_SYNC_SECRET` in your `.env` file (this must match the `x-stripe-sync-secret` header expected by the sync endpoint).
+5. Run `npm run sync-stripe` to trigger `/api/admin/stripe/sync` and import Stripe products/prices into your local database.
+6. Create a webhook in the [Stripe dashboard](https://dashboard.stripe.com/webhooks). The URL is your app hostname plus `/api/webhooks/stripe`. If you want to set this up locally you will need to use the [Stripe CLI forwarder](https://docs.stripe.com/webhooks#test-webhook).
+7. Once created, add the signing secret to the `.env` file as `STRIPE_WEBHOOK_SECRET`.
+
+> Note: `npm run sync-stripe` requires `APP_URL` to point to a reachable running app host (for local dev, usually `http://localhost:4002`).
+> On success, you should see output similar to `Sync completed successfully { synced: true, products: <count>, prices: <count> }`.
 
 ### Recaptcha
 
