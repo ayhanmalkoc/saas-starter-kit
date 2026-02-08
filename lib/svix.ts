@@ -4,8 +4,10 @@ import env from './env';
 import type { AppEvent } from 'types';
 
 const svixApiKey = env.svix.apiKey;
-const svixDisabled = !svixApiKey || !env.teamFeatures.webhook;
-const svix = !svixDisabled ? new Svix(svixApiKey) : null;
+const svix =
+  svixApiKey && env.teamFeatures.webhook
+    ? new Svix(String(svixApiKey))
+    : null;
 
 export const findOrCreateApp = async (name: string, uid: string) => {
   return await svix?.application.getOrCreate({ name, uid });

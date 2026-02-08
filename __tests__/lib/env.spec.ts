@@ -58,4 +58,25 @@ describe('lib/env validation', () => {
       'Invalid environment configuration'
     );
   });
+
+  it('normalizes trailing slashes for app and retraced URLs', async () => {
+    process.env = {
+      ...originalEnv,
+      DATABASE_URL: 'postgres://localhost:5432/app',
+      APP_URL: 'https://example.com///',
+      NEXTAUTH_SECRET: 'test-secret',
+      RETRACED_URL: 'https://retraced.example.com//',
+    };
+
+    jest.resetModules();
+
+    const { default: env } = await import('../../lib/env');
+
+    expect(env.appUrl).toBe('https://example.com');
+    expect(env.retraced.url).toBe('https://retraced.example.com/auditlog');
+    expect(env.jackson.sso.callback).toBe('https://example.com');
+    expect(env.jackson.dsync.webhook_url).toBe(
+      'https://example.com/api/webhooks/dsync'
+    );
+  });
 });

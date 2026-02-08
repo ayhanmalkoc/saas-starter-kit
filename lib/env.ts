@@ -85,9 +85,16 @@ if (!parsedEnv.success) {
 
 const rawEnv = parsedEnv.data;
 
+const trimTrailingSlashes = (value: string): string => value.replace(/\/+$/, '');
+
+const normalizedAppUrl = trimTrailingSlashes(rawEnv.APP_URL);
+const normalizedRetracedUrl = rawEnv.RETRACED_URL
+  ? trimTrailingSlashes(rawEnv.RETRACED_URL)
+  : undefined;
+
 const env = {
   databaseUrl: rawEnv.DATABASE_URL,
-  appUrl: rawEnv.APP_URL,
+  appUrl: normalizedAppUrl,
   redirectIfAuthenticated: '/dashboard',
   securityHeadersEnabled: toBooleanEnv(rawEnv.SECURITY_HEADERS_ENABLED),
 
@@ -127,7 +134,7 @@ const env = {
 
   // Retraced configuration
   retraced: {
-    url: rawEnv.RETRACED_URL ? `${rawEnv.RETRACED_URL}/auditlog` : undefined,
+    url: normalizedRetracedUrl ? `${normalizedRetracedUrl}/auditlog` : undefined,
     apiKey: rawEnv.RETRACED_API_KEY,
     projectId: rawEnv.RETRACED_PROJECT_ID,
   },
@@ -142,14 +149,14 @@ const env = {
     productId: rawEnv.JACKSON_PRODUCT_ID || 'boxyhq',
     selfHosted: rawEnv.JACKSON_URL !== undefined,
     sso: {
-      callback: rawEnv.APP_URL,
+      callback: normalizedAppUrl,
       issuer: 'https://saml.boxyhq.com',
       path: '/api/oauth/saml',
       oidcPath: '/api/oauth/oidc',
       idpLoginPath: '/auth/idp-login',
     },
     dsync: {
-      webhook_url: `${rawEnv.APP_URL}/api/webhooks/dsync`,
+      webhook_url: `${normalizedAppUrl}/api/webhooks/dsync`,
       webhook_secret: rawEnv.JACKSON_WEBHOOK_SECRET,
     },
   },
