@@ -1,18 +1,21 @@
-// instrumentation.ts
-
 import * as Sentry from '@sentry/nextjs';
+
+import { getSharedSentryOptions } from './sentry.shared.config';
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __SENTRY_SERVER_INIT_DONE__: boolean | undefined;
+}
 
 export function register() {
   if (
-    process.env.NEXT_RUNTIME === 'nodejs' ||
-    process.env.NEXT_RUNTIME === 'edge'
+    (process.env.NEXT_RUNTIME === 'nodejs' ||
+      process.env.NEXT_RUNTIME === 'edge') &&
+    !globalThis.__SENTRY_SERVER_INIT_DONE__
   ) {
-    Sentry.init({
-      dsn: process.env.NEXT_PUBLIC_SENTRY_DSN,
-      tracesSampleRate: parseFloat(
-        process.env.NEXT_PUBLIC_SENTRY_TRACE_SAMPLE_RATE ?? '0.0'
-      ),
-      debug: false,
-    });
+    Sentry.init(getSharedSentryOptions());
+    globalThis.__SENTRY_SERVER_INIT_DONE__ = true;
   }
 }
+
+export const onRequestError = Sentry.captureRequestError;
