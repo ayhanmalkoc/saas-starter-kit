@@ -59,6 +59,40 @@ describe('lib/env validation', () => {
     );
   });
 
+  it('defaults securityHeadersEnabled to true in production when undefined', async () => {
+    process.env = {
+      ...originalEnv,
+      DATABASE_URL: 'postgres://localhost:5432/app',
+      APP_URL: 'https://example.com',
+      NEXTAUTH_SECRET: 'test-secret',
+      NODE_ENV: 'production',
+    };
+    delete process.env.SECURITY_HEADERS_ENABLED;
+
+    jest.resetModules();
+
+    const { default: env } = await import('../../lib/env');
+
+    expect(env.securityHeadersEnabled).toBe(true);
+  });
+
+  it('defaults securityHeadersEnabled to false in development when undefined', async () => {
+    process.env = {
+      ...originalEnv,
+      DATABASE_URL: 'postgres://localhost:5432/app',
+      APP_URL: 'https://example.com',
+      NEXTAUTH_SECRET: 'test-secret',
+      NODE_ENV: 'development',
+    };
+    delete process.env.SECURITY_HEADERS_ENABLED;
+
+    jest.resetModules();
+
+    const { default: env } = await import('../../lib/env');
+
+    expect(env.securityHeadersEnabled).toBe(false);
+  });
+
   it('normalizes trailing slashes for app and retraced URLs', async () => {
     process.env = {
       ...originalEnv,
