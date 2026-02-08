@@ -8,7 +8,7 @@
   "scripts": {
     "release": "git checkout release && git merge origin/main && release-it && git checkout main && git merge origin/release && git push origin main",
     "dev": "next dev --port 4002",
-    "build": "prisma generate && prisma db push && next build",
+    "build": "prisma generate && next build",
     "start": "next start --port 4002",
     "check-types": "tsc --pretty --noEmit",
     "check-format": "prettier --check .",
@@ -24,7 +24,8 @@
     "build-ci": "next build",
     "sync-stripe": "node --env-file .env sync-stripe.js",
     "check-locale": "node check-locale.js",
-    "delete-team": "node --env-file .env delete-team.js"
+    "delete-team": "node --env-file .env delete-team.js",
+    "migrate:deploy": "prisma migrate deploy"
   },
   "dependencies": {
     "@boxyhq/metrics": "0.2.11",

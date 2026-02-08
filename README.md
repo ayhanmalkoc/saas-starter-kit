@@ -27,6 +27,8 @@ Blog - [Enterprise-ready Saas Starter Kit](https://boxyhq.com/blog/enterprise-re
 Project docs:
 
 - [Billing & Subscription Integration](docs/billing-subscriptions.md)
+- [Deployment Guide](docs/deployment.md)
+- [Migration Operations Runbook](docs/operations-migration-runbook.md)
 
 Next.js-based SaaS starter kit saves you months of development by starting you off with all the features that are the same in every product, so you can focus on what makes your app unique.
 
@@ -72,6 +74,8 @@ Next.js-based SaaS starter kit saves you months of development by starting you o
 <a href="https://cloud.digitalocean.com/apps/new?repo=https://github.com/boxyhq/saas-starter-kit/tree/main" alt="Deploy to DO">
 <img width="200" alt="Deploy to DO" src="https://www.deploytodo.com/do-btn-blue-ghost.svg" />
 </a>
+
+> **Production note:** Use Prisma migrations (`npx prisma migrate deploy`) in CI/CD before build. Do **not** use `prisma db push` in production environments.
 
 ## ✨ Getting Started
 
