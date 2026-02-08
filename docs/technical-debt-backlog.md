@@ -69,23 +69,41 @@ Use the following fields for every backlog entry:
 ## 3) ESLint Next plugin alignment
 
 - **Priority:** P2
-- **Status:** Open
+- **Status:** In Progress
 - **Last Updated:** 2026-02-08
 - **Owner:** Frontend Platform
 - **Target Sprint:** 2026-S08
-- **Observation:** Build shows the warning: "Next.js plugin was not detected in your ESLint configuration".
-- **Risk:** Incomplete enforcement of Next.js-specific quality rules.
+- **Observation:** Build showed the warning: "Next.js plugin was not detected in your ESLint configuration" when running `next lint` against the flat config.
+- **Risk:** Incomplete enforcement of Next.js-specific quality rules and drift between local lint (`eslint`) and framework lint (`next lint`) behavior.
 - **Action Items:**
-  1. Verify that the recommended Next.js plugin/preset is enabled in ESLint configuration.
-  2. Analyze output differences between `eslint` and `next lint`.
+  1. Keep a single lint entrypoint in scripts (`check-lint`) aligned to Next.js guidance (`eslint .`) instead of explicit `next lint`.
+  2. Ensure flat config explicitly loads `@next/eslint-plugin-next` (plugin + `settings.next.rootDir`) while continuing to consume `next/core-web-vitals` via `FlatCompat`.
+  3. Keep any newly introduced Next.js-specific rules in warning mode first; only promote to errors after CI noise remains stable for one sprint.
+  4. Track CLI output drift with a comparison matrix and open follow-up tasks for any rule coverage mismatch.
+- **Comparison Matrix (2026-02-08):**
+
+  | Command | Next.js plugin detected | Rule findings | Warning/Error count | Runtime |
+  | --- | --- | --- | --- | --- |
+  | `npm run check-lint` (`eslint .`) | N/A (no framework detector) | No findings | 0 warnings / 0 errors | 10.46s |
+  | `npx next lint` (with flat config + explicit plugin registration) | **No** (detector warning still emitted) | No findings | 1 framework warning + 0 lint findings | 9.81s |
+
+- **Follow-up Backlog Tasks (from matrix):**
+  1. Investigate why `next lint` still reports plugin detection warning despite `@next/next` plugin + rules appearing in `eslint --print-config`.
+  2. Record any delta in warning/error count between `eslint .` and `next lint` while phasing out deprecated `next lint` in CI.
+  3. Gate CI changes behind warning-budget monitoring to avoid unexpected lint volume growth.
 - **Validation:**
-  - `npm run lint` completes without the Next.js plugin detection warning.
-  - `npx next lint` and `npx eslint .` show aligned rule coverage for Next.js files.
+  - `npm run check-lint` (`eslint .`) passes.
+  - `npx next lint` no longer prints "Next.js plugin was not detected".
+  - CI lint job shows no unexpected warning/error count increase versus baseline.
+- **Closure Criteria:**
+  - "Next.js plugin detected" warning is absent.
+  - CI lint output does not show an unexpected increase in warnings/errors.
 - **Rollback:**
-  - Revert ESLint config changes to last stable config if lint noise blocks CI, then reintroduce incrementally.
+  - Revert ESLint flat config/plugin wiring changes and keep `eslint .` as entrypoint while Next.js-specific rule rollout remains in warning mode.
 - **Dependencies:**
   - ESLint configuration files (`eslint.config.*` or `.eslintrc*`)
   - `eslint-config-next`
+  - `@next/eslint-plugin-next`
 
 ## 4) `baseline-browser-mapping` currency
 

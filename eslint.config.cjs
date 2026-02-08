@@ -1,5 +1,6 @@
 const typescriptEslint = require("@typescript-eslint/eslint-plugin");
 const i18Next = require("eslint-plugin-i18next");
+const nextPlugin = require("@next/eslint-plugin-next");
 const globals = require("globals");
 const tsParser = require("@typescript-eslint/parser");
 const js = require("@eslint/js");
@@ -29,6 +30,7 @@ module.exports = [{
     "plugin:i18next/recommended",
 ), {
     plugins: {
+        "@next/next": nextPlugin,
         "@typescript-eslint": typescriptEslint,
         i18next: i18Next,
     },
@@ -41,6 +43,11 @@ module.exports = [{
         parser: tsParser,
         ecmaVersion: 13,
         sourceType: "module",
+    },
+    settings: {
+        next: {
+            rootDir: ["."],
+        },
     },
     rules: {
         "@typescript-eslint/no-explicit-any": "off",
