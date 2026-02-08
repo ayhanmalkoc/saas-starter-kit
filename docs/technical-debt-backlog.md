@@ -89,7 +89,7 @@ Use the following fields for every backlog entry:
 
 - **Follow-up Backlog Tasks (from matrix):**
   1. Investigate why `next lint` still reports plugin detection warning despite `@next/next` plugin + rules appearing in `eslint --print-config`.
-  2. Record any delta in warning/error count between `eslint .` and `next lint` while phasing out deprecated `next lint` in CI.
+  2. Record any delta in warning/error count between `eslint .` and `next lint` while phasing out `next lint` in favor of `eslint .` in CI.
   3. Gate CI changes behind warning-budget monitoring to avoid unexpected lint volume growth.
 - **Validation:**
   - `npm run check-lint` (`eslint .`) passes.
