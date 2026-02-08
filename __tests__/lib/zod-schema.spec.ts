@@ -34,7 +34,10 @@ describe('lib/zod schema validation', () => {
   });
 
   it('captures valid ssoVerify payload as snapshot', () => {
-    const result = ssoVerifySchema.safeParse({ email: 'owner@example.com', slug: '' });
+    const result = ssoVerifySchema.safeParse({
+      email: 'owner@example.com',
+      slug: '',
+    });
 
     expect(result).toMatchSnapshot();
   });

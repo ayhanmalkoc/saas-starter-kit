@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 import { render, screen } from '@testing-library/react';
 
 import { AccessControl } from '@/components/shared/AccessControl';
@@ -8,9 +8,13 @@ jest.mock('hooks/useCanAccess', () => ({
   default: jest.fn(),
 }));
 
-const mockedUseCanAccess = jest.requireMock('hooks/useCanAccess').default as jest.Mock;
+const mockedUseCanAccess = jest.requireMock('hooks/useCanAccess')
+  .default as jest.Mock;
 
 describe('AccessControl', () => {
+  const visibleLabel = 'cta-visible';
+  const hiddenLabel = 'cta-hidden';
+
   it('renders children when permission exists', () => {
     mockedUseCanAccess.mockReturnValue({
       canAccess: () => true,
@@ -20,11 +24,13 @@ describe('AccessControl', () => {
 
     render(
       <AccessControl resource="team_member" actions={['read']}>
-        <button>cta-visible</button>
+        <button>{visibleLabel}</button>
       </AccessControl>
     );
 
-    expect(screen.getByRole('button', { name: 'cta-visible' })).toBeInTheDocument();
+    expect(
+      screen.getByRole('button', { name: visibleLabel })
+    ).toBeInTheDocument();
   });
 
   it('hides children when permission does not exist', () => {
@@ -36,10 +42,12 @@ describe('AccessControl', () => {
 
     render(
       <AccessControl resource="team_member" actions={['update']}>
-        <button>cta-hidden</button>
+        <button>{hiddenLabel}</button>
       </AccessControl>
     );
 
-    expect(screen.queryByRole('button', { name: 'cta-hidden' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: hiddenLabel })
+    ).not.toBeInTheDocument();
   });
 });

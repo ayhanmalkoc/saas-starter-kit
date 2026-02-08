@@ -95,7 +95,10 @@ describe('POST /api/auth/sso/verify', () => {
   });
 
   it('returns teamId when slug-based verification succeeds', async () => {
-    (getTeam as jest.Mock).mockResolvedValueOnce({ id: 'team-1', slug: 'acme' });
+    (getTeam as jest.Mock).mockResolvedValueOnce({
+      id: 'team-1',
+      slug: 'acme',
+    });
 
     const req = {
       method: 'POST',
@@ -149,7 +152,10 @@ describe('POST /api/auth/sso/verify', () => {
   });
 
   it('returns error when no SSO connections exist (invalid/expired link state)', async () => {
-    (getTeam as jest.Mock).mockResolvedValueOnce({ id: 'team-1', slug: 'acme' });
+    (getTeam as jest.Mock).mockResolvedValueOnce({
+      id: 'team-1',
+      slug: 'acme',
+    });
     ssoMock.getConnections.mockResolvedValueOnce([]);
 
     const req = {

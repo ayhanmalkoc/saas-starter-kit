@@ -5,6 +5,7 @@ import type { Readable } from 'node:stream';
 import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { handleEvents } from '@/lib/jackson/dsyncEvents';
+import type { DirectorySyncEvent } from '@boxyhq/saml-jackson';
 
 export const config = {
   api: {
@@ -26,11 +27,11 @@ const inMemoryReplayCache: ReplayCache = {
   has(key: string) {
     const now = Math.floor(Date.now() / 1000);
 
-    for (const [cacheKey, expiresAt] of inMemoryReplayEntries.entries()) {
+    inMemoryReplayEntries.forEach((expiresAt, cacheKey) => {
       if (expiresAt <= now) {
         inMemoryReplayEntries.delete(cacheKey);
       }
-    }
+    });
 
     const expiresAt = inMemoryReplayEntries.get(key);
 
@@ -67,14 +68,16 @@ export default async function handler(
 
     if (!(await verifyWebhookSignature(req, rawBody))) {
       console.error('Signature verification failed.');
-      res.status(401).json({ error: { message: 'Invalid webhook signature.' } });
+      res
+        .status(401)
+        .json({ error: { message: 'Invalid webhook signature.' } });
       return;
     }
 
-    let parsedBody: unknown;
+    let parsedBody: DirectorySyncEvent;
 
     try {
-      parsedBody = JSON.parse(rawBody);
+      parsedBody = JSON.parse(rawBody) as DirectorySyncEvent;
     } catch {
       res.status(400).json({ error: { message: 'Invalid JSON payload.' } });
       return;
@@ -106,8 +109,9 @@ export async function getRawBody(readable: Readable): Promise<Buffer> {
 }
 
 const parseSignatureHeader = (signatureHeader: string) => {
-  const parsedHeader = signatureHeader.split(',').reduce<Record<string, string>>(
-    (acc, part) => {
+  const parsedHeader = signatureHeader
+    .split(',')
+    .reduce<Record<string, string>>((acc, part) => {
       const [rawKey, ...rawValueParts] = part.split('=');
       const key = rawKey?.trim();
       const value = rawValueParts.join('=').trim();
@@ -119,9 +123,7 @@ const parseSignatureHeader = (signatureHeader: string) => {
       acc[key] = value;
 
       return acc;
-    },
-    {}
-  );
+    }, {});
 
   const timestamp = Number.parseInt(parsedHeader.t, 10);
   const signature = parsedHeader.s;
@@ -182,8 +184,13 @@ export const verifyWebhookSignature = async (
 
   const webhookSecret = env.jackson.dsync.webhook_secret;
   if (!webhookSecret) {
-    console.error('Missing JACKSON_WEBHOOK_SECRET: cannot verify DSync webhook signature.');
-    throw new ApiError(500, 'JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.');
+    console.error(
+      'Missing JACKSON_WEBHOOK_SECRET: cannot verify DSync webhook signature.'
+    );
+    throw new ApiError(
+      500,
+      'JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.'
+    );
   }
 
   const expectedSignature = crypto
@@ -202,7 +209,9 @@ export const verifyWebhookSignature = async (
     return false;
   }
 
-  if (!crypto.timingSafeEqual(expectedSignatureBuffer, receivedSignatureBuffer)) {
+  if (
+    !crypto.timingSafeEqual(expectedSignatureBuffer, receivedSignatureBuffer)
+  ) {
     return false;
   }
 

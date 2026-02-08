@@ -50,12 +50,19 @@ describe('/api/auth/sso/acs legacy proxy', () => {
   });
 
   it('preserves downstream error status and message contract', async () => {
-    const req = { method: 'POST', body: { SAMLResponse: 'invalid' } } as NextApiRequest;
+    const req = {
+      method: 'POST',
+      body: { SAMLResponse: 'invalid' },
+    } as NextApiRequest;
     const res = createRes();
 
-    samlHandlerMock.mockImplementationOnce(async (_req, response: NextApiResponse) => {
-      response.status(400).json({ error: { message: 'Invalid SAML response' } });
-    });
+    samlHandlerMock.mockImplementationOnce(
+      async (_req, response: NextApiResponse) => {
+        response
+          .status(400)
+          .json({ error: { message: 'Invalid SAML response' } });
+      }
+    );
 
     await handler(req, res);
 

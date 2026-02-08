@@ -126,7 +126,8 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
   return res.status(200).json({ received: true });
 }
 
-async function handleCheckoutSessionCompleted(_event: Stripe.Event) {
+async function handleCheckoutSessionCompleted(event: Stripe.Event) {
+  void event;
   console.warn('checkout.session.completed received but not handled');
 }
 
@@ -156,7 +157,8 @@ async function handleInvoicePaymentFailed(_event: Stripe.Event) {
   await upsertInvoiceFromStripe(invoice, team.id);
 }
 
-async function handleCustomerUpdated(_event: Stripe.Event) {
+async function handleCustomerUpdated(event: Stripe.Event) {
+  void event;
   console.warn('customer.updated received but not handled');
 }
 

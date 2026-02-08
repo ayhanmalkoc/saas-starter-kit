@@ -5,18 +5,21 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 ## 1) Test katmanları: unit / integration / e2e
 
 ### Unit test
+
 - **Amaç:** Tek bir fonksiyon/sınıf/modülün izolasyonda doğru çalıştığını doğrulamak.
 - **Kapsam:** Özellikle `lib/**` altındaki saf iş kuralları, yardımcı fonksiyonlar, doğrulama (`zod`), yetki/rol kuralları.
 - **Bağımlılık yaklaşımı:** Ağ, DB, dış servisler (Stripe, Jackson, SMTP vb.) mock edilir.
 - **Hız hedefi:** Test başına milisaniye-seviye; CI’da en hızlı geri bildirim katmanı.
 
 ### Integration test
+
 - **Amaç:** Birden çok modülün birlikte çalışmasını (örn. API handler + servis + DB erişimi) doğrulamak.
 - **Kapsam:** `pages/api/**` endpoint’leri, auth/permission akışları, hata yönetimi, request/response kontratları.
 - **Bağımlılık yaklaşımı:** Mümkünse gerçek Postgres (CI service) + kontrollü fixture/factory; harici 3rd-party API’ler mock/stub.
 - **Hız hedefi:** Unit’ten yavaş ama deterministik; PR’da zorunlu.
 
 ### E2E test
+
 - **Amaç:** Kullanıcı perspektifinden kritik senaryoları uçtan uca doğrulamak.
 - **Kapsam:** Kayıt/giriş, takım yönetimi, oturum yönetimi, ödeme veya SSO gibi kritik yolculuklar.
 - **Araç:** Playwright (`npm run test:e2e`).
@@ -31,6 +34,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 ### P0 (iş sürekliliği / güvenlik kritik)
 
 #### Endpoint’ler (`pages/api/**`)
+
 - `pages/api/auth/[...nextauth].ts`
 - `pages/api/auth/forgot-password.ts`
 - `pages/api/auth/reset-password.ts`
@@ -42,6 +46,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 - `pages/api/webhooks/stripe.ts`
 
 #### Modüller (`lib/**`)
+
 - `lib/auth.ts`
 - `lib/nextAuth.ts`
 - `lib/session.ts`
@@ -56,6 +61,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 ### P1 (yüksek iş değeri / entegrasyon kritik)
 
 #### Endpoint’ler
+
 - `pages/api/users.ts`
 - `pages/api/invitations/[token].ts`
 - `pages/api/auth/join.ts`
@@ -67,6 +73,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 - `pages/api/webhooks/dsync.ts`
 
 #### Modüller
+
 - `lib/jackson.ts`
 - `lib/jackson/dsyncEvents.ts`
 - `lib/accountLock.ts`
@@ -81,6 +88,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 ### P2 (destekleyici / regresyon önleyici)
 
 #### Endpoint’ler
+
 - `pages/api/health.ts`
 - `pages/api/hello.ts`
 - `pages/api/import-hack.ts`
@@ -90,6 +98,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 - `pages/api/auth/custom-signout.ts`
 
 #### Modüller
+
 - `lib/common.ts`
 - `lib/fetcher.ts`
 - `lib/env.ts`
@@ -106,6 +115,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 Coverage, `npm run test:cov` çıktısı üzerinden değerlendirilir.
 
 ### Hedefler (minimum)
+
 - `pages/api/**`
   - **Line:** %80
   - **Branch:** %70
@@ -118,6 +128,7 @@ Coverage, `npm run test:cov` çıktısı üzerinden değerlendirilir.
   - **Statement:** %85
 
 ### Uygulama politikası
+
 - Yeni eklenen dosyalarda minimum hedefin altına düşülmez.
 - Mevcut düşük kapsamlı dosyalarda “ratchet” uygulanır: her PR’da en azından mevcut oran korunur veya artırılır.
 - Geçici istisnalar (legacy/dış bağımlılık kısıtı) PR açıklamasında gerekçelendirilir ve takip issue’su açılır.
@@ -133,11 +144,13 @@ PR ve `main`/`release` branch’leri için aşağıdaki sıra önerilir:
 3. coverage threshold kontrolü (`npm run test:cov` veya jest threshold gate)
 
 ### Gate (merge şartı)
+
 - `npm test` başarısızsa merge engellenir.
 - `npm run test:e2e` başarısızsa merge engellenir.
 - Coverage, bölüm 3’teki minimum hedeflerin altına düşerse merge engellenir.
 
 ### Operasyonel not
+
 - E2E süresi uzarsa testler smoke/full olarak ayrılır:
   - PR: smoke + P0 yolculukları
   - Gece çalışması (scheduled): full regresyon
@@ -147,6 +160,7 @@ PR ve `main`/`release` branch’leri için aşağıdaki sıra önerilir:
 ## 5) Flaky test yönetimi ve mock/factory standartları
 
 ### Flaky test yönetimi
+
 - **Tanım:** Aynı commit’te tekrar çalıştırmada nondeterministic şekilde geçen/kalan test.
 - **Tespit:** Son 20 CI koşusunda başarısızlık oranı %2+ ise flaky adayı.
 - **Aksiyonlar:**
@@ -157,12 +171,14 @@ PR ve `main`/`release` branch’leri için aşağıdaki sıra önerilir:
 - **Yasak:** Sebepsiz `retry` artırımı ile flaky test “saklamak”.
 
 ### Mock standartları
+
 - Mock’lar sadece sınır bağımlılıklarında kullanılır (ağ, ödeme, e-posta, telemetry, SSO provider).
 - İş kuralı modüllerinde aşırı mock yerine gerçek implementasyon + fixture tercih edilir.
 - Mock davranışları senaryo bazlı ve açık isimlendirilir (`should_return_401_when_token_invalid` gibi).
 - Global/shared mutable mock state kullanılmaz; her testte temiz kurulum (`beforeEach/afterEach`).
 
 ### Factory/fixture standartları
+
 - Test verisi üretimi için factory yaklaşımı kullanılır (varsayılan geçerli obje + senaryoya özel override).
 - Rastgele veri (`faker`) kullanıldığında deterministik tohum (seed) belirlenir.
 - Fixture isimleri domain odaklı olur (`teamFactory`, `sessionFactory`, `tokenFactory`).
@@ -171,5 +187,6 @@ PR ve `main`/`release` branch’leri için aşağıdaki sıra önerilir:
 ---
 
 ## Sahiplik ve gözden geçirme
+
 - Bu dokümanın sahibi: backend + platform ekibi.
 - Gözden geçirme sıklığı: en az 3 ayda bir veya büyük mimari değişiklik sonrası.

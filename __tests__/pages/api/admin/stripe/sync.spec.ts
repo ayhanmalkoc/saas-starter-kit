@@ -60,8 +60,12 @@ describe('POST /api/admin/stripe/sync', () => {
     const productsList = stripe.products.list as jest.Mock;
     const pricesList = stripe.prices.list as jest.Mock;
 
-    productsList.mockReturnValue({ autoPagingToArray: jest.fn().mockResolvedValue([]) });
-    pricesList.mockReturnValue({ autoPagingToArray: jest.fn().mockResolvedValue([]) });
+    productsList.mockReturnValue({
+      autoPagingToArray: jest.fn().mockResolvedValue([]),
+    });
+    pricesList.mockReturnValue({
+      autoPagingToArray: jest.fn().mockResolvedValue([]),
+    });
   });
 
   afterAll(() => {

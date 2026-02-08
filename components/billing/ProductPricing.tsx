@@ -113,7 +113,7 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
                         initiatePlanChange(
                           priceId,
                           isSeatBasedPrice(price)
-                            ? activeSubscription?.quantity ?? quantity ?? 1
+                            ? (activeSubscription?.quantity ?? quantity ?? 1)
                             : undefined,
                           activeSubscription?.id
                         );

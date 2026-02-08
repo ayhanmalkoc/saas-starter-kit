@@ -13,7 +13,9 @@ test.describe('Magic link login', () => {
     });
 
     await page.goto('/auth/magic-link');
-    await page.getByPlaceholder('jackson@boxyhq.com').fill('jackson@example.com');
+    await page
+      .getByPlaceholder('jackson@boxyhq.com')
+      .fill('jackson@example.com');
 
     const signInResponse = page.waitForResponse(
       (response) =>
@@ -30,7 +32,9 @@ test.describe('Magic link login', () => {
     ).toBeVisible();
   });
 
-  test('fail path: should validate email format before submitting', async ({ page }) => {
+  test('fail path: should validate email format before submitting', async ({
+    page,
+  }) => {
     await page.goto('/auth/magic-link');
     await page.getByPlaceholder('jackson@boxyhq.com').fill('invalid-email');
     await page.getByRole('button', { name: 'Send Magic Link' }).click();

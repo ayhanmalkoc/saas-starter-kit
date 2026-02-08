@@ -8,11 +8,11 @@ type WebhookFixture = {
 };
 
 const test = base.extend<WebhookFixture>({
-  loginPage: async ({ page }, use) => {
-    await use(new LoginPage(page));
+  loginPage: async ({ page }, runFixture) => {
+    await runFixture(new LoginPage(page));
   },
-  webhooksPage: async ({ page }, use) => {
-    await use(new WebhooksPage(page, team.slug));
+  webhooksPage: async ({ page }, runFixture) => {
+    await runFixture(new WebhooksPage(page, team.slug));
   },
 });
 

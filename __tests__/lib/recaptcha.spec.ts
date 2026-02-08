@@ -49,7 +49,9 @@ describe('lib/recaptcha validateRecaptcha', () => {
     });
 
     expect(global.fetch).toHaveBeenCalledWith(
-      expect.stringContaining('https://www.google.com/recaptcha/api/siteverify?'),
+      expect.stringContaining(
+        'https://www.google.com/recaptcha/api/siteverify?'
+      ),
       { method: 'POST' }
     );
   });

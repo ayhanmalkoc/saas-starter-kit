@@ -112,8 +112,8 @@ describe('lib/billing/entitlements', () => {
   it('rethrows unexpected errors in hasTeamEntitlement', async () => {
     mockedGetByTeamId.mockRejectedValue(new Error('storage-down'));
 
-    await expect(hasTeamEntitlement('team_4', { feature: 'sso' })).rejects.toThrow(
-      'storage-down'
-    );
+    await expect(
+      hasTeamEntitlement('team_4', { feature: 'sso' })
+    ).rejects.toThrow('storage-down');
   });
 });

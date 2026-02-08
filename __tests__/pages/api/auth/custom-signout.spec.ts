@@ -65,9 +65,13 @@ const createRes = () => {
 describe('POST /api/auth/custom-signout', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getServerSession as jest.Mock).mockResolvedValue({ user: { id: 'user-1' } });
+    (getServerSession as jest.Mock).mockResolvedValue({
+      user: { id: 'user-1' },
+    });
     (getCookie as jest.Mock).mockResolvedValue('session-token');
-    (prisma.session.findFirst as jest.Mock).mockResolvedValue({ sessionToken: 'session-token' });
+    (prisma.session.findFirst as jest.Mock).mockResolvedValue({
+      sessionToken: 'session-token',
+    });
   });
 
   it('returns 405 for method mismatch', async () => {

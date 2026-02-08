@@ -179,7 +179,10 @@ describe('POST /api/webhooks/stripe', () => {
     await handler(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(createWebhookEvent).toHaveBeenCalledWith('evt_price', 'price.updated');
+    expect(createWebhookEvent).toHaveBeenCalledWith(
+      'evt_price',
+      'price.updated'
+    );
     expect(upsertPriceFromStripe).toHaveBeenCalledWith({
       id: 'price_new',
       product: 'prod_1',
@@ -204,7 +207,11 @@ describe('POST /api/webhooks/stripe', () => {
             data: [
               {
                 quantity: 4,
-                price: { id: 'price_123', product: 'prod_123', currency: 'usd' },
+                price: {
+                  id: 'price_123',
+                  product: 'prod_123',
+                  currency: 'usd',
+                },
               },
             ],
           },
@@ -251,7 +258,11 @@ describe('POST /api/webhooks/stripe', () => {
             data: [
               {
                 quantity: 2,
-                price: { id: 'price_existing', product: 'prod_existing', currency: 'eur' },
+                price: {
+                  id: 'price_existing',
+                  product: 'prod_existing',
+                  currency: 'eur',
+                },
               },
             ],
           },

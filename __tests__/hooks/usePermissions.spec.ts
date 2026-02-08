@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 import { renderHook } from '@testing-library/react';
 
 import usePermissions from '@/hooks/usePermissions';
@@ -26,7 +26,10 @@ describe('usePermissions', () => {
 
     const { result } = renderHook(() => usePermissions());
 
-    expect(useSWR).toHaveBeenCalledWith('/api/teams/alpha-team/permissions', expect.any(Function));
+    expect(useSWR).toHaveBeenCalledWith(
+      '/api/teams/alpha-team/permissions',
+      expect.any(Function)
+    );
     expect(result.current.isLoading).toBe(true);
     expect(result.current.permissions).toBeUndefined();
   });

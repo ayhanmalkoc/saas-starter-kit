@@ -12,7 +12,9 @@ describe('lib/permissions', () => {
   });
 
   it('grants owner all team resources', () => {
-    const ownerResources = permissions.OWNER.map((permission) => permission.resource);
+    const ownerResources = permissions.OWNER.map(
+      (permission) => permission.resource
+    );
 
     expect(ownerResources).toEqual([
       'team',
@@ -26,7 +28,9 @@ describe('lib/permissions', () => {
       'team_api_key',
     ]);
 
-    expect(permissions.OWNER.every((permission) => permission.actions === '*')).toBe(true);
+    expect(
+      permissions.OWNER.every((permission) => permission.actions === '*')
+    ).toBe(true);
   });
 
   it('restricts members to read and leave team actions', () => {
