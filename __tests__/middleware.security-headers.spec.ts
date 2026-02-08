@@ -45,9 +45,9 @@ describe('middleware security headers flag', () => {
     let middleware: typeof import('../middleware').default;
 
     jest.isolateModules(() => {
-      const jwt = require('next-auth/jwt');
+      const jwt = jest.requireMock('next-auth/jwt');
       jwt.getToken.mockResolvedValue({ sub: 'user-id' });
-      middleware = require('../middleware').default;
+      middleware = jest.requireActual('../middleware').default;
     });
 
     return middleware!;

@@ -14,7 +14,6 @@ jest.mock('@/lib/env', () => ({
   },
 }));
 
-
 jest.mock('@/lib/jackson', () => ({
   __esModule: true,
   default: jest.fn(async () => ({
@@ -112,7 +111,10 @@ describe('OAuth API endpoints', () => {
       client_id: 'client-1',
       scope: 'openid profile',
     });
-    expect(res.redirect).toHaveBeenCalledWith(302, 'https://app.example/callback');
+    expect(res.redirect).toHaveBeenCalledWith(
+      302,
+      'https://app.example/callback'
+    );
   });
 
   it('forwards POST body to oauthController.authorize and sends form response', async () => {
@@ -141,7 +143,10 @@ describe('OAuth API endpoints', () => {
   });
 
   it('forwards POST body to oauthController.token and returns token json', async () => {
-    tokenMock.mockResolvedValueOnce({ access_token: 'token-1', token_type: 'bearer' });
+    tokenMock.mockResolvedValueOnce({
+      access_token: 'token-1',
+      token_type: 'bearer',
+    });
 
     const req = { method: 'POST', body: { code: 'auth-code' } } as any;
     const res = createRes();
@@ -162,7 +167,9 @@ describe('OAuth API endpoints', () => {
     await userinfoHandler(req, res);
 
     expect(res.status).toHaveBeenCalledWith(401);
-    expect(res.json).toHaveBeenCalledWith({ error: { message: 'Unauthorized' } });
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: 'Unauthorized' },
+    });
     expect(userInfoMock).not.toHaveBeenCalled();
   });
 
@@ -215,7 +222,10 @@ describe('OAuth API endpoints', () => {
       RelayState: 'relay-1',
       SAMLResponse: 'encoded-saml',
     });
-    expect(res.redirect).toHaveBeenCalledWith(302, 'https://app.example/post-saml');
+    expect(res.redirect).toHaveBeenCalledWith(
+      302,
+      'https://app.example/post-saml'
+    );
   });
 
   it('returns expected error contract when SAML redirect is missing', async () => {

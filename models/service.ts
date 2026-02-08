@@ -3,7 +3,10 @@ import { prisma } from '@/lib/prisma';
 import type { Prisma, Service } from '@prisma/client';
 
 const normalizeKey = (value: string) =>
-  value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
 
 type PlanMetadata = {
   featureFlags: Record<string, boolean>;
@@ -84,13 +87,10 @@ const parsePlanMetadata = (
 };
 
 const buildServiceData = (product: Stripe.Product) => {
-  const { featureFlags, limits, features } = parsePlanMetadata(product.metadata);
-  const productFeatures = (product.features || [])
-    .map((feature) => normalizeKey(feature.name))
-    .filter(Boolean);
-  const mergedFeatures = Array.from(
-    new Set([...features, ...productFeatures])
+  const { featureFlags, limits, features } = parsePlanMetadata(
+    product.metadata
   );
+  const mergedFeatures = features;
 
   return {
     id: product.id,

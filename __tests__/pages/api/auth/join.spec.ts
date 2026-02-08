@@ -103,7 +103,9 @@ describe('POST /api/auth/join', () => {
       emailVerified: null,
     });
     (createTeam as jest.Mock).mockResolvedValue({ id: 'team-1', name: 'Acme' });
-    (createVerificationToken as jest.Mock).mockResolvedValue({ token: 'verify-token' });
+    (createVerificationToken as jest.Mock).mockResolvedValue({
+      token: 'verify-token',
+    });
     (getInvitation as jest.Mock).mockResolvedValue(null);
   });
 

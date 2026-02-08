@@ -30,7 +30,8 @@ describe('lib/rbac validateMembershipOperation', () => {
     ).rejects.toEqual(
       expect.objectContaining<ApiError>({
         status: 403,
-        message: 'You do not have permission to update the role of this member.',
+        message:
+          'You do not have permission to update the role of this member.',
       })
     );
   });

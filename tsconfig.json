@@ -20,8 +20,10 @@
     "paths": {
       "@/lib/*": ["lib/*"],
       "@/components/*": ["components/*"],
+      "@/hooks/*": ["hooks/*"],
+      "@/models/*": ["models/*"],
     },
   },
   "include": ["next-env.d.ts", "**/*.ts", "**/*.tsx", "next-auth.d.ts"],
-  "exclude": ["node_modules"],
+  "exclude": ["node_modules", "__tests__", "tests"],
 }

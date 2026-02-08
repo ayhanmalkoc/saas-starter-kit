@@ -42,7 +42,10 @@ describe('/api/auth/sso/acs proxy handler', () => {
   });
 
   it('forwards POST requests and allows downstream validation', async () => {
-    const req = { method: 'POST', body: { SAMLResponse: 'saml' } } as NextApiRequest;
+    const req = {
+      method: 'POST',
+      body: { SAMLResponse: 'saml' },
+    } as NextApiRequest;
     const res = createRes();
     proxyHandler.mockImplementationOnce(async (_req, response) => {
       response.status(400).json({ error: 'Invalid token' });
@@ -55,7 +58,10 @@ describe('/api/auth/sso/acs proxy handler', () => {
   });
 
   it('returns success when downstream SSO ACS flow succeeds', async () => {
-    const req = { method: 'POST', body: { SAMLResponse: 'valid' } } as NextApiRequest;
+    const req = {
+      method: 'POST',
+      body: { SAMLResponse: 'valid' },
+    } as NextApiRequest;
     const res = createRes();
     proxyHandler.mockImplementationOnce(async (_req, response) => {
       response.status(200).json({ success: true });

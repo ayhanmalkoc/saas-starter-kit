@@ -57,7 +57,10 @@ describe('/api/teams', () => {
   });
 
   it('returns 401 when user is unauthorized', async () => {
-    (getCurrentUser as jest.Mock).mockRejectedValueOnce({ status: 401, message: 'Unauthorized' });
+    (getCurrentUser as jest.Mock).mockRejectedValueOnce({
+      status: 401,
+      message: 'Unauthorized',
+    });
 
     const req = { method: 'GET' } as NextApiRequest;
     const res = createRes();
@@ -69,7 +72,10 @@ describe('/api/teams', () => {
   });
 
   it('returns 403 when role-based service denial is raised', async () => {
-    (getTeams as jest.Mock).mockRejectedValueOnce({ status: 403, message: 'Forbidden' });
+    (getTeams as jest.Mock).mockRejectedValueOnce({
+      status: 403,
+      message: 'Forbidden',
+    });
 
     const req = { method: 'GET' } as NextApiRequest;
     const res = createRes();
@@ -102,21 +108,33 @@ describe('/api/teams', () => {
     await handler(req, res);
 
     expect(res.statusCode).toBe(400);
-    expect(res.body).toEqual({ error: { message: 'A team with the slug already exists.' } });
+    expect(res.body).toEqual({
+      error: { message: 'A team with the slug already exists.' },
+    });
   });
 
   it('POST creates a team and records metric', async () => {
     (isTeamExists as jest.Mock).mockResolvedValueOnce(false);
-    (createTeam as jest.Mock).mockResolvedValueOnce({ id: 'team-1', name: 'My Team', slug: 'my-team' });
+    (createTeam as jest.Mock).mockResolvedValueOnce({
+      id: 'team-1',
+      name: 'My Team',
+      slug: 'my-team',
+    });
 
     const req = { method: 'POST', body: { name: 'My Team' } } as NextApiRequest;
     const res = createRes();
 
     await handler(req, res);
 
-    expect(createTeam).toHaveBeenCalledWith({ userId: 'user-1', name: 'My Team', slug: 'my-team' });
+    expect(createTeam).toHaveBeenCalledWith({
+      userId: 'user-1',
+      name: 'My Team',
+      slug: 'my-team',
+    });
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ data: { id: 'team-1', name: 'My Team', slug: 'my-team' } });
+    expect(res.body).toEqual({
+      data: { id: 'team-1', name: 'My Team', slug: 'my-team' },
+    });
     expect(recordMetric).toHaveBeenCalledWith('team.created');
   });
 });

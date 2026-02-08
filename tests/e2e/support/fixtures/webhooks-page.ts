@@ -64,7 +64,9 @@ export class WebhooksPage {
   }
 
   async expectWebhookInTable(description: string) {
-    await expect(this.page.getByRole('cell', { name: description })).toBeVisible();
+    await expect(
+      this.page.getByRole('cell', { name: description })
+    ).toBeVisible();
   }
 
   async deleteWebhook(description: string) {

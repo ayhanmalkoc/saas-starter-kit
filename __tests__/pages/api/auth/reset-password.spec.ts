@@ -124,7 +124,9 @@ describe('POST /api/auth/reset-password', () => {
     expect(unlockAccount).toHaveBeenCalledWith(
       expect.objectContaining({ id: 'user-1' })
     );
-    expect(deleteManySessions).toHaveBeenCalledWith({ where: { userId: 'user-1' } });
+    expect(deleteManySessions).toHaveBeenCalledWith({
+      where: { userId: 'user-1' },
+    });
     expect(deletePasswordReset).toHaveBeenCalledWith('token-1');
     expect(recordMetric).toHaveBeenCalledWith('user.password.reset');
   });

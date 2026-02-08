@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -27,7 +27,8 @@ jest.mock('hooks/useCanAccess', () => ({
   default: jest.fn(),
 }));
 
-const mockedUseCanAccess = jest.requireMock('hooks/useCanAccess').default as jest.Mock;
+const mockedUseCanAccess = jest.requireMock('hooks/useCanAccess')
+  .default as jest.Mock;
 const toast = jest.requireMock('react-hot-toast').default as {
   error: jest.Mock;
 };
@@ -78,7 +79,9 @@ describe('AcceptInvitation', () => {
 
     render(<AcceptInvitation invitation={invitation} />);
 
-    await userEvent.click(screen.getByRole('button', { name: 'accept-invitation' }));
+    await userEvent.click(
+      screen.getByRole('button', { name: 'accept-invitation' })
+    );
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('invalid invitation');
@@ -99,6 +102,8 @@ describe('AcceptInvitation', () => {
       </AccessControl>
     );
 
-    expect(screen.queryByRole('button', { name: 'accept-invitation' })).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole('button', { name: 'accept-invitation' })
+    ).not.toBeInTheDocument();
   });
 });

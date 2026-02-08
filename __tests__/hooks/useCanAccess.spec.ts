@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 import { renderHook } from '@testing-library/react';
 
 import useCanAccess from '@/hooks/useCanAccess';
@@ -8,7 +8,8 @@ jest.mock('@/hooks/usePermissions', () => ({
   default: jest.fn(),
 }));
 
-const mockedUsePermissions = jest.requireMock('@/hooks/usePermissions').default as jest.Mock;
+const mockedUsePermissions = jest.requireMock('@/hooks/usePermissions')
+  .default as jest.Mock;
 
 describe('useCanAccess', () => {
   beforeEach(() => {

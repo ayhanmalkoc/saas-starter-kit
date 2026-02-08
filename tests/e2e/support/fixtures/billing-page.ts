@@ -43,7 +43,9 @@ export class BillingPage {
   async waitForBillingDataLoad() {
     await this.page.waitForResponse(
       (response) =>
-        response.url().includes(`/api/teams/${this.teamSlug}/payments/products`) &&
+        response
+          .url()
+          .includes(`/api/teams/${this.teamSlug}/payments/products`) &&
         response.request().method() === 'GET' &&
         response.ok()
     );
@@ -64,8 +66,9 @@ export class BillingPage {
       (response) =>
         response
           .url()
-          .includes(`/api/teams/${this.teamSlug}/payments/create-portal-link`) &&
-        response.request().method() === 'POST'
+          .includes(
+            `/api/teams/${this.teamSlug}/payments/create-portal-link`
+          ) && response.request().method() === 'POST'
     );
 
     await this.billingPortalButton.click();

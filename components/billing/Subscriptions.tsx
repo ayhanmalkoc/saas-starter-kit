@@ -32,8 +32,18 @@ const Subscriptions = ({ subscriptions }: SubscriptionsProps) => {
             <tr key={subscription.id}>
               <td>{subscription.id}</td>
               <td>{subscription.product.name}</td>
-              <td>{new Date(subscription.startDate).toLocaleDateString()}</td>
-              <td>{new Date(subscription.endDate).toLocaleDateString()}</td>
+              <td>
+                {subscription.currentPeriodStart
+                  ? new Date(
+                      subscription.currentPeriodStart
+                    ).toLocaleDateString()
+                  : '-'}
+              </td>
+              <td>
+                {subscription.currentPeriodEnd
+                  ? new Date(subscription.currentPeriodEnd).toLocaleDateString()
+                  : '-'}
+              </td>
             </tr>
           ))}
         </tbody>

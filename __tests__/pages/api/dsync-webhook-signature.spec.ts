@@ -149,7 +149,9 @@ describe('verifyWebhookSignature', () => {
     );
 
     expect(result).toBe(false);
-    expect(replayCacheHasMock).toHaveBeenCalledWith(`${timestamp}:${signature}`);
+    expect(replayCacheHasMock).toHaveBeenCalledWith(
+      `${timestamp}:${signature}`
+    );
   });
 
   it('stores replay cache entry with double tolerance TTL on valid signature', async () => {
@@ -180,7 +182,10 @@ describe('verifyWebhookSignature', () => {
     const signature = createSignature(timestamp, rawBody);
 
     await expect(
-      verifyWebhookSignature(makeRequest(`t=${timestamp},s=${signature}`), rawBody)
+      verifyWebhookSignature(
+        makeRequest(`t=${timestamp},s=${signature}`),
+        rawBody
+      )
     ).rejects.toThrow(
       'JACKSON_WEBHOOK_SECRET is not configured for DSync webhook verification.'
     );

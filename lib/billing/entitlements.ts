@@ -30,7 +30,10 @@ type EntitlementRequirement = {
 };
 
 const normalizeKey = (value: string) =>
-  value.trim().toLowerCase().replace(/[\s-]+/g, '_');
+  value
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
 
 const emptyEntitlements = (): TeamEntitlements => ({
   features: {},
@@ -134,9 +137,7 @@ const parseServiceEntitlements = (
     };
 
     if (metadata.featureFlags) {
-      for (const [feature, enabled] of Object.entries(
-        metadata.featureFlags
-      )) {
+      for (const [feature, enabled] of Object.entries(metadata.featureFlags)) {
         if (enabled) {
           entitlements.features[normalizeKey(feature)] = true;
         }
@@ -169,9 +170,7 @@ const mergeEntitlements = (
   for (const [limitKey, limitValue] of Object.entries(incoming.limits)) {
     const existing = base.limits[limitKey];
     base.limits[limitKey] =
-      existing === undefined
-        ? limitValue
-        : Math.max(existing, limitValue);
+      existing === undefined ? limitValue : Math.max(existing, limitValue);
   }
 
   if (planId) {
@@ -248,9 +247,8 @@ export const getTeamEntitlements = async (
       let source = 'database';
 
       if (productId) {
-        const stripeEntitlements = await getEntitlementsFromStripeProduct(
-          productId
-        );
+        const stripeEntitlements =
+          await getEntitlementsFromStripeProduct(productId);
         if (
           stripeEntitlements &&
           (Object.keys(stripeEntitlements.features).length > 0 ||

@@ -53,7 +53,9 @@ describe('POST /api/auth/resend-email-token', () => {
       email: 'user@example.com',
       name: 'John',
     });
-    (createVerificationToken as jest.Mock).mockResolvedValue({ token: 'new-token' });
+    (createVerificationToken as jest.Mock).mockResolvedValue({
+      token: 'new-token',
+    });
   });
 
   it('returns 405 for method mismatch', async () => {
@@ -71,7 +73,10 @@ describe('POST /api/auth/resend-email-token', () => {
       throw { status: 422, message: 'Invalid email' };
     });
 
-    const req = { method: 'POST', body: { email: 'bad-email' } } as NextApiRequest;
+    const req = {
+      method: 'POST',
+      body: { email: 'bad-email' },
+    } as NextApiRequest;
     const res = createRes();
 
     await handler(req, res);

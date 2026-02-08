@@ -50,7 +50,10 @@ const createRes = () => {
 describe('POST /api/auth/unlock-account', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (getUser as jest.Mock).mockResolvedValue({ id: 'user-1', email: 'locked@example.com' });
+    (getUser as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'locked@example.com',
+    });
   });
 
   it('returns 405 for method mismatch', async () => {

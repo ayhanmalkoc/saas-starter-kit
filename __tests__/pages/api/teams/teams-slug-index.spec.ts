@@ -25,33 +25,40 @@ jest.mock('@/lib/zod', () => ({
 }));
 
 import handler from '@/pages/api/teams/[slug]';
-import { deleteTeam, getCurrentUserWithTeam, getTeam, throwIfNoTeamAccess, updateTeam } from 'models/team';
+import {
+  deleteTeam,
+  getCurrentUserWithTeam,
+  getTeam,
+  throwIfNoTeamAccess,
+  updateTeam,
+} from 'models/team';
 import { throwIfNotAllowed } from 'models/user';
 import { recordMetric } from '@/lib/metrics';
 import { sendAudit } from '@/lib/retraced';
 
-const createRes = () => ({
-  statusCode: 200,
-  body: null as unknown,
-  headers: {} as Record<string, string>,
-  ended: false,
-  status(code: number) {
-    this.statusCode = code;
-    return this;
-  },
-  json(payload: unknown) {
-    this.body = payload;
-    return this;
-  },
-  setHeader(key: string, value: string) {
-    this.headers[key] = value;
-    return this;
-  },
-  end() {
-    this.ended = true;
-    return this;
-  },
-}) as unknown as NextApiResponse;
+const createRes = () =>
+  ({
+    statusCode: 200,
+    body: null as unknown,
+    headers: {} as Record<string, string>,
+    ended: false,
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload: unknown) {
+      this.body = payload;
+      return this;
+    },
+    setHeader(key: string, value: string) {
+      this.headers[key] = value;
+      return this;
+    },
+    end() {
+      this.ended = true;
+      return this;
+    },
+  }) as unknown as NextApiResponse;
 
 const userWithTeam = {
   id: 'member-1',
@@ -68,7 +75,10 @@ describe('/api/teams/[slug]', () => {
   });
 
   it('returns team access error from throwIfNoTeamAccess', async () => {
-    (throwIfNoTeamAccess as jest.Mock).mockRejectedValueOnce({ status: 404, message: 'Team not found' });
+    (throwIfNoTeamAccess as jest.Mock).mockRejectedValueOnce({
+      status: 404,
+      message: 'Team not found',
+    });
     const res = createRes();
 
     await handler({ method: 'GET' } as NextApiRequest, res);
@@ -90,7 +100,10 @@ describe('/api/teams/[slug]', () => {
   });
 
   it('GET returns team with metric', async () => {
-    (getTeam as jest.Mock).mockResolvedValueOnce({ id: 'team-1', slug: 'alpha' });
+    (getTeam as jest.Mock).mockResolvedValueOnce({
+      id: 'team-1',
+      slug: 'alpha',
+    });
 
     const res = createRes();
     await handler({ method: 'GET' } as NextApiRequest, res);
@@ -101,9 +114,15 @@ describe('/api/teams/[slug]', () => {
   });
 
   it('PUT updates team and sends audit', async () => {
-    (updateTeam as jest.Mock).mockResolvedValueOnce({ id: 'team-1', slug: 'beta' });
+    (updateTeam as jest.Mock).mockResolvedValueOnce({
+      id: 'team-1',
+      slug: 'beta',
+    });
 
-    const req = { method: 'PUT', body: { name: 'Beta', slug: 'beta', domain: 'beta.com' } } as NextApiRequest;
+    const req = {
+      method: 'PUT',
+      body: { name: 'Beta', slug: 'beta', domain: 'beta.com' },
+    } as NextApiRequest;
     const res = createRes();
 
     await handler(req, res);

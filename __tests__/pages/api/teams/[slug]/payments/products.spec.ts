@@ -83,8 +83,16 @@ describe('GET /api/teams/[slug]/payments/products', () => {
     expect(res.body).toEqual({
       data: {
         products: [
-          { id: 'prod_1', name: 'Starter', prices: [{ id: 'price_1', serviceId: 'prod_1' }] },
-          { id: 'prod_2', name: 'Pro', prices: [{ id: 'price_2', serviceId: 'prod_2' }] },
+          {
+            id: 'prod_1',
+            name: 'Starter',
+            prices: [{ id: 'price_1', serviceId: 'prod_1' }],
+          },
+          {
+            id: 'prod_2',
+            name: 'Pro',
+            prices: [{ id: 'price_2', serviceId: 'prod_2' }],
+          },
         ],
         subscriptions: [
           {
@@ -92,7 +100,11 @@ describe('GET /api/teams/[slug]/payments/products', () => {
             teamId: 'team-1',
             priceId: 'price_2',
             price: { id: 'price_2', serviceId: 'prod_2' },
-            product: { id: 'prod_2', name: 'Pro', prices: [{ id: 'price_2', serviceId: 'prod_2' }] },
+            product: {
+              id: 'prod_2',
+              name: 'Pro',
+              prices: [{ id: 'price_2', serviceId: 'prod_2' }],
+            },
           },
         ],
         invoices: [{ id: 'inv_1' }],

@@ -31,7 +31,9 @@ test.describe('Password reset', () => {
         response.url().includes('/api/auth/forgot-password') && response.ok()
     );
 
-    await page.getByRole('button', { name: 'Email Password Reset Link' }).click();
+    await page
+      .getByRole('button', { name: 'Email Password Reset Link' })
+      .click();
     await forgotPasswordResponse;
 
     await expect(
@@ -55,7 +57,9 @@ test.describe('Password reset', () => {
     await page.waitForURL('/auth/login');
   });
 
-  test('fail path: should show an error when token is invalid', async ({ page }) => {
+  test('fail path: should show an error when token is invalid', async ({
+    page,
+  }) => {
     await page.route('**/api/auth/reset-password', async (route) => {
       await route.fulfill({
         status: 400,
@@ -72,7 +76,8 @@ test.describe('Password reset', () => {
 
     const resetPasswordResponse = page.waitForResponse(
       (response) =>
-        response.url().includes('/api/auth/reset-password') && response.status() === 400
+        response.url().includes('/api/auth/reset-password') &&
+        response.status() === 400
     );
 
     await page.getByRole('button', { name: 'Reset Password' }).click();

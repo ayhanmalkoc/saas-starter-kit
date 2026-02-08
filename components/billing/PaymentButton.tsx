@@ -9,11 +9,7 @@ interface PaymentButtonProps {
   onPlanChange: (priceId: string, quantity?: number) => void;
 }
 
-const PaymentButton = ({
-  plan,
-  price,
-  onPlanChange,
-}: PaymentButtonProps) => {
+const PaymentButton = ({ plan, price, onPlanChange }: PaymentButtonProps) => {
   const metadata = price.metadata as Prisma.JsonObject;
   const recurring = metadata?.recurring as Prisma.JsonObject | undefined;
   const usageType =

@@ -10,15 +10,22 @@ const buildPriceData = (price: Stripe.Price) => {
   const serviceId =
     typeof price.product === 'string' ? price.product : price.product.id;
 
+  const recurringMetadata = price.recurring
+    ? (JSON.parse(JSON.stringify(price.recurring)) as Prisma.InputJsonValue)
+    : null;
+
   return {
     id: price.id,
     billingScheme: price.billing_scheme,
     currency: price.currency,
     serviceId,
-    amount: price.unit_amount ? price.unit_amount / 100 : undefined,
+    amount:
+      typeof price.unit_amount === 'number'
+        ? price.unit_amount / 100
+        : undefined,
     metadata: {
       ...price.metadata,
-      recurring: price.recurring ?? null,
+      recurring: recurringMetadata,
     },
     type: price.type,
     created: new Date(price.created * 1000),

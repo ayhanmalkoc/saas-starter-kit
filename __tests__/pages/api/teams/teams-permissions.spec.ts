@@ -6,14 +6,24 @@ import handler from '@/pages/api/teams/[slug]/permissions';
 import { throwIfNoTeamAccess } from 'models/team';
 import { permissions } from '@/lib/permissions';
 
-const createRes = () => ({
-  statusCode: 200,
-  body: null as unknown,
-  headers: {} as Record<string, string>,
-  status(code: number) { this.statusCode = code; return this; },
-  json(payload: unknown) { this.body = payload; return this; },
-  setHeader(key: string, value: string) { this.headers[key] = value; return this; },
-}) as unknown as NextApiResponse;
+const createRes = () =>
+  ({
+    statusCode: 200,
+    body: null as unknown,
+    headers: {} as Record<string, string>,
+    status(code: number) {
+      this.statusCode = code;
+      return this;
+    },
+    json(payload: unknown) {
+      this.body = payload;
+      return this;
+    },
+    setHeader(key: string, value: string) {
+      this.headers[key] = value;
+      return this;
+    },
+  }) as unknown as NextApiResponse;
 
 describe('/api/teams/[slug]/permissions', () => {
   beforeEach(() => {
@@ -21,7 +31,10 @@ describe('/api/teams/[slug]/permissions', () => {
   });
 
   it('returns team access errors', async () => {
-    (throwIfNoTeamAccess as jest.Mock).mockRejectedValueOnce({ status: 401, message: 'Unauthorized' });
+    (throwIfNoTeamAccess as jest.Mock).mockRejectedValueOnce({
+      status: 401,
+      message: 'Unauthorized',
+    });
     const res = createRes();
     await handler({ method: 'GET' } as NextApiRequest, res);
     expect(res.statusCode).toBe(401);

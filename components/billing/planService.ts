@@ -9,7 +9,7 @@ const buildRequestBody = ({
   priceId,
   quantity,
   subscriptionId,
-}: PlanChangeParams) => {
+}: Omit<PlanChangeParams, 'teamSlug'>) => {
   const payload: Record<string, unknown> = {
     price: priceId,
   };
@@ -40,7 +40,9 @@ export const handlePlanChange = async ({
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify(buildRequestBody({ priceId, quantity, subscriptionId })),
+    body: JSON.stringify(
+      buildRequestBody({ priceId, quantity, subscriptionId })
+    ),
   });
 
   return response.json();

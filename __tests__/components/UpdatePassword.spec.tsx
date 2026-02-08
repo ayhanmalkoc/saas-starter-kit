@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -35,8 +35,11 @@ describe('UpdatePassword', () => {
 
     render(<UpdatePassword />);
 
-    const submitButton = screen.getByRole('button', { name: 'change-password' });
-    const currentPasswordInput = screen.getByPlaceholderText('current-password');
+    const submitButton = screen.getByRole('button', {
+      name: 'change-password',
+    });
+    const currentPasswordInput =
+      screen.getByPlaceholderText('current-password');
     const newPasswordInput = screen.getByPlaceholderText('new-password');
 
     await userEvent.type(currentPasswordInput, 'current-password-123');
@@ -46,7 +49,10 @@ describe('UpdatePassword', () => {
     await userEvent.click(submitButton);
 
     await waitFor(() => {
-      expect(global.fetch).toHaveBeenCalledWith('/api/password', expect.anything());
+      expect(global.fetch).toHaveBeenCalledWith(
+        '/api/password',
+        expect.anything()
+      );
       expect(toast.success).toHaveBeenCalledWith('successfully-updated');
     });
   });
@@ -55,7 +61,9 @@ describe('UpdatePassword', () => {
     render(<UpdatePassword />);
 
     const newPasswordInput = screen.getByPlaceholderText('new-password');
-    const submitButton = screen.getByRole('button', { name: 'change-password' });
+    const submitButton = screen.getByRole('button', {
+      name: 'change-password',
+    });
 
     await userEvent.type(newPasswordInput, '123');
     fireEvent.blur(newPasswordInput);
@@ -71,9 +79,17 @@ describe('UpdatePassword', () => {
 
     render(<UpdatePassword />);
 
-    await userEvent.type(screen.getByPlaceholderText('current-password'), 'wrong-password');
-    await userEvent.type(screen.getByPlaceholderText('new-password'), 'new-password-123');
-    await userEvent.click(screen.getByRole('button', { name: 'change-password' }));
+    await userEvent.type(
+      screen.getByPlaceholderText('current-password'),
+      'wrong-password'
+    );
+    await userEvent.type(
+      screen.getByPlaceholderText('new-password'),
+      'new-password-123'
+    );
+    await userEvent.click(
+      screen.getByRole('button', { name: 'change-password' })
+    );
 
     await waitFor(() => {
       expect(toast.error).toHaveBeenCalledWith('invalid current password');

@@ -1,4 +1,4 @@
-import "@testing-library/jest-dom";
+import '@testing-library/jest-dom';
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
@@ -22,7 +22,8 @@ jest.mock('hooks/useCanAccess', () => ({
   default: jest.fn(),
 }));
 
-const mockedUseCanAccess = jest.requireMock('hooks/useCanAccess').default as jest.Mock;
+const mockedUseCanAccess = jest.requireMock('hooks/useCanAccess')
+  .default as jest.Mock;
 const toast = jest.requireMock('react-hot-toast').default as {
   success: jest.Mock;
   error: jest.Mock;

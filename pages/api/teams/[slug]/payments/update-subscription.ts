@@ -44,9 +44,8 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ApiError(404, 'Subscription not found');
   }
 
-  const stripeSubscription = await stripe.subscriptions.retrieve(
-    subscriptionId
-  );
+  const stripeSubscription =
+    await stripe.subscriptions.retrieve(subscriptionId);
   const subscriptionItem = stripeSubscription.items.data[0];
   if (!subscriptionItem) {
     throw new ApiError(422, 'Subscription item not found');
@@ -62,7 +61,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const nextQuantity = isSeatBased
     ? typeof quantity === 'number'
       ? quantity
-      : subscription.quantity ?? subscriptionItem.quantity ?? 1
+      : (subscription.quantity ?? subscriptionItem.quantity ?? 1)
     : undefined;
 
   const updatedSubscription = await stripe.subscriptions.update(
