@@ -107,6 +107,12 @@ if (isAuthProviderEnabled('credentials')) {
 }
 
 if (isAuthProviderEnabled('github')) {
+  if (!env.github.clientId || !env.github.clientSecret) {
+    throw new Error(
+      'GitHub auth is enabled but GITHUB_CLIENT_ID/GITHUB_CLIENT_SECRET is not configured.'
+    );
+  }
+
   providers.push(
     GitHubProvider({
       clientId: env.github.clientId,
@@ -117,6 +123,12 @@ if (isAuthProviderEnabled('github')) {
 }
 
 if (isAuthProviderEnabled('google')) {
+  if (!env.google.clientId || !env.google.clientSecret) {
+    throw new Error(
+      'Google auth is enabled but GOOGLE_CLIENT_ID/GOOGLE_CLIENT_SECRET is not configured.'
+    );
+  }
+
   providers.push(
     GoogleProvider({
       clientId: env.google.clientId,
