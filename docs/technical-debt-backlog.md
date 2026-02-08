@@ -1,57 +1,57 @@
 # Technical Debt Backlog
 
-Bu doküman, build sırasında gözlenen ancak release'i bloklamayan uyarıları teknik borç olarak takip etmek için oluşturulmuştur.
+This document tracks warnings observed during build that do not block release, and captures them as actionable technical debt.
 
 ## 1) Sentry modern instrumentation migration
 
-- **Öncelik:** P1
-- **Durum:** Açık
-- **Gözlem:** Build çıktısında `sentry.client.config.ts` için deprecation uyarısı ve `onRequestError` hook önerisi görülüyor.
-- **Risk:** Gelecek Next.js / Sentry sürümlerinde gözlemlenebilirlikte kırılma veya eksik hata yakalama.
-- **Yapılacaklar:**
-  1. `sentry.client.config.ts` içeriğini `instrumentation-client.ts` dosyasına taşı.
-  2. `onRequestError` için Sentry capture entegrasyonunu ekle.
-  3. Client + server hata smoke testleri ile event gönderimini doğrula.
-- **İlgili dosyalar:**
+- **Priority:** P1
+- **Status:** Open
+- **Observation:** Build output shows a deprecation warning for `sentry.client.config.ts` and recommends using the `onRequestError` hook.
+- **Risk:** Potential observability gaps or incomplete error capture in future Next.js / Sentry versions.
+- **Action items:**
+  1. Move the contents of `sentry.client.config.ts` to `instrumentation-client.ts`.
+  2. Add Sentry capture integration for `onRequestError`.
+  3. Validate event delivery with client + server error smoke tests.
+- **Related files:**
   - `sentry.client.config.ts`
   - `next.config.js`
 
 ## 2) Edge Runtime uyumluluğu: middleware içinde `micromatch` bağımlılığı
 
-- **Öncelik:** P1/P2
-- **Durum:** Açık
-- **Gözlem:** Build çıktısında `micromatch/picomatch` içindeki Node API (`process.platform`, `process.version`) kullanımına dair Edge Runtime uyarıları görülüyor.
-- **Risk:** İleride Edge runtime kuralları sertleştiğinde uyumluluk sorunları.
-- **Yapılacaklar:**
-  1. Middleware route eşleşmesini `micromatch` yerine Edge-safe pattern (native matcher / `startsWith` / kontrollü regex) ile değiştir.
-  2. Middleware unit testlerini güncelle ve regresyon testi çalıştır.
-- **İlgili dosyalar:**
+- **Priority:** P1/P2
+- **Status:** Open
+- **Observation:** Build output includes Edge Runtime warnings about Node API usage (`process.platform`, `process.version`) inside `micromatch/picomatch`.
+- **Risk:** Compatibility issues if Edge runtime constraints become stricter.
+- **Action items:**
+  1. Replace middleware route matching based on `micromatch` with an Edge-safe pattern (native matcher / `startsWith` / controlled regex).
+  2. Update middleware unit tests and run regression tests.
+- **Related files:**
   - `middleware.ts`
   - `package.json`
 
 ## 3) ESLint Next plugin uyumlandırması
 
-- **Öncelik:** P2
-- **Durum:** Açık
-- **Gözlem:** Build sırasında “Next.js plugin was not detected in your ESLint configuration” uyarısı görülüyor.
-- **Risk:** Next.js'e özgü kalite kurallarının eksik uygulanması.
-- **Yapılacaklar:**
-  1. ESLint konfigürasyonunda Next.js önerilen plugin/preset’in etkin olduğunu doğrula.
-  2. `eslint` ve `next lint` çıktıları arasında fark analizi yap.
+- **Priority:** P2
+- **Status:** Open
+- **Observation:** Build shows the warning: "Next.js plugin was not detected in your ESLint configuration".
+- **Risk:** Incomplete enforcement of Next.js-specific quality rules.
+- **Action items:**
+  1. Verify that the recommended Next.js plugin/preset is enabled in ESLint configuration.
+  2. Analyze output differences between `eslint` and `next lint`.
 
 ## 4) `baseline-browser-mapping` güncelliği
 
-- **Öncelik:** P3
-- **Durum:** Açık
-- **Gözlem:** Build sırasında veri setinin güncelliğine dair uyarı görülüyor.
-- **Risk:** Tarayıcı baseline kararlarında güncellik kaybı.
-- **Yapılacaklar:**
-  1. `baseline-browser-mapping` paketini güncelle.
-  2. Dependabot/renovate ile periyodik güncelleme politikasına dahil et.
+- **Priority:** P3
+- **Status:** Open
+- **Observation:** Build shows a warning that the dataset currency is outdated.
+- **Risk:** Stale browser baseline decisions.
+- **Action items:**
+  1. Update the `baseline-browser-mapping` package.
+  2. Include it in a periodic update policy via Dependabot/Renovate.
 
 ---
 
-## Takip notu
+## Tracking note
 
-- Bu maddeler release bloklayıcı değildir.
-- Ancak üretim olgunluğu için bir sonraki sprintte ele alınması önerilir.
+- These items are not release blockers.
+- However, they should be handled in the next sprint to improve production maturity.
