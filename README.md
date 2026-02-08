@@ -151,15 +151,15 @@ This project includes unit, integration, and E2E tests.
 
 Quick difference:
 
-| Test type | Scope | Main command |
-| --- | --- | --- |
-| Unit + Integration | Validates isolated functions/components and internal module interactions. Fast feedback during development. | `npm test` |
-| E2E (Playwright) | Validates complete user flows in a real browser (UI + backend + routing). Closer to real user behavior. | `npm run test:e2e` |
+| Test type | Scope | Main command | Test location |
+| --- | --- | --- | --- |
+| Unit + Integration | Validates isolated functions/components and internal module interactions. Fast feedback during development. | `npm test` | `__tests__/` |
+| E2E (Playwright) | Validates complete user flows in a real browser (UI + backend + routing). Closer to real user behavior. | `npm run test:e2e` | `tests/e2e/` |
 
-Optional structure:
+Test folder structure in this repo:
 
-- `__tests__/`: Unit/integration test files.
-- `tests/e2e/`: Playwright E2E scenarios.
+- `__tests__/`: Unit and integration test files.
+- `tests/e2e/`: Playwright E2E specs and support files.
 
 Update `playwright.config.ts` to change the playwright configuration.
 
