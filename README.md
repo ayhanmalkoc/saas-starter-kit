@@ -24,6 +24,10 @@ Please star ⭐ the repo if you want us to continue developing and improving the
 Video - [BoxyHQ's SaaS Starter Kit: Your Ultimate Enterprise-Compliant Boilerplate](https://www.youtube.com/watch?v=oF8QIwQIhyo) <br>
 Blog - [Enterprise-ready Saas Starter Kit](https://boxyhq.com/blog/enterprise-ready-saas-starter-kit)
 
+Project docs:
+
+- [Billing & Subscription Integration](docs/billing-subscriptions.md)
+
 Next.js-based SaaS starter kit saves you months of development by starting you off with all the features that are the same in every product, so you can focus on what makes your app unique.
 
 ## 🛠️ Built With
