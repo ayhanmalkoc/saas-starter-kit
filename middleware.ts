@@ -14,8 +14,17 @@ const SECURITY_HEADERS = {
   'Cross-Origin-Resource-Policy': 'same-site',
 } as const;
 
+const isDevelopment = process.env.NODE_ENV !== 'production';
+
+const generateNonce = (): string => {
+  const nonce = new Uint8Array(16);
+  crypto.getRandomValues(nonce);
+
+  return btoa(String.fromCharCode(...Array.from(nonce)));
+};
+
 // Generate CSP
-const generateCSP = (): string => {
+const generateCSP = (nonce: string): string => {
   const policies = {
     'default-src': ["'self'"],
     'img-src': [
@@ -27,10 +36,11 @@ const generateCSP = (): string => {
     ],
     'script-src': [
       "'self'",
-      "'unsafe-inline'",
-      "'unsafe-eval'",
+      `'nonce-${nonce}'`,
+      "'strict-dynamic'",
       '*.gstatic.com',
       '*.google.com',
+      ...(isDevelopment ? ["'unsafe-eval'"] : []),
     ],
     'style-src': ["'self'", "'unsafe-inline'"],
     'connect-src': [
@@ -47,12 +57,17 @@ const generateCSP = (): string => {
     'base-uri': ["'self'"],
     'form-action': ["'self'"],
     'frame-ancestors': ["'none'"],
+    'script-src-attr': ["'none'"],
+    'report-uri': ['/api/security/csp-report'],
+    'report-to': ['csp-endpoint'],
   };
 
-  return Object.entries(policies)
+  const cspPolicies = Object.entries(policies)
     .map(([key, values]) => `${key} ${values.join(' ')}`)
-    .concat(['upgrade-insecure-requests'])
+    .concat(isDevelopment ? [] : ['upgrade-insecure-requests'])
     .join('; ');
+
+  return cspPolicies;
 };
 
 // Add routes that don't require authentication
@@ -65,6 +80,7 @@ const unAuthenticatedRoutes = [
   '/api/invitations/*',
   '/api/webhooks/stripe',
   '/api/webhooks/dsync',
+  '/api/security/csp-report',
   '/auth/**',
   '/invitations/*',
   '/terms-condition',
@@ -114,9 +130,17 @@ export default async function middleware(req: NextRequest) {
   }
 
   const requestHeaders = new Headers(req.headers);
-  const csp = generateCSP();
+  const nonce = generateNonce();
+  const csp = generateCSP(nonce);
+  const reportTo = JSON.stringify({
+    group: 'csp-endpoint',
+    max_age: 10886400,
+    endpoints: [{ url: `${req.nextUrl.origin}/api/security/csp-report` }],
+  });
 
   requestHeaders.set('Content-Security-Policy', csp);
+  requestHeaders.set('x-nonce', nonce);
+  requestHeaders.set('Report-To', reportTo);
 
   const response = NextResponse.next({
     request: { headers: requestHeaders },
@@ -125,6 +149,8 @@ export default async function middleware(req: NextRequest) {
   if (env.securityHeadersEnabled) {
     // Set security headers
     response.headers.set('Content-Security-Policy', csp);
+    response.headers.set('Report-To', reportTo);
+    response.headers.set('x-nonce', nonce);
     Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
       response.headers.set(key, value);
     });
