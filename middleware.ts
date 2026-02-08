@@ -150,7 +150,6 @@ export default async function middleware(req: NextRequest) {
     // Set security headers
     response.headers.set('Content-Security-Policy', csp);
     response.headers.set('Report-To', reportTo);
-    response.headers.set('x-nonce', nonce);
     Object.entries(SECURITY_HEADERS).forEach(([key, value]) => {
       response.headers.set(key, value);
     });

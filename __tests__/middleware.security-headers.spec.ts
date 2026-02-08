@@ -98,7 +98,7 @@ describe('middleware security headers flag', () => {
     expect(csp).not.toContain("'unsafe-eval'");
     expect(csp).toContain('report-uri /api/security/csp-report');
     expect(response.headers.get('Report-To')).toContain('csp-endpoint');
-    expect(response.headers.get('x-nonce')).toBeTruthy();
+    expect(response.headers.get('x-nonce')).toBeNull();
   });
 
   it('keeps unsafe-eval only in development mode', async () => {
