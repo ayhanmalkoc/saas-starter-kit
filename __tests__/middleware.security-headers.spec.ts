@@ -33,6 +33,12 @@ describe('middleware security headers flag', () => {
     headers: new Headers(),
   } as any;
 
+  const unauthenticatedRequest = {
+    nextUrl: { pathname: '/auth/login', origin: 'https://example.com' },
+    url: 'https://example.com/auth/login',
+    headers: new Headers(),
+  } as any;
+
   const loadMiddleware = ({
     securityHeadersEnabled,
     nodeEnv,
@@ -110,6 +116,23 @@ describe('middleware security headers flag', () => {
 
     expect(response.headers.get('Content-Security-Policy')).toContain(
       "'unsafe-eval'"
+    );
+  });
+
+
+  it('sets CSP headers for unauthenticated routes too when enabled', async () => {
+    const middleware = loadMiddleware({
+      securityHeadersEnabled: 'true',
+      nodeEnv: 'production',
+    });
+
+    const response = await middleware(unauthenticatedRequest);
+
+    expect(response.headers.get('Content-Security-Policy')).toContain(
+      "default-src 'self'"
+    );
+    expect(response.headers.get('Referrer-Policy')).toBe(
+      'strict-origin-when-cross-origin'
     );
   });
 
