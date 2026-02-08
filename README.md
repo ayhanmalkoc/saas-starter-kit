@@ -143,7 +143,23 @@ npx prisma studio
 
 #### 9. Testing
 
-We are using [Playwright](https://playwright.dev/) to execute E2E tests. Add all tests inside the `/tests` folder.
+This project includes unit, integration, and E2E tests.
+
+- `npm test`: Runs unit + integration tests.
+- `npm run test:cov`: Runs tests with coverage reporting so you can track how much of the codebase is exercised and spot untested areas.
+- `npm run test:e2e`: Runs browser-based end-to-end tests with [Playwright](https://playwright.dev/).
+
+Quick difference:
+
+| Test type | Scope | Main command | Test location |
+| --- | --- | --- | --- |
+| Unit + Integration | Validates isolated functions/components and internal module interactions. Fast feedback during development. | `npm test` | `__tests__/` |
+| E2E (Playwright) | Validates complete user flows in a real browser (UI + backend + routing). Closer to real user behavior. | `npm run test:e2e` | `tests/e2e/` |
+
+Test folder structure in this repo:
+
+- `__tests__/`: Unit and integration test files.
+- `tests/e2e/`: Playwright E2E specs and support files.
 
 Update `playwright.config.ts` to change the playwright configuration.
 
