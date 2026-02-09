@@ -59,7 +59,7 @@ jobs:
           POSTGRES_DB: postgres
         # Set health checks to wait until postgres has started
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -108,6 +108,10 @@ jobs:
           PGPORT: 5432
           PGUSER: postgres
           PGPASSWORD: postgres
+          JACKSON_WEBHOOK_SECRET: ${{ secrets.JACKSON_WEBHOOK_SECRET || 'test-jackson-webhook-secret' }}
+          STRIPE_SYNC_SECRET: ${{ secrets.STRIPE_SYNC_SECRET || 'test-stripe-sync-secret' }}
+          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID || 'test-github-client-id' }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET || 'test-github-client-secret' }}
         run: npx playwright test -x
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
