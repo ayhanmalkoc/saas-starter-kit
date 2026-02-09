@@ -330,4 +330,41 @@ describe('dsync webhook handler', () => {
     });
     expect(handleEvents).not.toHaveBeenCalled();
   });
+
+  it('returns 500 and logs error when event handling fails', async () => {
+    jest.spyOn(Date, 'now').mockReturnValue(1_700_000_000 * 1000);
+    const consoleErrorSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
+    const rawBody = JSON.stringify({
+      event: 'group.user_added',
+      tenant: 'team_123',
+      data: {
+        id: 'user_1',
+        email: 'member@example.com',
+        first_name: 'Team',
+        last_name: 'Member',
+        active: true,
+        group: {
+          id: 'group_1',
+          name: 'Engineering',
+        },
+      },
+    });
+    const timestamp = 1_700_000_000;
+    const signature = createSignature(timestamp, rawBody);
+    const req = makePostRequest(rawBody, `t=${timestamp},s=${signature}`);
+    const res = makeResponse();
+
+    const err = new Error('group sync failed');
+    (handleEvents as jest.Mock).mockRejectedValueOnce(err);
+
+    await handler(req, res);
+
+    expect(consoleErrorSpy).toHaveBeenCalledWith(err);
+    expect(res.status).toHaveBeenCalledWith(500);
+    expect(res.json).toHaveBeenCalledWith({
+      error: { message: 'Internal Server Error' },
+    });
+  });
 });
