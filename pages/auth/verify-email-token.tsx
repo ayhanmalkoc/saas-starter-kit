@@ -54,7 +54,7 @@ export const getServerSideProps = async ({
         emailVerified: new Date(),
       },
     });
-  } catch (error) {
+  } catch {
     return {
       redirect: {
         destination: '/auth/login?error=verify-email-failed',
