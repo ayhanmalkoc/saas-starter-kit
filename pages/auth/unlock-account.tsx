@@ -70,13 +70,18 @@ const UnlockAccount = ({
         return;
       }
 
-      let errorMessage =
-        'Unable to send a new unlock link right now. Please try again.';
+      const retryPrompt = t('please-try-again');
+      let errorMessage = t('unlock-account-request-fallback');
 
       try {
         const json = await response.json();
-        if (json?.error?.message) {
-          errorMessage = `${json.error.message} Please try again.`;
+        const serverMessage = json?.error?.message;
+
+        if (serverMessage) {
+          const hasRetryPrompt = /\btry\b/i.test(serverMessage) || /retry/i.test(serverMessage);
+          errorMessage = hasRetryPrompt
+            ? serverMessage
+            : `${serverMessage} ${retryPrompt}`;
         }
       } catch {
         // Keep the fallback error message.
