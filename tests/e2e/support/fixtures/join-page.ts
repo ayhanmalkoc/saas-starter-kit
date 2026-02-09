@@ -26,8 +26,10 @@ export class JoinPage {
   }
 
   async goto() {
-    await this.page.goto('/auth/join');
-    await expect(this.nameBox).toBeVisible();
+    await this.page.goto('/auth/join', { waitUntil: 'networkidle' });
+
+    await expect(this.page).toHaveURL(/\/auth\/join/);
+    await expect(this.nameBox).toBeVisible({ timeout: 30000 });
   }
 
   async signUp() {
