@@ -102,6 +102,12 @@ jobs:
       - name: Install playwright browser dependencies
         run: npx playwright install chromium
       - name: e2e tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
         run: npx playwright test -x
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
