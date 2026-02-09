@@ -10,7 +10,11 @@ export const unAuthenticatedRoutes = {
     '/login/saml',
   ],
   prefix: ['/api/auth/**', '/api/oauth/**', '/api/scim/v2.0/**', '/auth/**'],
-  singleSegmentWildcard: ['/api/invitations/*', '/invitations/*', '/.well-known/*'],
+  singleSegmentWildcard: [
+    '/api/invitations/*',
+    '/invitations/*',
+    '/.well-known/*',
+  ],
 } as const;
 
 const normalizePathname = (pathname: string): string => {
@@ -34,8 +38,7 @@ export const isPrefixMatch = (pathname: string, pattern: string): boolean => {
   const prefix = normalizePathname(pattern.replace('/**', ''));
 
   return (
-    normalizedPathname === prefix ||
-    normalizedPathname.startsWith(`${prefix}/`)
+    normalizedPathname === prefix || normalizedPathname.startsWith(`${prefix}/`)
   );
 };
 
@@ -58,8 +61,12 @@ const isSingleSegmentWildcardMatch = (
 
 export const isUnAuthenticatedRoute = (pathname: string): boolean => {
   return (
-    unAuthenticatedRoutes.exact.some((route) => isExactMatch(pathname, route)) ||
-    unAuthenticatedRoutes.prefix.some((route) => isPrefixMatch(pathname, route)) ||
+    unAuthenticatedRoutes.exact.some((route) =>
+      isExactMatch(pathname, route)
+    ) ||
+    unAuthenticatedRoutes.prefix.some((route) =>
+      isPrefixMatch(pathname, route)
+    ) ||
     unAuthenticatedRoutes.singleSegmentWildcard.some((route) =>
       isSingleSegmentWildcardMatch(pathname, route)
     )

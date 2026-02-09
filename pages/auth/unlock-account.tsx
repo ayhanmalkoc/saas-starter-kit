@@ -78,7 +78,8 @@ const UnlockAccount = ({
         const serverMessage = json?.error?.message;
 
         if (serverMessage) {
-          const hasRetryPrompt = /\btry\b/i.test(serverMessage) || /retry/i.test(serverMessage);
+          const hasRetryPrompt =
+            /\btry\b/i.test(serverMessage) || /retry/i.test(serverMessage);
           errorMessage = hasRetryPrompt
             ? serverMessage
             : `${serverMessage} ${retryPrompt}`;

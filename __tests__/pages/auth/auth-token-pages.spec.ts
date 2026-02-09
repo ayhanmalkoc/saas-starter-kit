@@ -34,7 +34,10 @@ describe('auth token page redirects', () => {
       token: 'unlock-token',
       expires: new Date(Date.now() + 60_000),
     });
-    (getUser as jest.Mock).mockResolvedValue({ id: 'user-1', email: 'locked@example.com' });
+    (getUser as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'locked@example.com',
+    });
     (isVerificationTokenExpired as jest.Mock).mockReturnValue(false);
     (unlockAccount as jest.Mock).mockRejectedValue(new Error('unlock failed'));
     (deleteVerificationToken as jest.Mock).mockResolvedValue(undefined);
@@ -51,20 +54,25 @@ describe('auth token page redirects', () => {
     });
   });
 
-
-
   it('still redirects unlock-account to success when token deletion fails after unlock', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
 
     (getVerificationToken as jest.Mock).mockResolvedValue({
       identifier: 'locked@example.com',
       token: 'unlock-token',
       expires: new Date(Date.now() + 60_000),
     });
-    (getUser as jest.Mock).mockResolvedValue({ id: 'user-1', email: 'locked@example.com' });
+    (getUser as jest.Mock).mockResolvedValue({
+      id: 'user-1',
+      email: 'locked@example.com',
+    });
     (isVerificationTokenExpired as jest.Mock).mockReturnValue(false);
     (unlockAccount as jest.Mock).mockResolvedValue(undefined);
-    (deleteVerificationToken as jest.Mock).mockRejectedValue(new Error('delete failed'));
+    (deleteVerificationToken as jest.Mock).mockRejectedValue(
+      new Error('delete failed')
+    );
 
     const result = await getUnlockAccountProps({
       query: { token: 'unlock-token' },
@@ -81,7 +89,9 @@ describe('auth token page redirects', () => {
   });
 
   it('still redirects verify-email-token to success when token deletion fails after update', async () => {
-    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+    const consoleSpy = jest
+      .spyOn(console, 'error')
+      .mockImplementation(() => undefined);
 
     (getVerificationToken as jest.Mock).mockResolvedValue({
       identifier: 'verify@example.com',
@@ -89,7 +99,9 @@ describe('auth token page redirects', () => {
       expires: new Date(Date.now() + 60_000),
     });
     (updateUser as jest.Mock).mockResolvedValue(undefined);
-    (deleteVerificationToken as jest.Mock).mockRejectedValue(new Error('delete failed'));
+    (deleteVerificationToken as jest.Mock).mockRejectedValue(
+      new Error('delete failed')
+    );
 
     const result = await getVerifyEmailTokenProps({
       query: { token: 'verify-token' },

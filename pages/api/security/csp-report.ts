@@ -15,7 +15,7 @@ type CspReportPayload = {
   'blocked-uri': string;
   'effective-directive'?: string;
   'original-policy'?: string;
-  'disposition'?: string;
+  disposition?: string;
   'line-number'?: number;
   'column-number'?: number;
   'source-file'?: string;

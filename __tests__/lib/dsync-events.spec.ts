@@ -103,7 +103,6 @@ describe('handleEvents group events', () => {
     expect(deleteUser).toHaveBeenCalledWith({ email: 'member@example.com' });
   });
 
-
   it('skips cleanup for repeated user.updated deactivation when membership is already removed', async () => {
     (getUser as jest.Mock).mockResolvedValue({
       id: 'user_db_1',
