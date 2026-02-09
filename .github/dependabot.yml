@@ -26,6 +26,13 @@ updates:
         patterns:
           - '@prisma/client'
           - 'prisma'
+      browser-baseline:
+        patterns:
+          - 'autoprefixer'
+          - 'browserslist'
+          - 'baseline-browser-mapping'
+          - 'caniuse-lite'
+          - 'update-browserslist-db'
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
