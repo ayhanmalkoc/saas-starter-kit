@@ -124,7 +124,11 @@ export const handleEvents = async (event: DirectorySyncEvent) => {
 
     // Deactivation of user by removing them from the team
     if (active === false) {
-      await removeMembershipIfExists(teamId, user.id);
+      const removedMembership = await removeMembershipIfExists(teamId, user.id);
+
+      if (!removedMembership) {
+        return;
+      }
 
       const otherTeamsCount = await countTeamMembers({
         where: {

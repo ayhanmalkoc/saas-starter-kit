@@ -103,6 +103,32 @@ describe('handleEvents group events', () => {
     expect(deleteUser).toHaveBeenCalledWith({ email: 'member@example.com' });
   });
 
+
+  it('skips cleanup for repeated user.updated deactivation when membership is already removed', async () => {
+    (getUser as jest.Mock).mockResolvedValue({
+      id: 'user_db_1',
+      email: 'member@example.com',
+    });
+
+    (countTeamMembers as jest.Mock).mockResolvedValueOnce(0);
+
+    await handleEvents({
+      event: 'user.updated',
+      tenant: 'team_123',
+      data: {
+        id: 'user_1',
+        email: 'member@example.com',
+        first_name: 'Team',
+        last_name: 'Member',
+        active: false,
+      },
+    } as any);
+
+    expect(removeTeamMember).not.toHaveBeenCalled();
+    expect(deleteUser).not.toHaveBeenCalled();
+    expect(countTeamMembers).toHaveBeenCalledTimes(1);
+  });
+
   it('is a safe no-op for unknown or unsupported group events', async () => {
     await handleEvents({
       event: 'group.unknown',
