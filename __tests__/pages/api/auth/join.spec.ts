@@ -67,6 +67,7 @@ import { createUser, getUser } from 'models/user';
 import { createVerificationToken } from 'models/verificationToken';
 import { sendVerificationEmail } from '@/lib/email/sendVerificationEmail';
 import { recordMetric } from '@/lib/metrics';
+import { slugify } from '@/lib/server-common';
 import { getInvitation, isInvitationExpired } from 'models/invitation';
 import { validateWithSchema } from '@/lib/zod';
 
@@ -119,21 +120,86 @@ describe('POST /api/auth/join', () => {
     expect(res.headers.Allow).toBe('POST');
   });
 
-  it('returns validation error for invalid payload', async () => {
-    (validateWithSchema as jest.Mock).mockImplementationOnce(() => {
-      throw { status: 422, message: 'Invalid input' };
+  it('returns validation errors for invalid payload fields with separate checks', async () => {
+    (validateWithSchema as jest.Mock).mockImplementation(
+      (_schema: unknown, body: Record<string, string>) => {
+        if ('name' in body && !body.name) {
+          throw { status: 422, message: 'Invalid name' };
+        }
+
+        if ('password' in body && (!body.password || body.password.length < 8)) {
+          throw { status: 422, message: 'Invalid password' };
+        }
+
+        if ('team' in body && !body.team) {
+          throw { status: 422, message: 'Invalid team' };
+        }
+
+        if ('slug' in body && !body.slug) {
+          throw { status: 422, message: 'Invalid slug' };
+        }
+
+        return body;
+      }
+    );
+
+    const baseBody = {
+      name: 'John Doe',
+      email: 'john@example.com',
+      password: 'secret123',
+      team: 'Acme',
+      recaptchaToken: 'captcha-token',
+    };
+
+    const invalidNameReq = {
+      method: 'POST',
+      body: { ...baseBody, name: '' },
+    } as NextApiRequest;
+    const invalidNameRes = createRes();
+
+    await handler(invalidNameReq, invalidNameRes);
+
+    expect(invalidNameRes.statusCode).toBe(422);
+    expect(invalidNameRes.body).toEqual({ error: { message: 'Invalid name' } });
+
+    const invalidPasswordReq = {
+      method: 'POST',
+      body: { ...baseBody, password: 'short' },
+    } as NextApiRequest;
+    const invalidPasswordRes = createRes();
+
+    await handler(invalidPasswordReq, invalidPasswordRes);
+
+    expect(invalidPasswordRes.statusCode).toBe(422);
+    expect(invalidPasswordRes.body).toEqual({
+      error: { message: 'Invalid password' },
     });
 
-    const req = {
+    const invalidTeamReq = {
       method: 'POST',
-      body: { name: '', email: 'not-email' },
+      body: { ...baseBody, team: '' },
     } as NextApiRequest;
-    const res = createRes();
+    const invalidTeamRes = createRes();
 
-    await handler(req, res);
+    await handler(invalidTeamReq, invalidTeamRes);
 
-    expect(res.statusCode).toBe(422);
-    expect(res.body).toEqual({ error: { message: 'Invalid input' } });
+    expect(invalidTeamRes.statusCode).toBe(400);
+    expect(invalidTeamRes.body).toEqual({
+      error: { message: 'A team name is required.' },
+    });
+
+    (slugify as jest.Mock).mockReturnValueOnce('');
+
+    const invalidSlugReq = {
+      method: 'POST',
+      body: { ...baseBody, team: 'Acme' },
+    } as NextApiRequest;
+    const invalidSlugRes = createRes();
+
+    await handler(invalidSlugReq, invalidSlugRes);
+
+    expect(invalidSlugRes.statusCode).toBe(422);
+    expect(invalidSlugRes.body).toEqual({ error: { message: 'Invalid slug' } });
   });
 
   it('creates user/team and sends verification email on success', async () => {

@@ -15,9 +15,6 @@ import { Team } from '@prisma/client';
 import { createVerificationToken } from 'models/verificationToken';
 import { userJoinSchema, validateWithSchema } from '@/lib/zod';
 
-// TODO:
-// Add zod schema validation
-
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
@@ -47,6 +44,7 @@ export default async function handler(
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const { name, password, team, inviteToken, recaptchaToken } = req.body;
 
+  // Validation order: recaptcha first, then schema/business rules.
   await validateRecaptcha(recaptchaToken);
 
   const invitation = inviteToken
@@ -66,12 +64,14 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
 
+  // Validate core user fields before email/team rules.
   validateWithSchema(userJoinSchema, {
     name,
     email,
     password,
   });
 
+  // Work-email policy runs after recaptcha + schema validation.
   if (!isEmailAllowed(email)) {
     throw new ApiError(
       400,
@@ -83,7 +83,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ApiError(400, 'An user with this email already exists.');
   }
 
-  // Check if team name is available
+  // If there is no invitation, validate team + derived slug and ensure uniqueness.
   if (!invitation) {
     if (!team) {
       throw new ApiError(400, 'A team name is required.');
