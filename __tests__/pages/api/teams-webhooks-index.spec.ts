@@ -44,6 +44,7 @@ jest.mock('@/lib/metrics', () => ({
 }));
 
 import handler from '@/pages/api/teams/[slug]/webhooks';
+import { validateWithSchema } from '@/lib/zod';
 import { throwIfNoTeamAccess } from 'models/team';
 import { createWebhook, findOrCreateApp } from '@/lib/svix';
 
@@ -83,6 +84,10 @@ describe('/api/teams/[slug]/webhooks', () => {
   });
 
   it('returns 400 for POST when webhook URL protocol is http', async () => {
+    (validateWithSchema as jest.Mock).mockImplementationOnce(() => {
+      throw { status: 400, message: 'Webhook URL must use HTTPS protocol.' };
+    });
+
     const req = {
       method: 'POST',
       body: {
