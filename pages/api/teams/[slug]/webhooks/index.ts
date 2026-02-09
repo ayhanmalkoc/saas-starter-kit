@@ -67,7 +67,9 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   );
   const app = await findOrCreateApp(teamMember.team.name, teamMember.team.id);
 
-  // TODO: The endpoint URL must be HTTPS.
+  if (new URL(url).protocol !== 'https:') {
+    throw new ApiError(400, 'Webhook URL must use HTTPS protocol.');
+  }
 
   const data: EndpointIn = {
     description: name,

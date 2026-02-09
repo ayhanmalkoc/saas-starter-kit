@@ -141,7 +141,9 @@ export const getInvitationSchema = z.object({
 
 export const webhookEndpointSchema = z.object({
   name: name(),
-  url,
+  url: url.refine((webhookUrl) => new URL(webhookUrl).protocol === 'https:', {
+    message: 'Webhook URL must use HTTPS protocol.',
+  }),
   eventTypes,
 });
 

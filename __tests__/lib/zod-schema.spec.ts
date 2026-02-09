@@ -4,6 +4,7 @@ import {
   ssoVerifySchema,
   updateTeamSchema,
   validateWithSchema,
+  webhookEndpointSchema,
 } from '@/lib/zod';
 
 describe('lib/zod schema validation', () => {
@@ -46,6 +47,29 @@ describe('lib/zod schema validation', () => {
     expect(() => validateWithSchema(createTeamSchema, { name: '' })).toThrow(
       new ApiError(422, 'Validation Error: Team Name is required')
     );
+  });
+
+  it('accepts only https webhook endpoint URLs in webhookEndpointSchema', () => {
+    const httpResult = webhookEndpointSchema.safeParse({
+      name: 'Orders',
+      url: 'http://example.com/webhooks',
+      eventTypes: ['order.created'],
+    });
+
+    const httpsResult = webhookEndpointSchema.safeParse({
+      name: 'Orders',
+      url: 'https://example.com/webhooks',
+      eventTypes: ['order.created'],
+    });
+
+    expect(httpResult.success).toBe(false);
+    expect(httpsResult.success).toBe(true);
+
+    if (!httpResult.success) {
+      expect(httpResult.error.issues[0]?.message).toBe(
+        'Webhook URL must use HTTPS protocol.'
+      );
+    }
   });
 
   it('keeps ApiError status and message fields', () => {
