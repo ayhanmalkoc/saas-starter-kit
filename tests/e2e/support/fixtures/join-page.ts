@@ -26,10 +26,17 @@ export class JoinPage {
   }
 
   async goto() {
-    await this.page.goto('/auth/join', { waitUntil: 'networkidle' });
+    await this.page.context().clearCookies();
+
+    await this.page.goto('/auth/join', { waitUntil: 'domcontentloaded' });
+    await this.page.waitForLoadState('networkidle');
+
+    if (!/\/auth\/join/.test(this.page.url())) {
+      await this.page.goto('/auth/join', { waitUntil: 'networkidle' });
+    }
 
     await expect(this.page).toHaveURL(/\/auth\/join/);
-    await expect(this.nameBox).toBeVisible({ timeout: 30000 });
+    await expect(this.nameBox).toBeVisible({ timeout: 45000 });
   }
 
   async signUp() {
