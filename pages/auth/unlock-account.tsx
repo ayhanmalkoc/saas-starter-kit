@@ -146,10 +146,22 @@ export const getServerSideProps = async ({
     };
   }
 
-  await Promise.allSettled([
-    unlockAccount(user),
-    deleteVerificationToken(verificationToken.token),
-  ]);
+  try {
+    await unlockAccount(user);
+
+    try {
+      await deleteVerificationToken(verificationToken.token);
+    } catch (error) {
+      console.error('Failed to delete unlock verification token', error);
+    }
+  } catch (error) {
+    return {
+      redirect: {
+        destination: '/auth/login?error=unlock-failed',
+        permanent: false,
+      },
+    };
+  }
 
   return {
     redirect: {

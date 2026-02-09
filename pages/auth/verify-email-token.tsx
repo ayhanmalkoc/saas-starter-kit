@@ -45,18 +45,29 @@ export const getServerSideProps = async ({
     };
   }
 
-  await Promise.allSettled([
-    updateUser({
+  try {
+    await updateUser({
       where: {
         email: verificationToken.identifier,
       },
       data: {
         emailVerified: new Date(),
       },
-    }),
+    });
+  } catch (error) {
+    return {
+      redirect: {
+        destination: '/auth/login?error=verify-email-failed',
+        permanent: false,
+      },
+    };
+  }
 
-    deleteVerificationToken(verificationToken.token),
-  ]);
+  try {
+    await deleteVerificationToken(verificationToken.token);
+  } catch (error) {
+    console.error('Failed to delete email verification token', error);
+  }
 
   return {
     redirect: {
