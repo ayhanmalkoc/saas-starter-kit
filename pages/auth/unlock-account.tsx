@@ -60,20 +60,33 @@ const UnlockAccount = ({
         body: JSON.stringify({ email, expiredToken }),
       });
 
-      if (!response.ok) {
-        const json = await response.json();
-        throw new Error(json.error.message);
+      if (response.status === 204) {
+        setMessage({
+          text: t('unlock-account-link-sent'),
+          status: 'success',
+        });
+        setDisplayResendLink(false);
+
+        return;
       }
 
-      setMessage({
-        text: t('unlock-account-link-sent'),
-        status: 'success',
-      });
+      let errorMessage =
+        'Unable to send a new unlock link right now. Please try again.';
+
+      try {
+        const json = await response.json();
+        if (json?.error?.message) {
+          errorMessage = `${json.error.message} Please try again.`;
+        }
+      } catch {
+        // Keep the fallback error message.
+      }
+
+      throw new Error(errorMessage);
     } catch (error: any) {
       setMessage({ text: error.message, status: 'error' });
     } finally {
       setLoading(false);
-      setDisplayResendLink(false);
     }
   };
 
@@ -154,7 +167,7 @@ export const getServerSideProps = async ({
     } catch (error) {
       console.error('Failed to delete unlock verification token', error);
     }
-  } catch (error) {
+  } catch {
     return {
       redirect: {
         destination: '/auth/login?error=unlock-failed',
