@@ -51,6 +51,60 @@ describe('auth token page redirects', () => {
     });
   });
 
+
+
+  it('still redirects unlock-account to success when token deletion fails after unlock', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    (getVerificationToken as jest.Mock).mockResolvedValue({
+      identifier: 'locked@example.com',
+      token: 'unlock-token',
+      expires: new Date(Date.now() + 60_000),
+    });
+    (getUser as jest.Mock).mockResolvedValue({ id: 'user-1', email: 'locked@example.com' });
+    (isVerificationTokenExpired as jest.Mock).mockReturnValue(false);
+    (unlockAccount as jest.Mock).mockResolvedValue(undefined);
+    (deleteVerificationToken as jest.Mock).mockRejectedValue(new Error('delete failed'));
+
+    const result = await getUnlockAccountProps({
+      query: { token: 'unlock-token' },
+    } as any);
+
+    expect(result).toEqual({
+      redirect: {
+        destination: '/auth/login?success=account-unlocked',
+        permanent: false,
+      },
+    });
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
+  it('still redirects verify-email-token to success when token deletion fails after update', async () => {
+    const consoleSpy = jest.spyOn(console, 'error').mockImplementation(() => undefined);
+
+    (getVerificationToken as jest.Mock).mockResolvedValue({
+      identifier: 'verify@example.com',
+      token: 'verify-token',
+      expires: new Date(Date.now() + 60_000),
+    });
+    (updateUser as jest.Mock).mockResolvedValue(undefined);
+    (deleteVerificationToken as jest.Mock).mockRejectedValue(new Error('delete failed'));
+
+    const result = await getVerifyEmailTokenProps({
+      query: { token: 'verify-token' },
+    } as any);
+
+    expect(result).toEqual({
+      redirect: {
+        destination: '/auth/login?success=email-verified',
+        permanent: false,
+      },
+    });
+    expect(consoleSpy).toHaveBeenCalled();
+    consoleSpy.mockRestore();
+  });
+
   it('does not redirect verify-email-token to success when verification process fails', async () => {
     (getVerificationToken as jest.Mock).mockResolvedValue({
       identifier: 'verify@example.com',

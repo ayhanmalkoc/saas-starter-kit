@@ -46,17 +46,14 @@ export const getServerSideProps = async ({
   }
 
   try {
-    await Promise.all([
-      updateUser({
-        where: {
-          email: verificationToken.identifier,
-        },
-        data: {
-          emailVerified: new Date(),
-        },
-      }),
-      deleteVerificationToken(verificationToken.token),
-    ]);
+    await updateUser({
+      where: {
+        email: verificationToken.identifier,
+      },
+      data: {
+        emailVerified: new Date(),
+      },
+    });
   } catch (error) {
     return {
       redirect: {
@@ -64,6 +61,12 @@ export const getServerSideProps = async ({
         permanent: false,
       },
     };
+  }
+
+  try {
+    await deleteVerificationToken(verificationToken.token);
+  } catch (error) {
+    console.error('Failed to delete email verification token', error);
   }
 
   return {
