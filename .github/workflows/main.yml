@@ -20,10 +20,13 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PGUSER: postgres
       NEXTAUTH_URL: http://localhost:4002
       NEXTAUTH_SECRET: secret
       NEXTAUTH_SESSION_STRATEGY: database
       AUTH_PROVIDERS: github,credentials,saml,idp-initiated
+      GITHUB_CLIENT_ID: test-github-client-id
+      GITHUB_CLIENT_SECRET: test-github-client-secret
       FEATURE_TEAM_SSO: true
       FEATURE_TEAM_DSYNC: true
       FEATURE_TEAM_AUDIT_LOG: true
@@ -39,6 +42,7 @@ jobs:
       JACKSON_PRODUCT_ID: boxyhq
       JACKSON_WEBHOOK_SECRET: your-webhook-secret
       JACKSON_API_KEY: secret
+      STRIPE_SYNC_SECRET: test-stripe-sync-secret
       DEBUG: pw:webserver
 
     services:
@@ -74,6 +78,14 @@ jobs:
           cache: 'npm'
           check-latest: true
       - run: npm install
+      - name: Validate required CI environment variables
+        run: |
+          for var in JACKSON_WEBHOOK_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET STRIPE_SYNC_SECRET DATABASE_URL; do
+            if [ -z "${!var}" ]; then
+              echo "Missing required env var: $var"
+              exit 1
+            fi
+          done
       - run: npm run check-lint
       - run: npm run check-format
       - run: npm run check-locale
