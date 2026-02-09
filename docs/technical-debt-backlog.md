@@ -20,8 +20,8 @@ Use the following fields for every backlog entry:
 ## 1) Sentry modern instrumentation migration
 
 - **Priority:** P1
-- **Status:** In Progress
-- **Last Updated:** 2026-02-08
+- **Status:** Completed
+- **Last Updated:** 2026-02-09
 - **Owner:** Platform / Observability
 - **Target Sprint:** 2026-S07
 - **Observation:** Build output shows a deprecation warning for `sentry.client.config.ts` and recommends using the `onRequestError` hook.
@@ -55,24 +55,25 @@ Use the following fields for every backlog entry:
 ## 2) Edge Runtime compatibility: `micromatch` dependency in middleware
 
 - **Priority:** P1
-- **Status:** In Progress
-- **Last Updated:** 2026-02-08
+- **Status:** Completed
+- **Last Updated:** 2026-02-09
 - **Owner:** Platform / Web Runtime
 - **Target Sprint:** 2026-S07
-- **Observation:** Build output includes Edge Runtime warnings about Node API usage (`process.platform`, `process.version`) inside `micromatch/picomatch`.
+- **Observation:** Middleware route matching was migrated away from direct `micromatch` usage and root dependency declarations were removed; lockfile now only retains transitive `micromatch` entries required by third-party tooling.
 - **Risk:** Compatibility issues if Edge runtime constraints become stricter.
 - **Action Items:**
-  1. Replace middleware route matching based on `micromatch` with an Edge-safe pattern (native matcher / `startsWith` / controlled regex).
-  2. Update middleware unit tests and run regression tests.
-  3. Add a risk guardrail: preserve auth-protected route behavior (no bypass regression) while confirming Edge Runtime build warning removal.
+  1. ✅ Replace middleware route matching based on `micromatch` with an Edge-safe pattern (native matcher / `startsWith` / controlled regex).
+  2. ✅ Update middleware unit tests and run regression tests.
+  3. ✅ Add a risk guardrail: preserve auth-protected route behavior (no bypass regression) while confirming Edge Runtime build warning removal.
 - **Validation:**
-  - `npm run build` log no longer reports Edge Runtime Node API warnings originating from `micromatch/picomatch`.
-  - `npm test -- middleware` (or project-equivalent middleware tests) passes.
+  - `npm run build-ci` compiles successfully and does not emit Edge Runtime Node API warnings from `micromatch/picomatch` before failing at runtime env validation (`DATABASE_URL`, `APP_URL`, `NEXTAUTH_SECRET` missing in CI-like local shell).
+  - `npm test -- --runInBand` passes, including middleware-focused suites (`__tests__/middleware.route-match.spec.ts`, `__tests__/middleware.security-headers.spec.ts`).
 - **Rollback:**
   - Revert middleware matcher changes to previous behavior and pin known-good middleware rules if auth/routing regressions occur.
 - **Dependencies:**
   - `middleware.ts`
   - Routing/auth middleware test coverage
+  - `package.json` / `package-lock.json` dependency cleanup (`micromatch`, `@types/micromatch` removed from root declarations)
 - **Related Files:**
   - `middleware.ts`
   - `package.json`
