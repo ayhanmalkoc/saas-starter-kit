@@ -119,23 +119,29 @@ Use the following fields for every backlog entry:
 ## 4) `baseline-browser-mapping` currency
 
 - **Priority:** P3
-- **Status:** Open
+- **Status:** In Progress
 - **Last Updated:** 2026-02-08
 - **Owner:** DevEx
 - **Target Sprint:** 2026-S09
 - **Observation:** Build shows a warning that the dataset currency is outdated.
 - **Risk:** Stale browser baseline decisions.
 - **Action Items:**
-  1. Update the `baseline-browser-mapping` package.
-  2. Include it in a periodic update policy via Dependabot/Renovate.
+  1. `baseline-browser-mapping` is **transitive** (chain: `autoprefixer` → `browserslist` → `baseline-browser-mapping`), so update the parent package chain rather than pinning it directly.
+  2. Include the direct parent package (`autoprefixer`) in a dedicated Dependabot group for periodic updates; transitive browser baseline packages will follow via lockfile updates.
+  3. Gate release with a checklist item confirming build output is clean from the `outdated dataset currency` warning.
 - **Validation:**
-  - `npm outdated baseline-browser-mapping` shows installed version is up to date after upgrade.
+  - `npm ls baseline-browser-mapping --all` confirms the package is transitive under `autoprefixer`/`browserslist`.
+  - `npm outdated baseline-browser-mapping browserslist autoprefixer` shows no pending updates after upgrade.
   - `npm run build` no longer emits dataset currency warning.
 - **Rollback:**
   - Restore previous lockfile/package version if update introduces browser target regressions.
+- **Operational SLA:** Browser baseline package chain updates must be merged within **30 days** of upstream release.
 - **Dependencies:**
+  - `autoprefixer`
+  - `browserslist`
   - `baseline-browser-mapping`
-  - Dependabot/Renovate configuration
+  - Dependabot configuration (`.github/dependabot.yml`)
+  - Release checklist (`docs/release-checklist.md`)
 
 ---
 

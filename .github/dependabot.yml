@@ -26,6 +26,10 @@ updates:
         patterns:
           - '@prisma/client'
           - 'prisma'
+      browser-baseline:
+        # Dependabot groups direct dependencies; transitive browser-baseline packages are updated via autoprefixer.
+        patterns:
+          - 'autoprefixer'
   - package-ecosystem: 'github-actions'
     directory: '/'
     schedule:
