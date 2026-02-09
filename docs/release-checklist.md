@@ -11,4 +11,4 @@ Use this checklist before cutting a release.
 ## Dependency hygiene
 
 - [ ] Browser baseline dependency chain (`autoprefixer` → `browserslist` → `baseline-browser-mapping`) is within SLA (updated within the last 30 days of upstream release).
-- [ ] Dependabot PRs for the `browser-baseline` group are reviewed and either merged or explicitly deferred with rationale.
+- [ ] Dependabot PRs for the `browser-baseline` group (`autoprefixer`) are reviewed and either merged or explicitly deferred with rationale.

@@ -127,7 +127,7 @@ Use the following fields for every backlog entry:
 - **Risk:** Stale browser baseline decisions.
 - **Action Items:**
   1. `baseline-browser-mapping` is **transitive** (chain: `autoprefixer` → `browserslist` → `baseline-browser-mapping`), so update the parent package chain rather than pinning it directly.
-  2. Include the browser baseline chain in a dedicated Dependabot group/pattern for periodic updates.
+  2. Include the direct parent package (`autoprefixer`) in a dedicated Dependabot group for periodic updates; transitive browser baseline packages will follow via lockfile updates.
   3. Gate release with a checklist item confirming build output is clean from the `outdated dataset currency` warning.
 - **Validation:**
   - `npm ls baseline-browser-mapping --all` confirms the package is transitive under `autoprefixer`/`browserslist`.
