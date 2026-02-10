@@ -192,6 +192,8 @@
   "product-placeholder": "This is just a placeholder for the products page.",
   "request-new-link": "Request new link",
   "unlock-account-link-sent": "A new link has been sent to your email address.",
+  "unlock-account-request-fallback": "Unable to send a new unlock link right now. Please try again.",
+  "please-try-again": "Please try again.",
   "or": "or",
   "webhooks-description": "Webhooks are used to send notifications to your external apps.",
   "members-description": "Team members and their roles.",

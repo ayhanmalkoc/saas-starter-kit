@@ -127,7 +127,10 @@ describe('POST /api/auth/join', () => {
           throw { status: 422, message: 'Invalid name' };
         }
 
-        if ('password' in body && (!body.password || body.password.length < 8)) {
+        if (
+          'password' in body &&
+          (!body.password || body.password.length < 8)
+        ) {
           throw { status: 422, message: 'Invalid password' };
         }
 

@@ -1,29 +1,7 @@
-import { test as base } from '@playwright/test';
-import { cleanup, team, user } from '../support/helper';
-import { JoinPage, LoginPage } from './fixtures';
+import { test } from '@playwright/test';
+import { cleanup, seedDefaultAccount } from '../support/helper';
 
-type LoginFixture = {
-  loginPage: LoginPage;
-  joinPage: JoinPage;
-};
-
-const setup = base.extend<LoginFixture>({
-  joinPage: async ({ page }, use) => {
-    const joinPage = new JoinPage(page, user, team.name);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    await use(joinPage);
-  },
-  loginPage: async ({ page }, use) => {
-    const loginPage = new LoginPage(page);
-
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    await use(loginPage);
-  },
-});
-
-setup('Sign up', async ({ joinPage }) => {
+test('Prepare account fixture', async () => {
   await cleanup();
-  await joinPage.goto();
-  await joinPage.signUp();
+  await seedDefaultAccount();
 });

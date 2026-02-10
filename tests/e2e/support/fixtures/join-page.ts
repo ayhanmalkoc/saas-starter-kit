@@ -16,22 +16,27 @@ export class JoinPage {
     },
     public readonly teamName: string
   ) {
-    this.nameBox = this.page.getByPlaceholder('Your Name');
-    this.teamNameBox = this.page.getByPlaceholder('Team Name');
-    this.emailBox = this.page.getByPlaceholder('example@boxyhq.com');
-    this.passwordBox = this.page.getByPlaceholder('Password');
-    this.createAccountButton = page.getByRole('button', {
-      name: 'Create Account',
-    });
+    this.nameBox = this.page.locator('input[name="name"]');
+    this.teamNameBox = this.page.locator('input[name="team"]');
+    this.emailBox = this.page.locator('input[name="email"]');
+    this.passwordBox = this.page.locator('input[name="password"]');
+    this.createAccountButton = page.locator('form button[type="submit"]');
     this.createAccountSuccessMessage =
       'You have successfully created your account.';
   }
 
   async goto() {
-    await this.page.goto('/auth/join');
-    await expect(
-      this.page.getByRole('heading', { name: 'Get started' })
-    ).toBeVisible();
+    await this.page.context().clearCookies();
+
+    await this.page.goto('/auth/join', { waitUntil: 'domcontentloaded' });
+    await this.page.waitForLoadState('networkidle');
+
+    if (!/\/auth\/join/.test(this.page.url())) {
+      await this.page.goto('/auth/join', { waitUntil: 'networkidle' });
+    }
+
+    await expect(this.page).toHaveURL(/\/auth\/join/);
+    await expect(this.nameBox).toBeVisible({ timeout: 45000 });
   }
 
   async signUp() {

@@ -20,10 +20,16 @@ jobs:
 
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+      PGHOST: localhost
+      PGPORT: 5432
+      PGUSER: postgres
+      PGPASSWORD: postgres
       NEXTAUTH_URL: http://localhost:4002
       NEXTAUTH_SECRET: secret
       NEXTAUTH_SESSION_STRATEGY: database
       AUTH_PROVIDERS: github,credentials,saml,idp-initiated
+      GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID || 'test-github-client-id' }}
+      GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET || 'test-github-client-secret' }}
       FEATURE_TEAM_SSO: true
       FEATURE_TEAM_DSYNC: true
       FEATURE_TEAM_AUDIT_LOG: true
@@ -37,8 +43,9 @@ jobs:
       DISABLE_NON_BUSINESS_EMAIL_SIGNUP: false
       APP_URL: http://localhost:4002
       JACKSON_PRODUCT_ID: boxyhq
-      JACKSON_WEBHOOK_SECRET: your-webhook-secret
+      JACKSON_WEBHOOK_SECRET: ${{ secrets.JACKSON_WEBHOOK_SECRET || 'test-jackson-webhook-secret' }}
       JACKSON_API_KEY: secret
+      STRIPE_SYNC_SECRET: ${{ secrets.STRIPE_SYNC_SECRET || 'test-stripe-sync-secret' }}
       DEBUG: pw:webserver
 
     services:
@@ -47,11 +54,12 @@ jobs:
         ports:
           - 5432:5432
         env:
-          POSTGRES_PASSWORD: ''
-          POSTGRES_HOST_AUTH_METHOD: 'trust'
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: postgres
         # Set health checks to wait until postgres has started
         options: >-
-          --health-cmd pg_isready
+          --health-cmd "pg_isready -U postgres -d postgres"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
@@ -74,6 +82,14 @@ jobs:
           cache: 'npm'
           check-latest: true
       - run: npm install
+      - name: Validate required CI environment variables
+        run: |
+          for var in JACKSON_WEBHOOK_SECRET GITHUB_CLIENT_ID GITHUB_CLIENT_SECRET STRIPE_SYNC_SECRET DATABASE_URL; do
+            if [ -z "${!var}" ]; then
+              echo "Missing required env var: $var"
+              exit 1
+            fi
+          done
       - run: npm run check-lint
       - run: npm run check-format
       - run: npm run check-locale
@@ -86,6 +102,20 @@ jobs:
       - name: Install playwright browser dependencies
         run: npx playwright install chromium
       - name: e2e tests
+        env:
+          DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
+          PGHOST: localhost
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+          NEXTAUTH_URL: http://localhost:4002
+          NEXTAUTH_SECRET: secret
+          APP_URL: http://localhost:4002
+          AUTH_PROVIDERS: github,credentials,saml,idp-initiated
+          JACKSON_WEBHOOK_SECRET: ${{ secrets.JACKSON_WEBHOOK_SECRET || 'test-jackson-webhook-secret' }}
+          STRIPE_SYNC_SECRET: ${{ secrets.STRIPE_SYNC_SECRET || 'test-stripe-sync-secret' }}
+          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID || 'test-github-client-id' }}
+          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET || 'test-github-client-secret' }}
         run: npx playwright test -x
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}

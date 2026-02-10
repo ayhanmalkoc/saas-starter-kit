@@ -31,8 +31,8 @@ export class LoginPage {
     this.IDP_LOGIN_URL = `${process.env.MOCKSAML_ORIGIN}/saml/login`;
     this.ACS_URL = `${process.env.JACKSON_URL || process.env.APP_URL}/api/oauth/saml`;
 
-    this.emailBox = this.page.getByPlaceholder('Email');
-    this.passwordBox = this.page.getByPlaceholder('Password');
+    this.emailBox = this.page.locator('input[name="email"]');
+    this.passwordBox = this.page.locator('input[name="password"]');
     this.signInButton = this.page.getByRole('button', { name: 'Sign in' });
     this.continueWithSSOButton = this.page.getByRole('button', {
       name: 'Continue with SSO',
@@ -40,8 +40,8 @@ export class LoginPage {
     this.continueWithSSOLink = this.page.getByRole('link', {
       name: 'Continue with SSO',
     });
-    this.ssoEmailBox = this.page.getByPlaceholder('user@boxyhq.com');
-    this.slugInput = this.page.getByPlaceholder('boxyhq');
+    this.ssoEmailBox = this.page.locator('input[name="email"]');
+    this.slugInput = this.page.locator('input[name="slug"]');
     this.welcomeBackHeading = this.page.getByText('Welcome back', {
       exact: true,
     });
@@ -51,9 +51,9 @@ export class LoginPage {
     this.createNewAccountButton = this.page.getByRole('button', {
       name: 'Create a new account',
     });
-    this.yourNameInput = this.page.getByPlaceholder('Your Name');
-    this.yourEmailInput = this.page.getByPlaceholder('Email');
-    this.yourPasswordInput = this.page.getByPlaceholder('Password');
+    this.yourNameInput = this.page.locator('input[name="name"]');
+    this.yourEmailInput = this.page.locator('input[name="email"]');
+    this.yourPasswordInput = this.page.locator('input[name="password"]');
     this.createAccountButton = this.page.getByRole('button', {
       name: 'Create Account',
     });
@@ -122,9 +122,7 @@ export class LoginPage {
 
   async idpInitiatedLogin() {
     await this.page.goto(this.IDP_LOGIN_URL);
-    await this.page
-      .getByPlaceholder('https://sso.eu.boxyhq.com/api')
-      .fill(this.ACS_URL);
+    await this.page.locator('input[name="acsUrl"]').fill(this.ACS_URL);
     await this.idpSignInButton.click();
   }
 
