@@ -31,7 +31,7 @@ services:
 #       DB_URL: 'postgresql://postgres:postgres@db:5432/saas-starter-kit'
 #     depends_on:
 #       - db
-# 
+#
 #   mocksaml:
 #     image: boxyhq/mock-saml:latest
 #     restart: always
@@ -41,3 +41,17 @@ services:
 #       CLIENT_ID: 'mock-saml-client-id'
 #       CLIENT_SECRET: 'mock-saml-client-secret'
 #       APP_URL: 'http://localhost:4000'
+
+#   svix:
+#     image: svix/svix-server:latest
+#     restart: always
+#     ports:
+#       - '8071:8071'
+#     environment:
+#       SVIX_DB_DSN: 'postgresql://postgres:postgres@db:5432/postgres'
+#       SVIX_JWT_SECRET: 'svix-jwt-secret-change-me'
+#       SVIX_QUEUE_TYPE: 'memory'
+#       SVIX_WHITELIST_SUBNETS: '["0.0.0.0/0"]'
+#       WAIT_FOR: 'true'
+#     depends_on:
+#       - db
