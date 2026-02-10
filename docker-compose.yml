@@ -3,8 +3,18 @@ services:
     image: postgres:16.4
     restart: always
     environment:
-      POSTGRES_PASSWORD: admin
-      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_USER: postgres
       POSTGRES_DB: saas-starter-kit
     ports:
       - 5432:5432
+
+  mailpit:
+    image: axllent/mailpit
+    restart: always
+    ports:
+      - '8025:8025' # Web UI
+      - '1025:1025' # SMTP
+    environment:
+      MP_SMTP_AUTH_ACCEPT_ANY: 1
+      MP_SMTP_AUTH_ALLOW_INSECURE: 1

@@ -84,7 +84,10 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 });
 
-const parsedEnv = envSchema.safeParse(process.env);
+const parsedEnv =
+  typeof window === 'undefined'
+    ? envSchema.safeParse(process.env)
+    : envSchema.partial().safeParse(process.env);
 
 if (!parsedEnv.success) {
   const details = parsedEnv.error.issues
@@ -96,8 +99,8 @@ if (!parsedEnv.success) {
 
 const rawEnv = parsedEnv.data;
 
-const trimTrailingSlashes = (value: string): string =>
-  value.replace(/\/+$/, '');
+const trimTrailingSlashes = (value: string | undefined): string =>
+  (value ?? '').replace(/\/+$/, '');
 
 const normalizedAppUrl = trimTrailingSlashes(rawEnv.APP_URL);
 const normalizedRetracedUrl = rawEnv.RETRACED_URL

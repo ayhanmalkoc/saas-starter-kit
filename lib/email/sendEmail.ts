@@ -6,10 +6,14 @@ const transporter = nodemailer.createTransport({
   host: env.smtp.host,
   port: env.smtp.port,
   secure: false,
-  auth: {
-    user: env.smtp.user,
-    pass: env.smtp.password,
-  },
+  ...(env.smtp.user && env.smtp.password
+    ? {
+        auth: {
+          user: env.smtp.user,
+          pass: env.smtp.password,
+        },
+      }
+    : {}),
 });
 
 interface EmailData {

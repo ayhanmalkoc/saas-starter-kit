@@ -1,6 +1,7 @@
 import type Stripe from 'stripe';
 
 import { ApiError } from '@/lib/errors';
+import env from '@/lib/env';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { getByTeamId } from 'models/subscription';
@@ -285,6 +286,11 @@ export const requireTeamEntitlement = async (
   teamId: string,
   requirement: EntitlementRequirement
 ) => {
+  // When payments/billing is disabled, grant all entitlements
+  if (!env.teamFeatures.payments) {
+    return emptyEntitlements();
+  }
+
   const entitlements = await getTeamEntitlements(teamId);
 
   if (requirement.feature) {
@@ -318,6 +324,10 @@ export const hasTeamEntitlement = async (
   teamId: string,
   requirement: EntitlementRequirement
 ) => {
+  if (!env.teamFeatures.payments) {
+    return true;
+  }
+
   try {
     await requireTeamEntitlement(teamId, requirement);
     return true;

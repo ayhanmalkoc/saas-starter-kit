@@ -120,13 +120,15 @@ Duplicate `.env.example` to `.env`.
 cp .env.example .env
 ```
 
-#### 5. Create a database (Optional)
+#### 5. Start Docker services
 
-To make the process of installing dependencies easier, we offer a `docker-compose.yml` with a Postgres container.
+The `docker-compose.yml` includes **PostgreSQL** (database) and **Mailpit** (local email testing).
 
 ```bash
 docker-compose up -d
 ```
+
+Once running, you can view caught emails at [http://localhost:8025](http://localhost:8025) (Mailpit Web UI).
 
 #### 6. Set up database schema
 
@@ -188,15 +190,22 @@ _Note: HTML test report is generated inside the `report` folder. Currently suppo
 
 ## ⚙️ Feature configuration
 
-To get started you only need to configure the database by following the steps above. For more advanced features, you can configure the following:
+To get started you only need to configure the database by following the steps above. All external services are **optional** — when not configured, features that depend on them are gracefully skipped.
+
+> **Note:** When `FEATURE_TEAM_PAYMENTS` is set to `false` (default for local development), all plan/entitlement checks are bypassed, giving you full access to features like API Keys, SSO, Webhooks, and Directory Sync without requiring a Stripe subscription.
+
+### Email (SMTP)
+
+For **local development**, [Mailpit](https://github.com/axllent/mailpit) is included in `docker-compose.yml` and works out of the box — no configuration needed. All emails are caught and viewable at [http://localhost:8025](http://localhost:8025).
+
+For **production**, configure the `SMTP_*` environment variables in the `.env` file. You can use services like [AWS SES](https://aws.amazon.com/ses/), [Sendgrid](https://sendgrid.com/) or [Resend](https://resend.com/).
 
 ### Authentication with NextAuth.js
 
 The default login options are email and GitHub. Configure below:
 
 1. Generate a secret key for NextAuth.js by running `openssl rand -base64 32` and adding it to the `.env` file as `NEXTAUTH_SECRET`.
-2. For email login, configure the `SMTP_*` environment variables in the `.env` file to send magic link login emails. You can use services like [AWS SES](https://aws.amazon.com/ses/), [Sendgrid](https://sendgrid.com/) or [Resend](https://resend.com/).
-3. For social login with GitHub and Google, you need to create OAuth apps in the respective developer consoles and add the client ID and secret to the `.env` file. The default is email login and For GitHub, follow the instructions [here](https://docs.github.com/en/developers/apps/building-oauth-apps/creating-an-oauth-app). For Google, follow the instructions [here](https://support.google.com/cloud/answer/6158849?hl=en).
+2. For social login with GitHub and Google, you need to create OAuth apps in the respective developer consoles and add the client ID and secret to the `.env` file. The default is email login and For GitHub, follow the instructions [here](https://docs.github.com/en/developers/apps/building-oauth-apps/creating-an-oauth-app). For Google, follow the instructions [here](https://support.google.com/cloud/answer/6158849?hl=en).
 
 ### Svix Webhooks
 
