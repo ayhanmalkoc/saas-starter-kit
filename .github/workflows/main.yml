@@ -99,8 +99,8 @@ jobs:
       - run: npm run migrate:deploy
       - run: npm run build-ci
       - run: npm run check-types
-      - name: Install playwright browser dependencies
-        run: npx playwright install chromium
+      - name: Install Playwright browsers and OS dependencies
+        run: npx playwright install --with-deps chromium
       - name: e2e tests
         env:
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
