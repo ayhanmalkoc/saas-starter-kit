@@ -117,7 +117,7 @@ jobs:
           GITHUB_CLIENT_ID: test-github-client-id
           GITHUB_CLIENT_SECRET: test-github-client-secret
         run: npx playwright test -x
-      - uses: actions/upload-artifact@v5
+      - uses: actions/upload-artifact@v6
         if: ${{ !cancelled() }}
         with:
           name: playwright-report
