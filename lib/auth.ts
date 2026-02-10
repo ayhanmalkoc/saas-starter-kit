@@ -12,7 +12,12 @@ export async function verifyPassword(password: string, hashedPassword: string) {
 }
 
 function getAuthProviders() {
-  return env.authProviders?.split(',') || [];
+  return (
+    env.authProviders
+      ?.split(',')
+      .map((provider) => provider.trim().toLowerCase())
+      .filter(Boolean) || []
+  );
 }
 
 export function isAuthProviderEnabled(provider: AUTH_PROVIDER) {
