@@ -8,6 +8,8 @@ services:
       POSTGRES_DB: saas-starter-kit
     ports:
       - 5432:5432
+    volumes:
+      - ./docker/init-svix-db.sh:/docker-entrypoint-initdb.d/init-svix-db.sh
 
   mailpit:
     image: axllent/mailpit
@@ -46,12 +48,12 @@ services:
 #     image: svix/svix-server:latest
 #     restart: always
 #     ports:
-#       - '8071:8071'
+#       - "8071:8071"
 #     environment:
-#       SVIX_DB_DSN: 'postgresql://postgres:postgres@db:5432/postgres'
-#       SVIX_JWT_SECRET: 'svix-jwt-secret-change-me'
-#       SVIX_QUEUE_TYPE: 'memory'
+#       SVIX_DB_DSN: "postgresql://postgres:postgres@db:5432/svix"
+#       SVIX_JWT_SECRET: "svix-jwt-secret-change-me"
+#       SVIX_QUEUE_TYPE: "memory"
 #       SVIX_WHITELIST_SUBNETS: '["0.0.0.0/0"]'
-#       WAIT_FOR: 'true'
+#       WAIT_FOR: "true"
 #     depends_on:
 #       - db
