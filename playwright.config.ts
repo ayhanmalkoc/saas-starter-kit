@@ -26,14 +26,16 @@ const config: PlaywrightTestConfig = {
     },
   ],
   reporter: 'html',
-  webServer: {
-    command: 'npm run start -- --hostname 0.0.0.0',
-    url: 'http://localhost:4002',
-    timeout: 90 * 1000,
-    stdout: 'pipe',
-    stderr: 'pipe',
-    reuseExistingServer: !process.env.CI,
-  },
+  webServer: process.env.PLAYWRIGHT_EXTERNAL_SERVER
+    ? undefined
+    : {
+        command: 'npm run start -- --hostname 0.0.0.0',
+        url: 'http://localhost:4002',
+        timeout: 90 * 1000,
+        stdout: 'pipe',
+        stderr: 'pipe',
+        reuseExistingServer: !process.env.CI,
+      },
   retries: process.env.CI ? 0 : 1,
   use: {
     headless: true,

@@ -101,8 +101,23 @@ jobs:
       - run: npm run check-types
       - name: Install Playwright browsers and OS dependencies
         run: npx playwright install --with-deps chromium
+      - name: Start app for e2e
+        run: |
+          npm run start -- --hostname 0.0.0.0 > next-start.log 2>&1 &
+          echo $! > next-start.pid
+          for i in {1..90}; do
+            if curl -fsS http://localhost:4002 >/dev/null; then
+              echo "App is ready"
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "App failed to start within 90 seconds"
+          cat next-start.log
+          exit 1
       - name: e2e tests
         env:
+          PLAYWRIGHT_EXTERNAL_SERVER: 1
           DATABASE_URL: postgresql://postgres:postgres@localhost:5432/postgres
           PGHOST: localhost
           PGPORT: 5432
@@ -117,6 +132,18 @@ jobs:
           GITHUB_CLIENT_ID: test-github-client-id
           GITHUB_CLIENT_SECRET: test-github-client-secret
         run: npx playwright test -x
+      - name: Stop app after e2e
+        if: ${{ always() }}
+        run: |
+          if [ -f next-start.pid ]; then
+            kill $(cat next-start.pid) || true
+          fi
+      - uses: actions/upload-artifact@v5
+        if: ${{ !cancelled() }}
+        with:
+          name: next-start-log
+          path: next-start.log
+          retention-days: 2
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
         with:
