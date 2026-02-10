@@ -28,8 +28,8 @@ jobs:
       NEXTAUTH_SECRET: secret
       NEXTAUTH_SESSION_STRATEGY: database
       AUTH_PROVIDERS: github,credentials,saml,idp-initiated
-      GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID || 'test-github-client-id' }}
-      GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET || 'test-github-client-secret' }}
+      GITHUB_CLIENT_ID: test-github-client-id
+      GITHUB_CLIENT_SECRET: test-github-client-secret
       FEATURE_TEAM_SSO: true
       FEATURE_TEAM_DSYNC: true
       FEATURE_TEAM_AUDIT_LOG: true
@@ -114,8 +114,8 @@ jobs:
           AUTH_PROVIDERS: github,credentials,saml,idp-initiated
           JACKSON_WEBHOOK_SECRET: ${{ secrets.JACKSON_WEBHOOK_SECRET || 'test-jackson-webhook-secret' }}
           STRIPE_SYNC_SECRET: ${{ secrets.STRIPE_SYNC_SECRET || 'test-stripe-sync-secret' }}
-          GITHUB_CLIENT_ID: ${{ secrets.GITHUB_CLIENT_ID || 'test-github-client-id' }}
-          GITHUB_CLIENT_SECRET: ${{ secrets.GITHUB_CLIENT_SECRET || 'test-github-client-secret' }}
+          GITHUB_CLIENT_ID: test-github-client-id
+          GITHUB_CLIENT_SECRET: test-github-client-secret
         run: npx playwright test -x
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
