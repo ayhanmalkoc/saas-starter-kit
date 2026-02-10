@@ -108,9 +108,9 @@ jobs:
           PGPORT: 5432
           PGUSER: postgres
           PGPASSWORD: postgres
-          NEXTAUTH_URL: http://localhost:4002
+          NEXTAUTH_URL: http://127.0.0.1:4002
           NEXTAUTH_SECRET: secret
-          APP_URL: http://localhost:4002
+          APP_URL: http://127.0.0.1:4002
           AUTH_PROVIDERS: github,credentials,saml,idp-initiated
           JACKSON_WEBHOOK_SECRET: ${{ secrets.JACKSON_WEBHOOK_SECRET || 'test-jackson-webhook-secret' }}
           STRIPE_SYNC_SECRET: ${{ secrets.STRIPE_SYNC_SECRET || 'test-stripe-sync-secret' }}
