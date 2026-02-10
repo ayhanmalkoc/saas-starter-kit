@@ -79,7 +79,7 @@ export class LoginPage {
 
   async goto() {
     await this.page.goto('/auth/login');
-    await this.page.waitForURL('/auth/login');
+    await expect(this.welcomeBackHeading).toBeVisible();
   }
 
   async isMultipleTeamErrorVisible() {
@@ -87,7 +87,9 @@ export class LoginPage {
   }
 
   async loggedInCheck(teamSlug: string) {
-    await this.page.waitForURL(`/teams/${teamSlug}/${loggedInPath}`);
+    await expect(this.page).toHaveURL(
+      new RegExp(`/teams/${teamSlug}/${loggedInPath}(?:[?].*)?$`)
+    );
     await expect(this.pageHeading).toBeVisible();
   }
 
@@ -138,7 +140,11 @@ export class LoginPage {
 
   async gotoInviteLink(invitationLink: string, invitingCompany: string) {
     await this.page.goto(invitationLink);
-    await this.page.waitForURL(invitationLink);
+    const escapedInvitationLink = invitationLink.replace(
+      /[.*+?^${}()|[\]\\]/g,
+      '\\$&'
+    );
+    await expect(this.page).toHaveURL(new RegExp(escapedInvitationLink));
 
     await this.invitationAcceptPromptVisible(invitingCompany);
   }
