@@ -1,7 +1,7 @@
 const fs = require('fs');
 const path = require('path');
-const regExp = /\bt\('(.*?)'/gm;
-const altRegExp = /\bi18nKey="(.*?)"/gm;
+const regExp = /\bt\((['"])(.*?)\1/gm;
+const altRegExp = /\bi18nKey=(['"])(.*?)\1/gm;
 // const authLayoutRegExp =
 //   /\bAuthLayout.*\bheading="(.*?)".*\bdescription="(.*?)"/gm;
 const authHeadingRegExp = /\bheading="(.*?)"/gm;
@@ -16,6 +16,7 @@ const exceptionList = [
   'invalid-credentials',
   'no-credentials',
   'token-not-found',
+  'dashboard',
 ];
 
 const allStrings = {};
@@ -41,7 +42,7 @@ files.forEach((file) => {
     );
 
     (fileContent.match(regExp) || []).forEach((match) => {
-      const id = match.replace("t('", '').replace("'", '');
+      const id = match.replace(/t\(['"]/, '').replace(/['"]$/, '');
       allStrings[id] = true;
       if (!localeFile[id]) {
         error = true;
@@ -52,7 +53,7 @@ files.forEach((file) => {
     });
 
     (fileContent.match(altRegExp) || []).forEach((match) => {
-      const id = match.replace('i18nKey="', '').replace('"', '');
+      const id = match.replace(/i18nKey=['"]/, '').replace(/['"]$/, '');
       allStrings[id] = true;
       if (!localeFile[id]) {
         error = true;

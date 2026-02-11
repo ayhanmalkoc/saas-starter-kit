@@ -84,20 +84,26 @@ const envSchema = z.object({
   STRIPE_WEBHOOK_SECRET: z.string().optional(),
 });
 
-const parsedEnv =
-  typeof window === 'undefined'
-    ? envSchema.safeParse(process.env)
-    : envSchema.partial().safeParse(process.env);
+export const validateEnv = (
+  envVars: Record<string, string | undefined>,
+  isServer = typeof window === 'undefined'
+) => {
+  const parsedEnv = isServer
+    ? envSchema.safeParse(envVars)
+    : envSchema.partial().safeParse(envVars);
 
-if (!parsedEnv.success) {
-  const details = parsedEnv.error.issues
-    .map((issue) => `- ${issue.path.join('.')}: ${issue.message}`)
-    .join('\n');
+  if (!parsedEnv.success) {
+    const details = parsedEnv.error.issues
+      .map((issue) => `- ${issue.path.join('.')}: ${issue.message}`)
+      .join('\n');
 
-  throw new Error(`Invalid environment configuration:\n${details}`);
-}
+    throw new Error(`Invalid environment configuration:\n${details}`);
+  }
 
-const rawEnv = parsedEnv.data;
+  return parsedEnv.data;
+};
+
+const rawEnv = validateEnv(process.env);
 
 const trimTrailingSlashes = (value: string | undefined): string =>
   (value ?? '').replace(/\/+$/, '');

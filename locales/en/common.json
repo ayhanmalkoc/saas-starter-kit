@@ -241,7 +241,6 @@
   "token-not-found": "Verification token not found",
   "update-webhook": "Update Webhook",
   "active-subscription": "Active subscription",
-  "no-active-subscription": "No active subscription found.",
   "invoices": "Invoices",
   "amount": "Amount",
   "due-date": "Due date",
@@ -265,12 +264,11 @@
   "yearly": "Yearly",
   "save-20": "20% OFF",
   "most-popular": "Most Popular",
-  "available-plans": "Available Plans",
-  "view-all-plans-in-pricing-page": "View all plans in pricing page",
   "free-plan": "Free Plan",
   "current-plan": "Current Plan",
   "change-plan": "Change Plan",
   "pricing-title": "Pricing Plans",
   "pricing-subtitle": "Choose the plan that's right for your business",
-  "per-user": "/ user"
+  "per-user": "/ user",
+  "billing-interval": "Billing Interval"
 }

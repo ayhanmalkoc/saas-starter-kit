@@ -42,19 +42,21 @@ describe('lib/env validation', () => {
 
   afterEach(() => {
     jest.resetModules();
-    process.env = originalEnv;
+    // Clear current process.env and restore from original
+    for (const key in process.env) {
+      delete process.env[key];
+    }
+    Object.assign(process.env, originalEnv);
   });
 
   it('throws when required environment variables are missing', async () => {
-    const brokenEnv = { ...originalEnv };
-    delete brokenEnv.DATABASE_URL;
-    delete brokenEnv.APP_URL;
-    delete brokenEnv.NEXTAUTH_SECRET;
-    process.env = brokenEnv;
+    delete process.env.DATABASE_URL;
+    delete process.env.APP_URL;
+    delete process.env.NEXTAUTH_SECRET;
 
-    jest.resetModules();
+    const { validateEnv } = await import('../../lib/env');
 
-    await expect(import('../../lib/env')).rejects.toThrow(
+    expect(() => validateEnv(process.env, true)).toThrow(
       'Invalid environment configuration'
     );
   });
