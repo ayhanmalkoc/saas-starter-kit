@@ -59,7 +59,7 @@ model User {
   password               String?
   image                  String?
   createdAt              DateTime  @default(now())
-  updatedAt              DateTime  @default(now())
+  updatedAt              DateTime  @default(now()) @updatedAt
   invalid_login_attempts Int       @default(0)
   lockedAt               DateTime?
 
@@ -78,7 +78,7 @@ model Team {
   billingId       String?
   billingProvider String?
   createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @default(now())
+  updatedAt       DateTime       @default(now()) @updatedAt
   members         TeamMember[]
   invitations     Invitation[]
   apiKeys         ApiKey[]
@@ -94,7 +94,7 @@ model TeamMember {
   userId    String
   role      Role     @default(MEMBER)
   createdAt DateTime @default(now())
-  updatedAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
 
   team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
@@ -112,7 +112,7 @@ model Invitation {
   expires        DateTime
   invitedBy      String
   createdAt      DateTime @default(now())
-  updatedAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
   sentViaEmail   Boolean  @default(true)
   allowedDomains String[] @default([])
 
@@ -138,7 +138,7 @@ model ApiKey {
   teamId     String
   hashedKey  String    @unique
   createdAt  DateTime  @default(now())
-  updatedAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
   expiresAt  DateTime?
   lastUsedAt DateTime?
 
@@ -192,6 +192,7 @@ model WebhookEvent {
   id        String   @id @default(uuid())
   eventId   String   @unique
   eventType String
+  payload   Json?
   createdAt DateTime @default(now())
 
   @@index([eventType])
@@ -206,7 +207,7 @@ model Service {
   name        String
   created     DateTime
   createdAt   DateTime @default(now())
-  updatedAt   DateTime @default(now())
+  updatedAt   DateTime @default(now()) @updatedAt
   Price       Price[]
 }
 

@@ -12,6 +12,12 @@ jest.mock('models/subscription', () => ({
   getByTeamId: jest.fn(),
 }));
 
+jest.mock('@/lib/env', () => ({
+  teamFeatures: {
+    payments: true,
+  },
+}));
+
 jest.mock('@/lib/stripe', () => ({
   stripe: {
     products: {
@@ -28,12 +34,6 @@ jest.mock('@/lib/prisma', () => ({
     service: {
       findUnique: jest.fn(),
     },
-  },
-}));
-
-jest.mock('@/lib/env', () => ({
-  teamFeatures: {
-    payments: true,
   },
 }));
 
@@ -121,5 +121,31 @@ describe('lib/billing/entitlements', () => {
     await expect(
       hasTeamEntitlement('team_4', { feature: 'sso' })
     ).rejects.toThrow('storage-down');
+  });
+
+  describe('when payments feature is disabled', () => {
+    beforeEach(() => {
+      jest.resetModules();
+      jest.doMock('@/lib/env', () => ({
+        teamFeatures: {
+          payments: false,
+        },
+      }));
+    });
+
+    afterEach(() => {
+      jest.resetModules();
+    });
+
+    it('returns true for limits when payments are disabled', async () => {
+      // Re-import the module to pick up the new mock
+      const { hasTeamEntitlement } = await import('@/lib/billing/entitlements');
+
+      await expect(
+        hasTeamEntitlement('team_5', {
+          limit: { key: 'members', minimum: 100 },
+        })
+      ).resolves.toBe(true);
+    });
   });
 });
