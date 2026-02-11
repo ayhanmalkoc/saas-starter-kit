@@ -31,6 +31,12 @@ jest.mock('@/lib/prisma', () => ({
   },
 }));
 
+jest.mock('@/lib/env', () => ({
+  teamFeatures: {
+    payments: true,
+  },
+}));
+
 const mockedGetByTeamId = jest.mocked(getByTeamId);
 const mockedRetrieve = jest.mocked(stripe.products.retrieve);
 const mockedPriceFindUnique = jest.mocked(prisma.price.findUnique);
