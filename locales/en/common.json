@@ -144,6 +144,7 @@
   "light": "Light",
   "theme": "Theme",
   "verify-your-account": "Verify your account",
+  "dashboard": "Dashboard",
   "verify-account-expired": "This verification link has expired. Please enter the email address associated with your account, and we'll send you another verification link.",
   "verify-account-link-sent": "Verification link sent. Please check your email.",
   "homepage-title": "Enterprise SaaS Starter Kit by BoxyHQ",
@@ -257,5 +258,18 @@
   "internal-server-error": "Internal Server Error !",
   "unable-to-find": "We're unable to find out what's happening! We suggest you to",
   "try-again-later": "or visit here later.",
-  "multiple-sso-teams": "User belongs to multiple teams with SSO enabled. Please enter your team slug to get started."
+  "multiple-sso-teams": "User belongs to multiple teams with SSO enabled. Please enter your team slug to get started.",
+  "personal": "Personal",
+  "business": "Business",
+  "monthly": "Monthly",
+  "yearly": "Yearly",
+  "save-20": "20% OFF",
+  "most-popular": "Most Popular",
+  "available-plans": "Available Plans",
+  "view-all-plans-in-pricing-page": "View all plans in pricing page",
+  "free-plan": "Free Plan",
+  "current-plan": "Current Plan",
+  "change-plan": "Change Plan",
+  "pricing-title": "Pricing Plans",
+  "pricing-subtitle": "Choose the plan that's right for your business"
 }
