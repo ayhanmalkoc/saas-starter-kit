@@ -72,6 +72,9 @@ const PricingTable = ({
             : undefined,
           currentSubscription?.id
         );
+        const rest = { ...router.query };
+        delete rest.plan;
+        router.replace({ query: rest }, undefined, { shallow: true });
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -249,7 +252,7 @@ const PricingTable = ({
 
                 <div className="mt-4 flex items-baseline">
                   <span className="text-3xl font-bold tracking-tight text-gray-900">
-                    ${price.amount || 0}
+                    ${(price.amount || 0) / 100}
                   </span>
                   <span className="ml-1 text-sm font-semibold text-gray-500">
                     /{billingInterval} {tier === 'business' ? '/ user' : ''}

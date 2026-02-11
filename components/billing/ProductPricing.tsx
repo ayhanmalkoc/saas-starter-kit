@@ -168,7 +168,7 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
 
                 <div className="mt-4 flex items-baseline">
                   <span className="text-3xl font-bold tracking-tight text-gray-900">
-                    ${price.amount || 0}
+                    ${(price.amount || 0) / 100}
                   </span>
                   <span className="ml-1 text-sm font-semibold text-gray-500">
                     /{billingInterval} {tier === 'business' ? '/ user' : ''}

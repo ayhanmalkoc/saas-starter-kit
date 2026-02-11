@@ -9,6 +9,8 @@ import useTheme from 'hooks/useTheme';
 import env from '@/lib/env';
 import { useTranslation } from 'next-i18next';
 import { useCustomSignOut } from 'hooks/useCustomSignout';
+import LetterAvatar from '../LetterAvatar';
+import Image from 'next/image';
 
 interface UserDropdownProps {
   user: {
@@ -17,8 +19,6 @@ interface UserDropdownProps {
     image?: string | null;
   };
 }
-import LetterAvatar from '../LetterAvatar';
-import Image from 'next/image';
 
 const UserDropdown = ({ user }: UserDropdownProps) => {
   const { toggleTheme } = useTheme();

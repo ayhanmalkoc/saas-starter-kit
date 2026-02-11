@@ -44,19 +44,21 @@ async function main() {
 
     if (allPrices.length > 0) {
       console.log(
-        `  Found ${allPrices.length} associated prices. Attempting to delete them (via API)...`
+        `  Found ${allPrices.length} associated prices. Attempting to archive them...`
       );
       for (const price of allPrices) {
         try {
-          // Stripe Node SDK doesn't expose prices.del, we use raw fetch
+          // Stripe Node SDK doesn't expose prices.del, and Stripe doesn't support price deletion.
+          // We archive them by setting active: false.
           const response = await fetch(
             `https://api.stripe.com/v1/prices/${price.id}`,
             {
-              method: 'DELETE',
+              method: 'POST',
               headers: {
                 Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
                 'Content-Type': 'application/x-www-form-urlencoded',
               },
+              body: 'active=false',
             }
           );
 
@@ -65,10 +67,10 @@ async function main() {
             throw new Error(err.error?.message || 'Unknown error');
           }
 
-          console.log(`    ✅ Deleted price: ${price.id}`);
+          console.log(`    ✅ Archived price: ${price.id}`);
         } catch (err: any) {
           console.log(
-            `    ⚠️ Could not delete price ${price.id}: ${err.message}`
+            `    ⚠️ Could not archive price ${price.id}: ${err.message}`
           );
           allPricesDeleted = false;
         }
@@ -90,7 +92,7 @@ async function main() {
       }
     } else {
       console.log(
-        `  ⏭️ Skipping product deletion (Has undeletable prices/history).`
+        `  ⏭️ Skipping product deletion (Has un-archived prices or history).`
       );
     }
   }

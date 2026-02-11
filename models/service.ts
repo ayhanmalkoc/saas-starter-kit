@@ -140,7 +140,11 @@ export const upsertServiceFromStripe = async (product: Stripe.Product) => {
 export const getAllServices = async () => {
   const services = await prisma.service.findMany({
     include: {
-      Price: true,
+      Price: {
+        orderBy: {
+          amount: 'asc',
+        },
+      },
     },
   });
   return services

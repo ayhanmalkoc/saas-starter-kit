@@ -3,8 +3,36 @@
  * effectively resetting user data while keeping Stripe products/prices.
  */
 import { prisma } from '../lib/prisma';
+import readline from 'node:readline';
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
 
 async function main() {
+  if (
+    process.env.NODE_ENV === 'production' &&
+    process.env.FORCE_CLEAR !== 'true'
+  ) {
+    console.error(
+      'CRITICAL: Cannot run clear-users in production unless FORCE_CLEAR=true'
+    );
+    process.exit(1);
+  }
+
+  const answer = await new Promise((resolve) => {
+    rl.question(
+      'WARNING: This will delete ALL users and teams. Are you sure? (y/N) ',
+      resolve
+    );
+  });
+
+  if (String(answer).toLowerCase() !== 'y') {
+    console.log('Aborted.');
+    process.exit(0);
+  }
+
   console.log('Clearing all users and teams...');
 
   try {

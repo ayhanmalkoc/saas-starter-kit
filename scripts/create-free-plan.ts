@@ -3,6 +3,7 @@ import { stripe } from '../lib/stripe';
 
 if (!process.env.STRIPE_SECRET_KEY) {
   console.log('STRIPE_SECRET_KEY is missing!');
+  process.exit(1);
 }
 
 async function main() {

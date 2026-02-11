@@ -11,10 +11,10 @@ const Footer = () => {
       </div>
       <div className="grid-flow-col gap-4 md:place-self-center md:justify-self-end">
         <Link href="/privacy" className="link link-hover">
-          {t('privacy-policy')}
+          {t('privacy')}
         </Link>
         <Link href="/terms" className="link link-hover">
-          {t('terms-of-service')}
+          {t('terms')}
         </Link>
       </div>
     </footer>

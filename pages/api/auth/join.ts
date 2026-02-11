@@ -14,6 +14,7 @@ import { slackNotify } from '@/lib/slack';
 import { Team } from '@prisma/client';
 import { createVerificationToken } from 'models/verificationToken';
 import { userJoinSchema, validateWithSchema } from '@/lib/zod';
+import { isValidCallbackUrl } from '@/lib/email/urlUtils';
 
 export default async function handler(
   req: NextApiRequest,
@@ -129,7 +130,15 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    await sendVerificationEmail({ user, verificationToken, callbackUrl });
+    const safeCallbackUrl = isValidCallbackUrl(callbackUrl)
+      ? callbackUrl
+      : undefined;
+
+    await sendVerificationEmail({
+      user,
+      verificationToken,
+      callbackUrl: safeCallbackUrl,
+    });
   }
 
   recordMetric('user.signup');
