@@ -28,14 +28,14 @@ const config: PlaywrightTestConfig = {
   reporter: 'html',
   webServer: {
     command: 'npm run start',
-    url: 'http://localhost:4002',
+    url: 'http://127.0.0.1:4002',
     reuseExistingServer: !process.env.CI,
   },
   retries: 1,
   use: {
     headless: true,
     ignoreHTTPSErrors: true,
-    baseURL: 'http://localhost:4002',
+    baseURL: 'http://127.0.0.1:4002',
     trace: 'retain-on-first-failure',
   },
   testDir: './tests/e2e',
