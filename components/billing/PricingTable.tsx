@@ -36,7 +36,9 @@ const PricingTable = ({
   const activeSubscription =
     !isBillingLoading && subscriptions
       ? subscriptions.find((subscription: any) =>
-          ['active', 'trialing', 'past_due'].includes(subscription.status)
+          ['active', 'trialing', 'past_due', 'incomplete'].includes(
+            subscription.status
+          )
         )
       : initialSubscription; // Fallback to prop if SWR not ready or used
 
@@ -190,15 +192,17 @@ const PricingTable = ({
 
         {/* Billing Interval Toggle */}
         <div className="flex items-center space-x-4 bg-gray-50 p-2 rounded-lg border">
-          <span
+          <button
+            type="button"
             className={`cursor-pointer text-sm font-medium ${billingInterval === 'month' ? 'text-black' : 'text-gray-500'}`}
             onClick={() => setBillingInterval('month')}
           >
             {t('monthly')}
-          </span>
+          </button>
           <input
             type="checkbox"
             className="toggle toggle-primary"
+            aria-label={t('billing-interval')}
             checked={billingInterval === 'year'}
             onChange={() =>
               setBillingInterval((prev) =>
@@ -206,7 +210,8 @@ const PricingTable = ({
               )
             }
           />
-          <span
+          <button
+            type="button"
             className={`cursor-pointer text-sm font-medium ${billingInterval === 'year' ? 'text-black' : 'text-gray-500'}`}
             onClick={() => setBillingInterval('year')}
           >
@@ -214,7 +219,7 @@ const PricingTable = ({
             <span className="badge badge-sm badge-accent ml-1">
               {t('save-20')}
             </span>
-          </span>
+          </button>
         </div>
       </div>
 
@@ -228,8 +233,9 @@ const PricingTable = ({
 
           if (!price) return null;
 
-          const metadata = plan.metadata as { recommended?: boolean };
-          const isRecommended = metadata?.recommended;
+          const metadata = plan.metadata as { recommended?: boolean | string };
+          const isRecommended =
+            metadata?.recommended === 'true' || metadata?.recommended === true;
 
           return (
             <div
@@ -255,7 +261,8 @@ const PricingTable = ({
                     ${((price.amount || 0) / 100).toFixed(2)}
                   </span>
                   <span className="ml-1 text-sm font-semibold text-gray-500">
-                    /{billingInterval} {tier === 'business' ? '/ user' : ''}
+                    /{billingInterval}{' '}
+                    {tier === 'business' ? t('per-user') : ''}
                   </span>
                 </div>
 

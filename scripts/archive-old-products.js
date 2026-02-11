@@ -13,28 +13,25 @@ if (dryRun) {
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY);
 
 async function main() {
-  console.log('Fetching all products to archive checking...');
-  const products = [];
+  console.log('Searching for old Stripe products to archive...');
 
-  for await (const product of stripe.products.list({
+  const activeProducts = stripe.products.list({
     limit: 100,
     active: true,
-  })) {
-    products.push(product);
-  }
+  });
 
-  console.log(`Found ${products.length} active products.`);
-
-  for (const product of products) {
+  let productCount = 0;
+  for await (const product of activeProducts) {
+    productCount++;
     if (!product.metadata.tier) {
       // 1. Get ALL prices (active and inactive) for the product to check history
-      const allPrices = await stripe.prices.list({
+      const productPrices = stripe.prices.list({
         product: product.id,
         limit: 100,
       });
 
       let hasActiveSubscriptions = false;
-      for (const price of allPrices.data) {
+      for await (const price of productPrices) {
         const subs = await stripe.subscriptions.list({
           price: price.id,
           status: 'active',
@@ -66,6 +63,10 @@ async function main() {
         `Skipping new product: ${product.name} (${product.id}) - Tier: ${product.metadata.tier}`
       );
     }
+  }
+
+  if (productCount === 0) {
+    console.log('No active products found.');
   }
 
   console.log('Done.');

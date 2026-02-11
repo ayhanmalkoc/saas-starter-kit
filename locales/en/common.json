@@ -271,5 +271,6 @@
   "current-plan": "Current Plan",
   "change-plan": "Change Plan",
   "pricing-title": "Pricing Plans",
-  "pricing-subtitle": "Choose the plan that's right for your business"
+  "pricing-subtitle": "Choose the plan that's right for your business",
+  "per-user": "/ user"
 }
