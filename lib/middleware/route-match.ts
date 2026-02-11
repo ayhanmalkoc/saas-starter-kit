@@ -4,10 +4,12 @@ export const unAuthenticatedRoutes = {
     '/api/health',
     '/api/webhooks/stripe',
     '/api/webhooks/dsync',
+    '/api/admin/stripe/sync',
     '/api/security/csp-report',
     '/terms-condition',
     '/unlock-account',
     '/login/saml',
+    '/pricing',
   ],
   prefix: ['/api/auth/**', '/api/oauth/**', '/api/scim/v2.0/**', '/auth/**'],
   singleSegmentWildcard: [

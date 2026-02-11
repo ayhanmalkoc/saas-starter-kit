@@ -5,6 +5,7 @@ import {
 } from 'models/verificationToken';
 import type { GetServerSidePropsContext } from 'next';
 import type { ReactElement } from 'react';
+import { isValidCallbackUrl } from '@/lib/email/urlUtils';
 
 const VerifyEmailToken = () => {
   return <></>;
@@ -17,7 +18,10 @@ VerifyEmailToken.getLayout = function getLayout(page: ReactElement) {
 export const getServerSideProps = async ({
   query,
 }: GetServerSidePropsContext) => {
-  const { token } = query as { token: string };
+  const { token, callbackUrl } = query as {
+    token: string;
+    callbackUrl?: string;
+  };
 
   if (!token) {
     return {
@@ -69,9 +73,16 @@ export const getServerSideProps = async ({
     console.error('Failed to delete email verification token', error);
   }
 
+  const safeCallbackUrl =
+    callbackUrl && isValidCallbackUrl(callbackUrl) ? callbackUrl : undefined;
+
   return {
     redirect: {
-      destination: '/auth/login?success=email-verified',
+      destination: `/auth/login?success=email-verified${
+        safeCallbackUrl
+          ? `&callbackUrl=${encodeURIComponent(safeCallbackUrl)}`
+          : ''
+      }`,
       permanent: false,
     },
   };

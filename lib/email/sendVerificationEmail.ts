@@ -4,20 +4,27 @@ import { render } from '@react-email/components';
 import { VerificationEmail } from '@/components/emailTemplates';
 import app from '../app';
 import env from '../env';
+import { isValidCallbackUrl } from './urlUtils';
 
 export const sendVerificationEmail = async ({
   user,
   verificationToken,
+  callbackUrl,
 }: {
   user: User;
   verificationToken: VerificationToken;
+  callbackUrl?: string;
 }) => {
   const subject = `Confirm your ${app.name} account`;
-  const verificationLink = `${
+  let verificationLink = `${
     env.appUrl
   }/auth/verify-email-token?token=${encodeURIComponent(
     verificationToken.token
   )}`;
+
+  if (callbackUrl && isValidCallbackUrl(callbackUrl)) {
+    verificationLink += `&callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  }
 
   const html = await render(VerificationEmail({ subject, verificationLink }));
 

@@ -3,7 +3,6 @@ import * as Sentry from '@sentry/nextjs';
 import { getSharedSentryOptions } from './sentry.shared.config';
 
 declare global {
-  // eslint-disable-next-line no-var
   var __SENTRY_SERVER_INIT_DONE__: boolean | undefined;
 }
 

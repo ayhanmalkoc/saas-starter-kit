@@ -1,25 +1,86 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import useSWR from 'swr';
+import fetcher from '@/lib/fetcher';
 import toast from 'react-hot-toast';
 import { Button } from 'react-daisyui';
 import { useTranslation } from 'next-i18next';
-
+import { useRouter } from 'next/router';
 import useTeam from 'hooks/useTeam';
+import useTeams from 'hooks/useTeams';
 import { Price, Prisma, Service, Subscription } from '@prisma/client';
 import PaymentButton from './PaymentButton';
 import { handlePlanChange } from './planService';
 
-interface ProductPricingProps {
-  plans: any[];
-  subscriptions: (Subscription & { product: Service })[];
+interface PricingTableProps {
+  plans: (Service & { prices: Price[] })[];
+  currentSubscription?: Subscription & { product: Service };
 }
 
-const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
-  const { team } = useTeam();
+const PricingTable = ({
+  plans,
+  currentSubscription: initialSubscription,
+}: PricingTableProps) => {
+  const router = useRouter();
+  const { team: teamFromSlug } = useTeam();
+  const { teams } = useTeams();
+
+  // Create a fallback to the first team if we don't have a team from the slug (e.g. on /pricing public page)
+  const team = teamFromSlug || (teams && teams.length > 0 ? teams[0] : null);
+
+  const { data, isLoading: isBillingLoading } = useSWR(
+    team?.slug ? `/api/teams/${team?.slug}/payments/products` : null,
+    fetcher
+  );
+
+  const subscriptions = data?.data?.subscriptions || [];
+  const activeSubscription =
+    !isBillingLoading && subscriptions
+      ? subscriptions.find((subscription: any) =>
+          ['active', 'trialing', 'past_due', 'incomplete'].includes(
+            subscription.status
+          )
+        )
+      : initialSubscription; // Fallback to prop if SWR not ready or used
+
+  const currentSubscription = activeSubscription;
+
   const { t } = useTranslation('common');
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>(
     'month'
   );
   const [tier, setTier] = useState<'personal' | 'business'>('personal');
+
+  // Auto-trigger checkout if plan param exists and user is logged in (has team)
+  useEffect(() => {
+    if (router.isReady && router.query.plan && team?.slug) {
+      const planId = router.query.plan as string;
+      // Prevent infinite loop if plan ID is invalid or user cancels
+      // But initiatePlanChange handles the flow.
+      // We might want to remove the query param after triggering to avoid loop on refresh?
+      // For now, let's just trigger.
+
+      // We need to find if this plan exists in our list to know if it requires quantity?
+      // initiatePlanChange handles null quantity gracefully for per_unit?
+      // Let's find the price in 'plans' prop to be safe.
+      const selectedPrice = plans
+        .flatMap((p) => p.prices)
+        .find((p) => p.id === planId);
+
+      if (selectedPrice) {
+        initiatePlanChange(
+          planId,
+          isSeatBasedPrice(selectedPrice)
+            ? (currentSubscription?.quantity ?? 1)
+            : undefined,
+          currentSubscription?.id
+        );
+        const rest = { ...router.query };
+        delete rest.plan;
+        router.replace({ query: rest }, undefined, { shallow: true });
+      }
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [router.isReady, router.query.plan, team?.slug]);
 
   const initiatePlanChange = async (
     priceId: string,
@@ -27,7 +88,12 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
     subscriptionId?: string | null
   ) => {
     if (!team?.slug) {
-      toast.error(t('stripe-checkout-fallback-error'));
+      // If no team, redirect to join or login
+      router.push(
+        `/auth/join?callbackUrl=${encodeURIComponent(
+          `/pricing?plan=${priceId}`
+        )}`
+      );
       return;
     }
 
@@ -45,6 +111,7 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
 
     if (data?.data?.id) {
       toast.success(t('successfully-updated'));
+      // Optional: Refresh data
       return;
     }
 
@@ -55,19 +122,25 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
     );
   };
 
-  const hasActiveSubscription = (priceId: string) =>
-    subscriptions.some(
-      (s) =>
-        s.priceId === priceId &&
-        ['active', 'trialing', 'past_due', 'incomplete'].includes(s.status)
-    );
+  const isCurrentPlan = (price: Price) => {
+    if (currentSubscription?.priceId === price.id) {
+      return true;
+    }
 
-  const activeSubscription =
-    subscriptions.find((subscription) =>
-      ['active', 'trialing', 'past_due', 'incomplete'].includes(
-        subscription.status
-      )
-    ) ?? subscriptions[0];
+    // If user is logged in (has team) and has NO active paid subscription,
+    // and the price amount is 0, this is their current (Free) plan.
+    if (
+      team?.slug &&
+      !currentSubscription &&
+      (price.amount === 0 ||
+        price.amount === null ||
+        price.amount === undefined)
+    ) {
+      return true;
+    }
+
+    return false;
+  };
 
   const isSeatBasedPrice = (price: Price) => {
     const metadata = price.metadata as Prisma.JsonObject;
@@ -85,28 +158,33 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
 
   const filteredPlans = plans.filter((plan) => {
     const metadata = plan.metadata as { tier?: string };
-    const planTier = metadata.tier || 'personal'; // Default to personal if missing
+    const planTier = metadata?.tier || 'personal'; // Default to personal if missing
+    if (tier === 'personal') {
+      return planTier === 'personal' || planTier === 'free';
+    }
     return planTier === tier;
   });
 
+  const containerMaxWidth = tier === 'personal' ? 'max-w-7xl' : 'max-w-4xl';
+  const gridCols =
+    tier === 'personal'
+      ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+      : 'grid-cols-1 md:grid-cols-2';
+
   return (
-    <section className="py-3 max-w-5xl mx-auto">
+    <section className={`py-3 mx-auto ${containerMaxWidth} px-4`}>
       <div className="flex flex-col items-center justify-center mb-8 space-y-6">
         {/* Tier Tabs */}
-        <div className="tabs tabs-boxed p-1 bg-gray-100 rounded-full">
+        <div className="tabs tabs-boxed p-1 bg-gray-100 rounded-full w-fit mx-auto">
           <button
-            type="button"
-            className={`tab tab-lg rounded-full px-8 ${tier === 'personal' ? 'tab-active bg-white text-black shadow-sm' : ''}`}
+            className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'personal' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
             onClick={() => setTier('personal')}
-            aria-pressed={tier === 'personal'}
           >
             {t('personal')}
           </button>
           <button
-            type="button"
-            className={`tab tab-lg rounded-full px-8 ${tier === 'business' ? 'tab-active bg-white text-black shadow-sm' : ''}`}
+            className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'business' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
             onClick={() => setTier('business')}
-            aria-pressed={tier === 'business'}
           >
             {t('business')}
           </button>
@@ -145,7 +223,7 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+      <div className={`grid gap-6 ${gridCols}`}>
         {filteredPlans.map((plan) => {
           const price = plan.prices.find((p: Price) => {
             const recurring =
@@ -157,7 +235,7 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
 
           const metadata = plan.metadata as { recommended?: boolean | string };
           const isRecommended =
-            metadata.recommended === 'true' || metadata.recommended === true;
+            metadata?.recommended === 'true' || metadata?.recommended === true;
 
           return (
             <div
@@ -213,7 +291,7 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
               </div>
 
               <div className="p-6 pt-0 mt-auto">
-                {hasActiveSubscription(price.id) ? (
+                {isCurrentPlan(price) ? (
                   <Button
                     variant="outline"
                     fullWidth
@@ -230,9 +308,9 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
                       initiatePlanChange(
                         priceId,
                         isSeatBasedPrice(price)
-                          ? (activeSubscription?.quantity ?? quantity ?? 1)
+                          ? (currentSubscription?.quantity ?? quantity ?? 1)
                           : undefined,
-                        activeSubscription?.id
+                        currentSubscription?.id
                       );
                     }}
                   />
@@ -246,4 +324,4 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
   );
 };
 
-export default ProductPricing;
+export default PricingTable;

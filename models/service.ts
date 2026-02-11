@@ -11,6 +11,8 @@ const normalizeKey = (value: string) =>
 type PlanMetadata = {
   featureFlags: Record<string, boolean>;
   limits: Record<string, number>;
+  tier?: string;
+  recommended?: boolean;
 };
 
 const parsePlanMetadata = (
@@ -19,6 +21,8 @@ const parsePlanMetadata = (
   const featureFlags: Record<string, boolean> = {};
   const limits: Record<string, number> = {};
   const features = new Set<string>();
+  let tier: string | undefined;
+  let recommended: boolean | undefined;
 
   if (!metadata) {
     return { featureFlags, limits, features: [] };
@@ -74,6 +78,16 @@ const parsePlanMetadata = (
       continue;
     }
 
+    if (key === 'tier') {
+      tier = rawValue;
+      continue;
+    }
+
+    if (key === 'recommended') {
+      recommended = rawValue === 'true';
+      continue;
+    }
+
     if (key.startsWith('limit_')) {
       const limitKey = normalizeKey(key.replace('limit_', ''));
       const parsed = Number(rawValue);
@@ -83,13 +97,18 @@ const parsePlanMetadata = (
     }
   }
 
-  return { featureFlags, limits, features: Array.from(features) };
+  return {
+    featureFlags,
+    limits,
+    features: Array.from(features),
+    tier,
+    recommended,
+  };
 };
 
 const buildServiceData = (product: Stripe.Product) => {
-  const { featureFlags, limits, features } = parsePlanMetadata(
-    product.metadata
-  );
+  const { featureFlags, limits, features, tier, recommended } =
+    parsePlanMetadata(product.metadata);
   const mergedFeatures = features;
 
   return {
@@ -97,7 +116,7 @@ const buildServiceData = (product: Stripe.Product) => {
     description: product.description || '',
     features: mergedFeatures,
     image: product.images.length > 0 ? product.images[0] : '',
-    metadata: { featureFlags, limits },
+    metadata: { featureFlags, limits, tier, recommended },
     name: product.name,
     created: new Date(product.created * 1000),
   };
@@ -119,5 +138,27 @@ export const upsertServiceFromStripe = async (product: Stripe.Product) => {
 };
 
 export const getAllServices = async () => {
-  return await prisma.service.findMany();
+  const services = await prisma.service.findMany({
+    include: {
+      Price: {
+        orderBy: {
+          amount: 'asc',
+        },
+      },
+    },
+  });
+  return services
+    .filter((service) => {
+      const metadata = service.metadata as any;
+      return metadata?.tier;
+    })
+    .map((service) => ({
+      ...service,
+      prices: service.Price,
+    }))
+    .sort((a, b) => {
+      const priceA = a.prices[0]?.amount || 0;
+      const priceB = b.prices[0]?.amount || 0;
+      return priceA - priceB;
+    });
 };
