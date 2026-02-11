@@ -27,28 +27,26 @@ async function main() {
 
   for (const product of products) {
     if (!product.metadata.tier) {
-      // 1. Check for active prices
-      const prices = await stripe.prices.list({
+      // 1. Get ALL prices (active and inactive) for the product to check history
+      const allPrices = await stripe.prices.list({
         product: product.id,
-        active: true,
-        limit: 1,
+        limit: 100,
       });
 
-      if (prices.data.length > 0) {
-        console.log(
-          `Skipping product: ${product.name} (${product.id}) - Has active prices.`
-        );
-        continue;
+      let hasActiveSubscriptions = false;
+      for (const price of allPrices.data) {
+        const subs = await stripe.subscriptions.list({
+          price: price.id,
+          status: 'active',
+          limit: 1,
+        });
+        if (subs.data.length > 0) {
+          hasActiveSubscriptions = true;
+          break;
+        }
       }
 
-      // 2. Check for active subscriptions (optional but recommended)
-      const subs = await stripe.subscriptions.list({
-        price: prices.data[0]?.id, // Just a check, might need more complex logic for full safety
-        status: 'active',
-        limit: 1,
-      });
-
-      if (subs.data.length > 0) {
+      if (hasActiveSubscriptions) {
         console.log(
           `Skipping product: ${product.name} (${product.id}) - Has active subscriptions.`
         );
@@ -73,4 +71,7 @@ async function main() {
   console.log('Done.');
 }
 
-main().catch(console.error);
+main().catch((err) => {
+  console.error(err);
+  process.exit(1);
+});

@@ -252,7 +252,7 @@ const PricingTable = ({
 
                 <div className="mt-4 flex items-baseline">
                   <span className="text-3xl font-bold tracking-tight text-gray-900">
-                    ${(price.amount || 0) / 100}
+                    ${((price.amount || 0) / 100).toFixed(2)}
                   </span>
                   <span className="ml-1 text-sm font-semibold text-gray-500">
                     /{billingInterval} {tier === 'business' ? '/ user' : ''}

@@ -9,75 +9,44 @@ if (!process.env.STRIPE_SECRET_KEY) {
 async function main() {
   console.log('Searching for archived Stripe products to delete...');
 
-  const products = await stripe.products.list({
-    limit: 100,
+  const archivedProducts = stripe.products.list({
     active: false,
   });
 
-  if (products.data.length === 0) {
-    console.log('No archived products found.');
-    return;
-  }
-
-  console.log(`Found ${products.data.length} archived products.`);
-
-  for (const product of products.data) {
+  let productCount = 0;
+  for await (const product of archivedProducts) {
+    productCount++;
     console.log(
       `\nProcessing archived product: ${product.name} (${product.id})...`
     );
 
-    // 2. Fetch all prices for this product (Active and Inactive)
-    const prices = await stripe.prices.list({
+    let allPricesArchived = true;
+
+    // Fetch all prices (Active and Inactive) using auto-pagination
+    const productPrices = stripe.prices.list({
       product: product.id,
-      limit: 100,
-      active: true,
-    });
-    const inactivePrices = await stripe.prices.list({
-      product: product.id,
-      limit: 100,
-      active: false,
     });
 
-    const allPrices = [...prices.data, ...inactivePrices.data];
-
-    let allPricesDeleted = true;
-
-    if (allPrices.length > 0) {
-      console.log(
-        `  Found ${allPrices.length} associated prices. Attempting to archive them...`
-      );
-      for (const price of allPrices) {
+    console.log(`  Checking associated prices...`);
+    for await (const price of productPrices) {
+      if (price.active) {
         try {
           // Stripe Node SDK doesn't expose prices.del, and Stripe doesn't support price deletion.
           // We archive them by setting active: false.
-          const response = await fetch(
-            `https://api.stripe.com/v1/prices/${price.id}`,
-            {
-              method: 'POST',
-              headers: {
-                Authorization: `Bearer ${process.env.STRIPE_SECRET_KEY}`,
-                'Content-Type': 'application/x-www-form-urlencoded',
-              },
-              body: 'active=false',
-            }
-          );
-
-          if (!response.ok) {
-            const err = await response.json();
-            throw new Error(err.error?.message || 'Unknown error');
-          }
-
+          await stripe.prices.update(price.id, { active: false });
           console.log(`    ✅ Archived price: ${price.id}`);
         } catch (err: any) {
           console.log(
             `    ⚠️ Could not archive price ${price.id}: ${err.message}`
           );
-          allPricesDeleted = false;
+          allPricesArchived = false;
         }
+      } else {
+        console.log(`    ℹ️ Price already archived: ${price.id}`);
       }
     }
 
-    if (allPricesDeleted) {
+    if (allPricesArchived) {
       try {
         await stripe.products.del(product.id);
         console.log(`  ✅ Deleted product: ${product.name}`);
@@ -95,6 +64,10 @@ async function main() {
         `  ⏭️ Skipping product deletion (Has un-archived prices or history).`
       );
     }
+  }
+
+  if (productCount === 0) {
+    console.log('No archived products found.');
   }
 
   console.log('\nCleanup process completed.');

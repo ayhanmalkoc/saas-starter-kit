@@ -90,18 +90,22 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
       <div className="flex flex-col items-center justify-center mb-8 space-y-6">
         {/* Tier Tabs */}
         <div className="tabs tabs-boxed p-1 bg-gray-100 rounded-full">
-          <a
+          <button
+            type="button"
             className={`tab tab-lg rounded-full px-8 ${tier === 'personal' ? 'tab-active bg-white text-black shadow-sm' : ''}`}
             onClick={() => setTier('personal')}
+            aria-pressed={tier === 'personal'}
           >
             {t('personal')}
-          </a>
-          <a
+          </button>
+          <button
+            type="button"
             className={`tab tab-lg rounded-full px-8 ${tier === 'business' ? 'tab-active bg-white text-black shadow-sm' : ''}`}
             onClick={() => setTier('business')}
+            aria-pressed={tier === 'business'}
           >
             {t('business')}
-          </a>
+          </button>
         </div>
 
         {/* Billing Interval Toggle */}
@@ -168,7 +172,7 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
 
                 <div className="mt-4 flex items-baseline">
                   <span className="text-3xl font-bold tracking-tight text-gray-900">
-                    ${(price.amount || 0) / 100}
+                    ${((price.amount || 0) / 100).toFixed(2)}
                   </span>
                   <span className="ml-1 text-sm font-semibold text-gray-500">
                     /{billingInterval} {tier === 'business' ? '/ user' : ''}
