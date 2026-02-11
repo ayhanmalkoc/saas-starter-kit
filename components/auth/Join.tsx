@@ -56,6 +56,7 @@ const Join = ({ recaptchaSiteKey }: JoinProps) => {
         body: JSON.stringify({
           ...values,
           recaptchaToken,
+          callbackUrl: router.query.callbackUrl as string,
         }),
       });
 
@@ -76,7 +77,14 @@ const Join = ({ recaptchaSiteKey }: JoinProps) => {
         router.push('/auth/verify-email');
       } else {
         toast.success(t('successfully-joined'));
-        router.push('/auth/login');
+        const callbackUrl = router.query.callbackUrl as string;
+        if (callbackUrl) {
+          router.push(
+            `/auth/login?callbackUrl=${encodeURIComponent(callbackUrl)}`
+          );
+        } else {
+          router.push('/auth/login');
+        }
       }
     },
   });

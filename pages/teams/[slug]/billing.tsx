@@ -2,6 +2,7 @@ import useSWR from 'swr';
 import { useTranslation } from 'next-i18next';
 import { GetServerSidePropsContext } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
+import { Button } from 'react-daisyui';
 
 import env from '@/lib/env';
 import useTeam from 'hooks/useTeam';
@@ -12,7 +13,20 @@ import Help from '@/components/billing/Help';
 import { Error, Loading } from '@/components/shared';
 import LinkToPortal from '@/components/billing/LinkToPortal';
 import Subscriptions from '@/components/billing/Subscriptions';
-import ProductPricing from '@/components/billing/ProductPricing';
+
+const LinkToPricing = () => {
+  const { t } = useTranslation('common');
+  return (
+    <Button
+      color="primary"
+      size="sm"
+      variant="outline"
+      onClick={() => (window.location.href = '/pricing')}
+    >
+      {t('change-plan')}
+    </Button>
+  );
+};
 
 const Payments = ({ teamFeatures }) => {
   const { t } = useTranslation('common');
@@ -36,7 +50,7 @@ const Payments = ({ teamFeatures }) => {
   }
 
   const isBillingDataLoading = isBillingLoading || data === undefined;
-  const plans = data?.data?.products || [];
+  // const plans = data?.data?.products || [];
   const subscriptions = data?.data?.subscriptions || [];
   const invoices = data?.data?.invoices || [];
   const activeSubscription = !isBillingDataLoading
@@ -122,7 +136,12 @@ const Payments = ({ teamFeatures }) => {
                     </div>
                   ) : (
                     <div className="rounded-lg border p-4 text-sm text-muted-foreground">
-                      {t('no-active-subscription')}
+                      <div className="font-medium text-black">
+                        {t('current-plan')}: {t('free-plan')}
+                      </div>
+                      <div className="mt-2">
+                        <LinkToPricing />
+                      </div>
                     </div>
                   )}
                 </div>
@@ -182,8 +201,6 @@ const Payments = ({ teamFeatures }) => {
                   )}
                 </div>
               </div>
-
-              <ProductPricing plans={plans} subscriptions={subscriptions} />
             </>
           )}
         </>

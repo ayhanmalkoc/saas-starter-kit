@@ -17,7 +17,10 @@ VerifyEmailToken.getLayout = function getLayout(page: ReactElement) {
 export const getServerSideProps = async ({
   query,
 }: GetServerSidePropsContext) => {
-  const { token } = query as { token: string };
+  const { token, callbackUrl } = query as {
+    token: string;
+    callbackUrl?: string;
+  };
 
   if (!token) {
     return {
@@ -71,7 +74,9 @@ export const getServerSideProps = async ({
 
   return {
     redirect: {
-      destination: '/auth/login?success=email-verified',
+      destination: `/auth/login?success=email-verified${
+        callbackUrl ? `&callbackUrl=${encodeURIComponent(callbackUrl)}` : ''
+      }`,
       permanent: false,
     },
   };

@@ -8,16 +8,22 @@ import env from '../env';
 export const sendVerificationEmail = async ({
   user,
   verificationToken,
+  callbackUrl,
 }: {
   user: User;
   verificationToken: VerificationToken;
+  callbackUrl?: string;
 }) => {
   const subject = `Confirm your ${app.name} account`;
-  const verificationLink = `${
+  let verificationLink = `${
     env.appUrl
   }/auth/verify-email-token?token=${encodeURIComponent(
     verificationToken.token
   )}`;
+
+  if (callbackUrl) {
+    verificationLink += `&callbackUrl=${encodeURIComponent(callbackUrl)}`;
+  }
 
   const html = await render(VerificationEmail({ subject, verificationLink }));
 

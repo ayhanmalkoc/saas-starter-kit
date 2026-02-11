@@ -42,7 +42,8 @@ export default async function handler(
 
 // Signup the user
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  const { name, password, team, inviteToken, recaptchaToken } = req.body;
+  const { name, password, team, inviteToken, recaptchaToken, callbackUrl } =
+    req.body;
 
   // Validation order: recaptcha first, then schema/business rules.
   await validateRecaptcha(recaptchaToken);
@@ -128,7 +129,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       expires: new Date(Date.now() + 24 * 60 * 60 * 1000),
     });
 
-    await sendVerificationEmail({ user, verificationToken });
+    await sendVerificationEmail({ user, verificationToken, callbackUrl });
   }
 
   recordMetric('user.signup');

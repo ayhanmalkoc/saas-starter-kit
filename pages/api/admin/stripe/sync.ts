@@ -1,6 +1,5 @@
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { timingSafeEqual } from 'node:crypto';
-import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { buildServiceUpsert } from 'models/service';
 import { buildPriceUpsert } from 'models/price';
@@ -64,13 +63,21 @@ export default async function handler(
       listStripePrices(),
     ]);
 
-    const operations = [
-      ...products.map(buildServiceUpsert),
-      ...prices.map(buildPriceUpsert),
-    ];
+    // Insert services (products) first, then prices to respect FK constraint
+    for (const product of products) {
+      await buildServiceUpsert(product);
+    }
 
-    if (operations.length > 0) {
-      await prisma.$transaction(operations);
+    // Only sync prices whose product is active (exists in synced products)
+    const productIds = new Set(products.map((p) => p.id));
+    const matchedPrices = prices.filter((price) => {
+      const pid =
+        typeof price.product === 'string' ? price.product : price.product.id;
+      return productIds.has(pid);
+    });
+
+    for (const price of matchedPrices) {
+      await buildPriceUpsert(price);
     }
 
     return res.status(200).json({
