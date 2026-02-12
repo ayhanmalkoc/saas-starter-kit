@@ -36,7 +36,7 @@ jobs:
       FEATURE_TEAM_WEBHOOK: false
       FEATURE_TEAM_API_KEY: true
       FEATURE_TEAM_DELETION: true
-      FEATURE_TEAM_PAYMENTS: true
+      FEATURE_TEAM_PAYMENTS: false
       CONFIRM_EMAIL: false
       HIDE_LANDING_PAGE: false
       GROUP_PREFIX: boxyhq-
