@@ -46,6 +46,7 @@ jobs:
       JACKSON_WEBHOOK_SECRET: ${{ secrets.JACKSON_WEBHOOK_SECRET || 'test-jackson-webhook-secret' }}
       JACKSON_API_KEY: secret
       STRIPE_SYNC_SECRET: ${{ secrets.STRIPE_SYNC_SECRET || 'test-stripe-sync-secret' }}
+      STRIPE_SECRET_KEY: sk_test_dummy
       DEBUG: pw:webserver
 
     services:
@@ -120,7 +121,6 @@ jobs:
           STRIPE_SYNC_SECRET: ${{ secrets.STRIPE_SYNC_SECRET || 'test-stripe-sync-secret' }}
           GITHUB_CLIENT_ID: test-github-client-id
           GITHUB_CLIENT_SECRET: test-github-client-secret
-          STRIPE_SECRET_KEY: sk_test_dummy
         run: npx playwright test -x
       - uses: actions/upload-artifact@v5
         if: ${{ !cancelled() }}
