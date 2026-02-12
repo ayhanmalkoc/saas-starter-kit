@@ -37,6 +37,7 @@ const config: PlaywrightTestConfig = {
     ignoreHTTPSErrors: true,
     baseURL: 'http://127.0.0.1:4002',
     trace: 'retain-on-first-failure',
+    video: 'on-first-retry',
   },
   testDir: './tests/e2e',
 };
