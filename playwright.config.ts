@@ -27,15 +27,15 @@ const config: PlaywrightTestConfig = {
   ],
   reporter: 'html',
   webServer: {
-    command: 'npm run start -- --hostname 127.0.0.1',
-    url: 'http://127.0.0.1:4002',
+    command: 'npm run start -- --hostname localhost',
+    url: 'http://localhost:4002',
     reuseExistingServer: !process.env.CI,
   },
   retries: 1,
   use: {
     headless: true,
     ignoreHTTPSErrors: true,
-    baseURL: 'http://127.0.0.1:4002',
+    baseURL: 'http://localhost:4002',
     trace: 'retain-on-first-failure',
     video: 'on-first-retry',
   },
