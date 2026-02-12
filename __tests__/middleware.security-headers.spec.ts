@@ -39,6 +39,18 @@ describe('middleware security headers flag', () => {
     headers: new Headers(),
   } as any;
 
+  let originalEnv: NodeJS.ProcessEnv;
+
+  beforeEach(() => {
+    originalEnv = { ...process.env };
+  });
+
+  afterEach(() => {
+    process.env = originalEnv;
+    jest.resetModules();
+    jest.clearAllMocks();
+  });
+
   const loadMiddleware = ({
     securityHeadersEnabled,
     nodeEnv,
@@ -46,15 +58,16 @@ describe('middleware security headers flag', () => {
     securityHeadersEnabled?: string;
     nodeEnv?: string;
   }) => {
-    if (securityHeadersEnabled === undefined) {
-      delete process.env.SECURITY_HEADERS_ENABLED;
-    } else {
+    jest.resetModules();
+
+    if (securityHeadersEnabled !== undefined) {
       process.env.SECURITY_HEADERS_ENABLED = securityHeadersEnabled;
+      process.env.ENABLE_CSP_STRICT = securityHeadersEnabled;
+      process.env.ENABLE_HSTS = securityHeadersEnabled;
+      process.env.ENABLE_COEP = securityHeadersEnabled;
     }
 
-    if (nodeEnv === undefined) {
-      delete process.env.NODE_ENV;
-    } else {
+    if (nodeEnv !== undefined) {
       process.env.NODE_ENV = nodeEnv;
     }
 
@@ -62,27 +75,15 @@ describe('middleware security headers flag', () => {
     process.env.APP_URL = 'https://example.com';
     process.env.NEXTAUTH_SECRET = 'test-secret';
     process.env.NEXTAUTH_SESSION_STRATEGY = 'jwt';
+    process.env.NEXTAUTH_DEBUG = 'false';
+    process.env.NEXTAUTH_TRUST_HOST = 'true';
 
-    let middleware: typeof import('../middleware').default;
+    const jwt = jest.requireMock('next-auth/jwt');
+    jwt.getToken.mockResolvedValue({ sub: 'user-id' });
 
-    jest.isolateModules(() => {
-      const jwt = jest.requireMock('next-auth/jwt');
-      jwt.getToken.mockResolvedValue({ sub: 'user-id' });
-      middleware = jest.requireActual('../middleware').default;
-    });
-
-    return middleware!;
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('../middleware').default;
   };
-
-  afterEach(() => {
-    delete process.env.SECURITY_HEADERS_ENABLED;
-    delete process.env.DATABASE_URL;
-    delete process.env.APP_URL;
-    delete process.env.NEXTAUTH_SECRET;
-    delete process.env.NEXTAUTH_SESSION_STRATEGY;
-    delete process.env.NODE_ENV;
-    jest.clearAllMocks();
-  });
 
   it('sets critical security headers in production when env is undefined', async () => {
     const middleware = loadMiddleware({
