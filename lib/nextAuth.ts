@@ -294,7 +294,7 @@ export const getAuthOptions = (
       maxAge: sessionMaxAge,
     },
     secret: env.nextAuth.secret,
-    debug: process.env.NODE_ENV !== 'production',
+    debug: true,
     callbacks: {
       async signIn({ user, account, profile }) {
         if (!user || !user.email || !account) {
