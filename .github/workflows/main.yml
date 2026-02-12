@@ -110,6 +110,7 @@ jobs:
           PGPASSWORD: postgres
           NEXTAUTH_URL: http://127.0.0.1:4002
           NEXTAUTH_SECRET: secret
+          AUTH_TRUST_HOST: true
           APP_URL: http://127.0.0.1:4002
           AUTH_PROVIDERS: github,credentials,saml,idp-initiated
           JACKSON_WEBHOOK_SECRET: ${{ secrets.JACKSON_WEBHOOK_SECRET || 'test-jackson-webhook-secret' }}

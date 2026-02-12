@@ -295,7 +295,6 @@ export const getAuthOptions = (
     },
     secret: env.nextAuth.secret,
     debug: process.env.NODE_ENV !== 'production',
-    trustHost: true,
     callbacks: {
       async signIn({ user, account, profile }) {
         if (!user || !user.email || !account) {
