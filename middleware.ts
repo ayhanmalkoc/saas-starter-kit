@@ -6,16 +6,25 @@ import env from './lib/env';
 import { isUnAuthenticatedRoute } from './lib/middleware/route-match';
 
 // Constants for security headers
+// Disabling COEP/COOP reduces cross-origin isolation protection.
+// Commenting out Cross-Origin-Embedder-Policy and Cross-Origin-Opener-Policy removes protection against Spectre-like side-channel attacks. These headers together enable cross-origin isolation (window.crossOriginIsolated).
+// If this is intentional (e.g., to allow third-party resources without CORP headers), please document the rationale in a code comment. If not needed for compatibility, consider re-enabling these headers.
+
+const isDevelopment = process.env.NODE_ENV === 'development';
+const enableStrictCSP = process.env.ENABLE_CSP_STRICT === 'true';
+const enableCOEP = process.env.ENABLE_COEP === 'true';
+
 const SECURITY_HEADERS = {
   'Referrer-Policy': 'strict-origin-when-cross-origin',
   'Permissions-Policy': 'geolocation=(), microphone=()',
-  'Cross-Origin-Embedder-Policy': 'require-corp',
-  'Cross-Origin-Opener-Policy': 'same-origin',
   'Cross-Origin-Resource-Policy': 'same-site',
-} as const;
-
-const isProduction = process.env.NODE_ENV === 'production';
-const isDevelopment = !isProduction;
+  ...(enableCOEP
+    ? {
+        'Cross-Origin-Embedder-Policy': 'require-corp',
+        'Cross-Origin-Opener-Policy': 'same-origin',
+      }
+    : {}),
+};
 
 const generateNonce = (): string => {
   const nonce = new Uint8Array(16);
@@ -38,7 +47,7 @@ const generateCSP = (nonce: string): string => {
     'script-src': [
       "'self'",
       `'nonce-${nonce}'`,
-      "'strict-dynamic'",
+      ...(enableStrictCSP ? ["'strict-dynamic'"] : []),
       '*.gstatic.com',
       '*.google.com',
       ...(isDevelopment ? ["'unsafe-eval'"] : []),
@@ -65,7 +74,7 @@ const generateCSP = (nonce: string): string => {
 
   return Object.entries(policies)
     .map(([key, values]) => `${key} ${values.join(' ')}`)
-    .concat(isDevelopment ? [] : ['upgrade-insecure-requests'])
+    .concat(enableStrictCSP ? ['upgrade-insecure-requests'] : [])
     .join('; ');
 };
 
@@ -74,7 +83,7 @@ const applySecurityHeaders = (
   csp: string,
   reportTo: string
 ) => {
-  if (!isProduction && !env.securityHeadersEnabled) {
+  if (isDevelopment && !env.securityHeadersEnabled) {
     return;
   }
 
