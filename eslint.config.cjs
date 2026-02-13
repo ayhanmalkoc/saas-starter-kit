@@ -17,10 +17,19 @@ const compat = new FlatCompat({
 
 module.exports = [{
     ignores: [
-        ".next",
-        "**/node_modules",
+        ".next/**",
+        "**/node_modules/**",
         "eslint.config.cjs",
-        "next-env.d.ts"
+        "next-env.d.ts",
+        "out/**",
+        "dist/**",
+        "build/**",
+        "coverage/**",
+        "public/sw.js",
+        "public/workbox-*.js",
+        "**/*.min.js",
+        "playwright-report/**",
+        "test-results/**"
     ],
 }, ...compat.extends(
     "eslint:recommended",
