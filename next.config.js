@@ -2,6 +2,8 @@
 const { i18n } = require('./next-i18next.config');
 const { withSentryConfig } = require('@sentry/nextjs');
 
+const enableHSTS = process.env.ENABLE_HSTS === 'true';
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
   reactStrictMode: true,
@@ -35,10 +37,14 @@ const nextConfig = {
       {
         source: '/(.*?)',
         headers: [
-          {
-            key: 'Strict-Transport-Security',
-            value: 'max-age=31536000; includeSubDomains;',
-          },
+          ...(enableHSTS
+            ? [
+                {
+                  key: 'Strict-Transport-Security',
+                  value: 'max-age=31536000; includeSubDomains;',
+                },
+              ]
+            : []),
           {
             key: 'X-Frame-Options',
             value: 'SAMEORIGIN',

@@ -27,7 +27,7 @@ const config: PlaywrightTestConfig = {
   ],
   reporter: 'html',
   webServer: {
-    command: 'npm run start',
+    command: 'npm run start -- --hostname localhost',
     url: 'http://localhost:4002',
     reuseExistingServer: !process.env.CI,
   },
@@ -37,6 +37,7 @@ const config: PlaywrightTestConfig = {
     ignoreHTTPSErrors: true,
     baseURL: 'http://localhost:4002',
     trace: 'retain-on-first-failure',
+    video: 'on-first-retry',
   },
   testDir: './tests/e2e',
 };

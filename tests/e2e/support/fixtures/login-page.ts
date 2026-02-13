@@ -80,6 +80,7 @@ export class LoginPage {
   async goto() {
     await this.page.goto('/auth/login');
     await this.page.waitForURL('/auth/login');
+    await expect(this.page.getByRole('status')).toBeHidden({ timeout: 15000 });
   }
 
   async isMultipleTeamErrorVisible() {
@@ -93,6 +94,7 @@ export class LoginPage {
 
   async credentialLogin(email: string, password: string) {
     await expect(this.welcomeBackHeading).toBeVisible();
+    await expect(this.page.getByRole('status')).toBeHidden({ timeout: 15000 });
     await this.emailBox.fill(email);
     await this.passwordBox.fill(password);
     await this.signInButton.click();

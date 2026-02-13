@@ -39,6 +39,11 @@ const adapter = PrismaAdapter(prisma);
 const providers: Provider[] = [];
 const sessionMaxAge = 14 * 24 * 60 * 60; // 14 days
 const useSecureCookie = env.appUrl.startsWith('https://');
+const nextAuthDebug = process.env.NEXTAUTH_DEBUG === 'true';
+const nextAuthTrustHost =
+  process.env.NEXTAUTH_TRUST_HOST !== undefined
+    ? process.env.NEXTAUTH_TRUST_HOST === 'true'
+    : true;
 
 export const sessionTokenCookieName =
   (useSecureCookie ? '__Secure-' : '') + 'next-auth.session-token';
@@ -294,6 +299,10 @@ export const getAuthOptions = (
       maxAge: sessionMaxAge,
     },
     secret: env.nextAuth.secret,
+    debug: nextAuthDebug,
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
+    // @ts-ignore
+    trustHost: nextAuthTrustHost,
     callbacks: {
       async signIn({ user, account, profile }) {
         if (!user || !user.email || !account) {
