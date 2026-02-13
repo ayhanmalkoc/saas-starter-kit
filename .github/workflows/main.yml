@@ -24,6 +24,8 @@ jobs:
       NEXTAUTH_SECRET: secret
       NEXTAUTH_SESSION_STRATEGY: database
       AUTH_PROVIDERS: github,credentials,saml,idp-initiated
+      GITHUB_CLIENT_ID: test-github-client-id
+      GITHUB_CLIENT_SECRET: test-github-client-secret
       FEATURE_TEAM_SSO: true
       FEATURE_TEAM_DSYNC: true
       FEATURE_TEAM_AUDIT_LOG: true
