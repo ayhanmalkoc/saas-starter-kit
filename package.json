@@ -31,9 +31,9 @@
     "setup:stripe": "npm run check-plans && npm run stripe:setup-products && npm run stripe:sync-db",
     "delete-team": "node --env-file .env delete-team.js",
     "migrate:deploy": "prisma migrate deploy",
-    "db:setup-svix": "docker exec saas-starter-kit-db-1 /bin/bash /docker-entrypoint-initdb.d/init-svix-db.sh",
-    "db:setup-retraced": "docker exec saas-starter-kit-db-1 /bin/bash /docker-entrypoint-initdb.d/init-retraced-db.sh && docker exec saas-starter-kit-retraced-1 sh -c \"cat /app/build/migrations/pg/*.do.*.sql\" | docker exec -i saas-starter-kit-db-1 psql -U postgres -d retraced",
-    "setup:db": "docker-compose down -v && docker-compose up -d && echo 'Waiting for DB to start...' && node -e \"setTimeout(() => {}, 5000)\" && npx prisma db push && npm run db:setup-svix && npm run db:setup-retraced && node scripts/setup-retraced.js",
+    "db:setup-svix": "docker-compose exec -T db /bin/bash /docker-entrypoint-initdb.d/init-svix-db.sh",
+    "db:setup-retraced": "docker-compose exec -T db /bin/bash /docker-entrypoint-initdb.d/init-retraced-db.sh && docker-compose exec -T retraced sh -c \"cat /app/build/migrations/pg/*.do.*.sql\" | docker-compose exec -T db psql -U postgres -d retraced",
+    "setup:db": "docker-compose down -v && docker-compose up -d && node scripts/wait-for-postgres.js && npx prisma db push && npm run db:setup-svix && npm run db:setup-retraced && node scripts/setup-retraced.js",
     "setup:fresh": "npm run setup:db && echo 'Setup complete. Now run: npm run dev' && echo 'Then run: npm run setup:stripe (or npm run sync-stripe if products already exist)'"
   },
   "dependencies": {

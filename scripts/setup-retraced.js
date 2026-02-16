@@ -19,7 +19,7 @@ function updateEnv(key, value) {
 }
 
 function runSql(sql) {
-  const command = `docker exec -i saas-starter-kit-db-1 psql -U postgres -d retraced`;
+  const command = `docker-compose exec -T db psql -U postgres -d retraced`;
   try {
     execSync(command, { input: sql, stdio: ['pipe', 'inherit', 'inherit'] });
   } catch (error) {

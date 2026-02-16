@@ -167,8 +167,12 @@ export default async function middleware(req: NextRequest) {
   return response;
 }
 
+const middlewareMatcher = isDevelopment
+  ? [
+      '/((?!_next/static|_next/image|favicon.ico|api/auth/session|api/test-audit).*)',
+    ]
+  : ['/((?!_next/static|_next/image|favicon.ico|api/auth/session).*)'];
+
 export const config = {
-  matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|api/auth/session|api/test-audit).*)',
-  ],
+  matcher: middlewareMatcher,
 };

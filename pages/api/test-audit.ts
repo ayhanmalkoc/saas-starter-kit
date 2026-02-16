@@ -5,6 +5,15 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (process.env.NODE_ENV === 'production') {
+    return res.status(404).json({ error: 'Not found' });
+  }
+
+  if (req.method !== 'POST') {
+    res.setHeader('Allow', ['POST']);
+    return res.status(405).json({ error: 'Method not allowed' });
+  }
+
   try {
     console.log('--- Debug Audit: Starting ---');
 
@@ -33,11 +42,9 @@ export default async function handler(
         team: team as any,
       });
       console.log('✅ Valid User: Sent successfully');
-    } catch (e: any) {
-      console.error('❌ Valid User: Failed', e);
-      return res
-        .status(500)
-        .json({ error: 'Valid user failed', details: e.message });
+    } catch (error) {
+      console.error('❌ Valid User: Failed', error);
+      return res.status(500).json({ error: 'internal server error' });
     }
 
     console.log('2. Testing with NULL User Name');
@@ -56,16 +63,16 @@ export default async function handler(
         team: team as any,
       });
       console.log('✅ Null Name User: Sent successfully');
-    } catch (e: any) {
-      console.error('❌ Null Name User: Failed', e);
-      return res
-        .status(500)
-        .json({ error: 'Null name user failed', details: e.message });
+    } catch (error) {
+      console.error('❌ Null Name User: Failed', error);
+      return res.status(500).json({ error: 'internal server error' });
     }
 
-    res.status(200).json({ success: true, message: 'All audit tests passed' });
-  } catch (error: any) {
+    return res
+      .status(200)
+      .json({ success: true, message: 'All audit tests passed' });
+  } catch (error) {
     console.error('Global Error in Debug Sync:', error);
-    res.status(500).json({ error: error.message });
+    return res.status(500).json({ error: 'internal server error' });
   }
 }

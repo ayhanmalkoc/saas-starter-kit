@@ -482,10 +482,12 @@ export const getTeamEntitlements = async (
 ): Promise<TeamEntitlements> => {
   const entitlements = emptyEntitlements();
 
-  const services = await prisma.service.findMany({
+  const services: BillingService[] = await prisma.service.findMany({
     select: { id: true, name: true, features: true, metadata: true },
   });
-  const serviceById = new Map(services.map((service) => [service.id, service]));
+  const serviceById = new Map<string, BillingService>(
+    services.map((service) => [service.id, service] as const)
+  );
   const serviceByName = buildServiceNameMap(services);
   const cache = new Map<string, EntitlementValues>();
 

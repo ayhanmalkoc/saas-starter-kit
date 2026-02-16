@@ -17,7 +17,7 @@ const db = new PrismaClient();
 const stripe = new Stripe(stripeSecretKey);
 
 const normalizeKey = (value) =>
-  String(value)
+  String(value || '')
     .trim()
     .toLowerCase()
     .replace(/[\s-]+/g, '_');

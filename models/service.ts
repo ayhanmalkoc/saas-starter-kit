@@ -476,5 +476,10 @@ export const getAllServices = async () => {
 
       return a.name.localeCompare(b.name);
     })
-    .map(({ __tier, __planLevel, __priceAmount, ...service }) => service);
+    .map(({ __tier, __planLevel, __priceAmount, ...service }) => {
+      void __tier;
+      void __planLevel;
+      void __priceAmount;
+      return service;
+    });
 };
