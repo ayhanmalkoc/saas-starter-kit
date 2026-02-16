@@ -11,6 +11,7 @@ import { getTeamMember } from 'models/team';
 import { throwIfNotAllowed } from 'models/user';
 import { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
+import { requireTeamEntitlement } from '@/lib/billing/entitlements';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import dynamic from 'next/dynamic';
 import type { NextPageWithLayout } from 'types';
@@ -42,8 +43,8 @@ const Events: NextPageWithLayout<inferSSRProps<typeof getServerSideProps>> = ({
     return <Loading />;
   }
 
-  if (isError || error) {
-    return <Error message={isError?.message || error?.message} />;
+  if (isError) {
+    return <Error message={isError.message} />;
   }
 
   if (!team) {
@@ -55,12 +56,17 @@ const Events: NextPageWithLayout<inferSSRProps<typeof getServerSideProps>> = ({
       <TeamTab activeTab="audit-logs" team={team} teamFeatures={teamFeatures} />
       <Card>
         <Card.Body>
-          {canAccess('team_audit_log', ['read']) && auditLogToken && (
-            <RetracedEventsBrowser
-              host={`${retracedHost}/viewer/v1`}
-              auditLogToken={auditLogToken}
-              header={t('audit-logs')}
-            />
+          {error ? (
+            <Error message={error.message} />
+          ) : (
+            canAccess('team_audit_log', ['read']) &&
+            auditLogToken && (
+              <RetracedEventsBrowser
+                host={`${retracedHost}/viewer/v1`}
+                auditLogToken={auditLogToken}
+                header={t('audit-logs')}
+              />
+            )
           )}
         </Card.Body>
       </Card>
@@ -85,6 +91,9 @@ export async function getServerSideProps(context: GetServerSidePropsContext) {
 
   try {
     throwIfNotAllowed(teamMember, 'team_audit_log', 'read');
+    await requireTeamEntitlement(teamMember.team.id, {
+      feature: 'team_audit_log',
+    });
 
     const auditLogToken = await getViewerToken(
       teamMember.team.id,

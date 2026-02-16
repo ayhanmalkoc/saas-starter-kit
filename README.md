@@ -26,10 +26,14 @@ Blog - [Enterprise-ready Saas Starter Kit](https://boxyhq.com/blog/enterprise-re
 
 Project docs:
 
-- [Billing & Subscription Integration](docs/billing-subscriptions.md)
-- [Deployment Guide](docs/deployment.md)
-- [Migration Operations Runbook](docs/operations-migration-runbook.md)
-- [Technical Debt Backlog](docs/technical-debt-backlog.md)
+- [Docs Index](docs/README.md)
+- [Environment Commands Playbook](docs/environment-commands-playbook.md)
+- [Billing Integration Guide](docs/billing-integration-guide.md)
+- [Deployment Guide](docs/deployment-guide.md)
+- [Production Readiness Guide](docs/production-readiness-guide.md)
+- [Migration Operations Runbook](docs/migration-operations-runbook.md)
+- [Release Checklist](docs/release-checklist.md)
+- [Testing Strategy](docs/testing-strategy.md)
 
 Next.js-based SaaS starter kit saves you months of development by starting you off with all the features that are the same in every product, so you can focus on what makes your app unique.
 
@@ -91,6 +95,10 @@ Please follow these simple steps to get a local copy up and running.
 
 ### Development
 
+For environment-specific command order (fresh clone, dev reset, staging, production), see:
+
+- [Environment Commands Playbook](docs/environment-commands-playbook.md)
+
 #### 1. Setup
 
 - [Fork](https://github.com/boxyhq/saas-starter-kit/fork) the repository
@@ -120,20 +128,24 @@ Duplicate `.env.example` to `.env`.
 cp .env.example .env
 ```
 
-#### 5. Start Docker services
+#### 5. Bootstrap local infrastructure and database (recommended)
 
-The `docker-compose.yml` includes **PostgreSQL** (database) and **Mailpit** (local email testing).
+This command performs a clean local reset and initialization:
+
+- Docker down/up with volumes reset
+- Prisma schema sync (`db push`) for local
+- Svix and Retraced local DB setup
 
 ```bash
-docker-compose up -d
+npm run setup:db
 ```
 
 Once running, you can view caught emails at [http://localhost:8025](http://localhost:8025) (Mailpit Web UI).
 
-#### 6. Set up database schema
+#### 6. Setup Stripe plans and sync to DB
 
 ```bash
-npx prisma db push
+npm run setup:stripe
 ```
 
 #### 7. Start the server
@@ -216,14 +228,14 @@ The default login options are email and GitHub. Configure below:
 
 1. Create an account on [Stripe](https://stripe.com/).
 2. Add the [Stripe API secret key](https://dashboard.stripe.com/apikeys) to the `.env` file as `STRIPE_SECRET_KEY`.
-3. Create Stripe product and price definitions in your Stripe dashboard.
-4. Set `STRIPE_SYNC_SECRET` in your `.env` file (this must match the `x-stripe-sync-secret` header expected by the sync endpoint).
-5. Run `npm run sync-stripe` to trigger `/api/admin/stripe/sync` and import Stripe products/prices into your local database.
-6. Create a webhook in the [Stripe dashboard](https://dashboard.stripe.com/webhooks). The URL is your app hostname plus `/api/webhooks/stripe`. If you want to set this up locally you will need to use the [Stripe CLI forwarder](https://docs.stripe.com/webhooks#test-webhook).
-7. Once created, add the signing secret to the `.env` file as `STRIPE_WEBHOOK_SECRET`.
+3. Set `STRIPE_SYNC_SECRET` in your `.env` file (this must match the `x-stripe-sync-secret` header expected by the sync endpoint).
+4. Run `npm run setup:stripe` to validate plan inheritance, create/update Stripe products/prices, and sync them into your local database.
+5. Create a webhook in the [Stripe dashboard](https://dashboard.stripe.com/webhooks). The URL is your app hostname plus `/api/webhooks/stripe`. If you want to set this up locally you will need to use the [Stripe CLI forwarder](https://docs.stripe.com/webhooks#test-webhook).
+6. Once created, add the signing secret to the `.env` file as `STRIPE_WEBHOOK_SECRET`.
 
 > Note: `npm run sync-stripe` requires `APP_URL` to point to a reachable running app host (for local dev, usually `http://localhost:4002`).
 > On success, you should see output similar to `Sync completed successfully { synced: true, products: <count>, prices: <count> }`.
+> For environment-specific command order, use `docs/environment-commands-playbook.md`.
 
 ### Recaptcha
 

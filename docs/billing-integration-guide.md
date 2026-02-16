@@ -39,8 +39,12 @@ Additionally, product/price synchronization uses an admin endpoint and helper sc
 1. The client calls `POST /api/teams/[slug]/payments/update-subscription`.
 2. The API checks team authorization and confirms the subscription belongs to that team.
 3. It loads the Stripe subscription and first subscription item.
-4. It retrieves the new price and calculates quantity for seat-based plans.
-5. It updates the Stripe subscription with `proration_behavior: 'create_prorations'`.
+4. It retrieves current and target prices, then classifies the change as upgrade/downgrade/lateral.
+5. It calculates quantity for seat-based plans.
+6. It updates Stripe subscription with plan-aware proration:
+   - upgrade: `always_invoice`
+   - downgrade: `none`
+   - lateral: `create_prorations`
 
 ### 3) Open customer portal
 
@@ -80,14 +84,29 @@ Recommended supporting variable:
 
 ## Operations
 
+For environment-by-environment command order (fresh clone, dev reset, staging, production), use:
+
+- `docs/environment-commands-playbook.md`
+
 ### Initial setup
 
-1. Create products and prices in the Stripe dashboard.
-2. Define at least these values in `.env`:
+1. Define at least these values in `.env`:
    - `STRIPE_SECRET_KEY`
    - `STRIPE_WEBHOOK_SECRET`
    - `STRIPE_SYNC_SECRET`
    - `APP_URL` (e.g., local: `http://localhost:4002`)
+2. Validate plan catalog and seed Stripe product/price data:
+
+```bash
+npm run setup:stripe
+```
+
+This command runs:
+
+- `npm run check-plans` (validates tier/plan_level/inheritance consistency)
+- `npm run stripe:setup-products` (idempotent Stripe catalog seed)
+- `npm run stripe:sync-db` (direct Stripe -> DB sync)
+
 3. Start the app:
 
 ```bash
@@ -97,6 +116,12 @@ npm run dev
 4. Add the Stripe webhook endpoint:
    - URL: `<APP_URL>/api/webhooks/stripe`
    - For local testing, use the Stripe CLI forwarder.
+
+Example:
+
+```bash
+stripe listen --forward-to http://localhost:4002/api/webhooks/stripe
+```
 
 ### Running `sync-stripe`
 
@@ -109,6 +134,15 @@ npm run sync-stripe
 Expected successful output example:
 
 - `Sync completed successfully { synced: true, products: <count>, prices: <count> }`
+
+### Dev reset (optional)
+
+If you need to reset Stripe catalog entries in your local/test Stripe account:
+
+```bash
+npm run stripe:cleanup
+npm run setup:stripe
+```
 
 ## Troubleshooting
 

@@ -270,5 +270,8 @@
   "pricing-title": "Pricing Plans",
   "pricing-subtitle": "Choose the plan that's right for your business",
   "per-user": "/ user",
-  "billing-interval": "Billing Interval"
+  "billing-interval": "Billing Interval",
+  "individual": "Individual",
+  "contact-sales": "Contact Sales",
+  "contact-us": "Contact Us"
 }

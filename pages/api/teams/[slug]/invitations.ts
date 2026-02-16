@@ -90,7 +90,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       );
     }
 
-    // countTeamMembers query performance notes are tracked in docs/db-query-notes.md.
+    // Keep member-existence checks index-friendly; monitor performance on large teams.
     const memberExists = await countTeamMembers({
       where: {
         teamId: teamMember.teamId,

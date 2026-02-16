@@ -1,4 +1,5 @@
 import { NextApiRequest, NextApiResponse } from 'next';
+import type Stripe from 'stripe';
 
 import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
@@ -6,6 +7,63 @@ import { stripe } from '@/lib/stripe';
 import { updateSubscriptionSchema, validateWithSchema } from '@/lib/zod';
 import { getBySubscriptionId } from 'models/subscription';
 import { ApiError } from '@/lib/errors';
+
+type PlanChangeType = 'upgrade' | 'downgrade' | 'lateral';
+
+const getYearlyAmount = (price: Stripe.Price, quantity: number) => {
+  if (typeof price.unit_amount !== 'number') {
+    return null;
+  }
+
+  const intervalCount = price.recurring?.interval_count ?? 1;
+  if (!price.recurring?.interval) {
+    return price.unit_amount * quantity;
+  }
+
+  const cyclesPerYear =
+    price.recurring.interval === 'year'
+      ? 1 / intervalCount
+      : price.recurring.interval === 'month'
+        ? 12 / intervalCount
+        : price.recurring.interval === 'week'
+          ? 52 / intervalCount
+          : 365 / intervalCount;
+
+  return price.unit_amount * quantity * cyclesPerYear;
+};
+
+const isSeatBasedPrice = (price: Stripe.Price) =>
+  (price.billing_scheme === 'per_unit' || price.billing_scheme === 'tiered') &&
+  price.recurring?.usage_type !== 'metered';
+
+const resolvePlanChangeType = ({
+  currentPrice,
+  nextPrice,
+  currentQuantity,
+  nextQuantity,
+}: {
+  currentPrice: Stripe.Price;
+  nextPrice: Stripe.Price;
+  currentQuantity: number;
+  nextQuantity: number;
+}): PlanChangeType => {
+  const currentYearly = getYearlyAmount(currentPrice, currentQuantity);
+  const nextYearly = getYearlyAmount(nextPrice, nextQuantity);
+
+  if (currentYearly === null || nextYearly === null) {
+    return 'lateral';
+  }
+
+  if (nextYearly > currentYearly) {
+    return 'upgrade';
+  }
+
+  if (nextYearly < currentYearly) {
+    return 'downgrade';
+  }
+
+  return 'lateral';
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -52,17 +110,35 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const stripePrice = await stripe.prices.retrieve(price);
-  const usageType = stripePrice.recurring?.usage_type;
-  const isSeatBased =
-    (stripePrice.billing_scheme === 'per_unit' ||
-      stripePrice.billing_scheme === 'tiered') &&
-    usageType !== 'metered';
+  const currentStripePrice = await stripe.prices.retrieve(
+    subscriptionItem.price.id
+  );
+  const isNextPlanSeatBased = isSeatBasedPrice(stripePrice);
 
-  const nextQuantity = isSeatBased
+  const nextQuantity = isNextPlanSeatBased
     ? typeof quantity === 'number'
       ? quantity
       : (subscription.quantity ?? subscriptionItem.quantity ?? 1)
     : undefined;
+
+  const currentQuantity = isSeatBasedPrice(currentStripePrice)
+    ? (subscriptionItem.quantity ?? subscription.quantity ?? 1)
+    : 1;
+  const upcomingQuantity = isNextPlanSeatBased ? (nextQuantity ?? 1) : 1;
+
+  const changeType = resolvePlanChangeType({
+    currentPrice: currentStripePrice,
+    nextPrice: stripePrice,
+    currentQuantity,
+    nextQuantity: upcomingQuantity,
+  });
+
+  const prorationBehavior =
+    changeType === 'upgrade'
+      ? 'always_invoice'
+      : changeType === 'downgrade'
+        ? 'none'
+        : 'create_prorations';
 
   const updatedSubscription = await stripe.subscriptions.update(
     subscriptionId,
@@ -76,9 +152,10 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
             : {}),
         },
       ],
-      proration_behavior: 'create_prorations',
+      billing_cycle_anchor: 'unchanged',
+      proration_behavior: prorationBehavior,
     }
   );
 
-  res.json({ data: updatedSubscription });
+  res.json({ data: updatedSubscription, changeType, prorationBehavior });
 };
