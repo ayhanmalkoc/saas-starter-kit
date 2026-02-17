@@ -97,6 +97,11 @@ const applySecurityHeaders = (
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Keep middleware matcher static for Next.js; apply test-audit bypass at runtime.
+  if (isDevelopment && pathname === '/api/test-audit') {
+    return NextResponse.next();
+  }
+
   const requestHeaders = new Headers(req.headers);
   const nonce = generateNonce();
   const csp = generateCSP(nonce);
@@ -167,12 +172,6 @@ export default async function middleware(req: NextRequest) {
   return response;
 }
 
-const middlewareMatcher = isDevelopment
-  ? [
-      '/((?!_next/static|_next/image|favicon.ico|api/auth/session|api/test-audit).*)',
-    ]
-  : ['/((?!_next/static|_next/image|favicon.ico|api/auth/session).*)'];
-
 export const config = {
-  matcher: middlewareMatcher,
+  matcher: ['/((?!_next/static|_next/image|favicon.ico|api/auth/session).*)'],
 };

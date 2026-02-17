@@ -47,6 +47,7 @@ const products = [
       plan_level: '0',
       is_default: 'true',
       recommended: 'false',
+      limit_team_members: '1',
     },
     prices: [
       { unit_amount: 0, currency: 'usd', recurring: { interval: 'month' } },

@@ -1,7 +1,10 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import { assertBusinessTierPrice } from '@/lib/billing/catalog';
 import { getSession } from '@/lib/session';
+import { stripe } from '@/lib/stripe';
 import { throwIfNoTeamAccess } from 'models/team';
+import { getByTeamId, upsertStripeSubscription } from 'models/subscription';
 import { getBillingProvider } from '@/lib/billing/provider';
 import type {
   BillingSession,
@@ -9,6 +12,91 @@ import type {
 } from '@/lib/billing/provider/types';
 import env from '@/lib/env';
 import { checkoutSessionSchema, validateWithSchema } from '@/lib/zod';
+
+const BLOCKING_SUBSCRIPTION_STATUSES = new Set([
+  'active',
+  'trialing',
+  'past_due',
+  'incomplete',
+  'unpaid',
+]);
+
+const toDate = (timestamp: number | null | undefined) =>
+  typeof timestamp === 'number' ? new Date(timestamp * 1000) : null;
+
+const syncBlockingStripeSubscriptions = async (
+  teamId: string,
+  customerId: string
+) => {
+  try {
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 100,
+    });
+
+    const blocking = subscriptions.data
+      .filter((subscription) =>
+        BLOCKING_SUBSCRIPTION_STATUSES.has(subscription.status)
+      )
+      .sort((a, b) => b.created - a.created);
+
+    for (const subscription of blocking) {
+      const subscriptionItem = subscription.items.data[0];
+      const priceId = subscriptionItem?.price?.id ?? null;
+      const productId =
+        typeof subscriptionItem?.price?.product === 'string'
+          ? subscriptionItem.price.product
+          : null;
+
+      await upsertStripeSubscription({
+        id: subscription.id,
+        teamId,
+        customerId,
+        status: subscription.status,
+        quantity: subscriptionItem?.quantity ?? null,
+        currency: subscriptionItem?.price?.currency ?? null,
+        currentPeriodStart: toDate(subscription.current_period_start),
+        currentPeriodEnd: toDate(subscription.current_period_end),
+        cancelAt: toDate(subscription.cancel_at),
+        cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+        trialEnd: toDate(subscription.trial_end),
+        priceId,
+        productId,
+      });
+    }
+
+    return blocking[0]?.id ?? null;
+  } catch (error) {
+    console.error(
+      `Failed to check Stripe subscriptions for customer ${customerId}`,
+      error
+    );
+    return null;
+  }
+};
+
+const getExistingTeamSubscriptionId = async (
+  teamId: string,
+  customerId: string
+) => {
+  const stripeSubscriptionId = await syncBlockingStripeSubscriptions(
+    teamId,
+    customerId
+  );
+  if (stripeSubscriptionId) {
+    return stripeSubscriptionId;
+  }
+
+  const teamSubscriptions = await getByTeamId(teamId);
+  const blockingTeamSubscriptions = teamSubscriptions
+    .filter((subscription) =>
+      BLOCKING_SUBSCRIPTION_STATUSES.has(subscription.status)
+    )
+    .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
+
+  return blockingTeamSubscriptions[0]?.id ?? null;
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -40,12 +128,31 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   );
 
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await assertBusinessTierPrice(price);
   const session = await getSession(req, res);
   const billingProvider = getBillingProvider(teamMember.team.billingProvider);
   const customerId = await billingProvider.getCustomerId(
     teamMember as BillingTeamMember,
     session as BillingSession
   );
+
+  const existingSubscriptionId = await getExistingTeamSubscriptionId(
+    teamMember.teamId,
+    customerId
+  );
+
+  if (existingSubscriptionId) {
+    return res.status(409).json({
+      error: {
+        code: 'subscription_exists',
+        message:
+          'An active subscription already exists for this team. Use subscription update flow.',
+      },
+      data: {
+        subscriptionId: existingSubscriptionId,
+      },
+    });
+  }
 
   const checkoutSession = await billingProvider.createCheckoutSession({
     customerId,

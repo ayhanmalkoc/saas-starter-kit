@@ -3,6 +3,8 @@ import { ApiError } from '@/lib/errors';
 import { sendAudit } from '@/lib/retraced';
 import { getSession } from '@/lib/session';
 import { sendEvent } from '@/lib/svix';
+import { getTeamEntitlements } from '@/lib/billing/entitlements';
+import { getUser } from 'models/user';
 import {
   createInvitation,
   deleteInvitation,
@@ -16,7 +18,7 @@ import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import { extractEmailDomain, isEmailAllowed } from '@/lib/email/utils';
-import { Invitation, Role } from '@prisma/client';
+import { Invitation, Prisma, Role } from '@prisma/client';
 import { countTeamMembers } from 'models/teamMember';
 import {
   acceptInvitationSchema,
@@ -25,6 +27,25 @@ import {
   inviteViaEmailSchema,
   validateWithSchema,
 } from '@/lib/zod';
+
+const enforceTeamMemberLimit = async (
+  teamId: string,
+  requestedMemberCount: number
+) => {
+  const entitlements = await getTeamEntitlements(teamId);
+  const memberLimit = entitlements.limits.team_members;
+
+  if (memberLimit === undefined) {
+    return;
+  }
+
+  if (requestedMemberCount > memberLimit) {
+    throw new ApiError(
+      403,
+      `Team member limit exceeded (${memberLimit}). Increase seat capacity from billing before inviting more members.`
+    );
+  }
+};
 
 export default async function handler(
   req: NextApiRequest,
@@ -114,19 +135,39 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     if (invitationExists) {
       throw new ApiError(400, 'An invitation already exists for this email.');
     }
+  }
 
+  const [currentMemberCount, pendingInvitationCount] = await Promise.all([
+    countTeamMembers({
+      where: {
+        teamId: teamMember.teamId,
+      },
+    }),
+    getInvitationCount({
+      where: {
+        teamId: teamMember.teamId,
+        expires: {
+          gt: new Date(),
+        },
+      },
+    }),
+  ]);
+
+  await enforceTeamMemberLimit(
+    teamMember.teamId,
+    currentMemberCount + pendingInvitationCount + 1
+  );
+
+  if (sentViaEmail) {
     invitation = await createInvitation({
       teamId: teamMember.teamId,
       invitedBy: teamMember.userId,
-      email,
+      email: email!,
       role,
       sentViaEmail: true,
       allowedDomains: [],
     });
-  }
-
-  // Invite via link
-  if (!sentViaEmail) {
+  } else {
     invitation = await createInvitation({
       teamId: teamMember.teamId,
       invitedBy: teamMember.userId,
@@ -239,6 +280,14 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const { id: userId, email } = session.user;
+  const existingUser = await getUser({ id: userId });
+
+  if (!existingUser) {
+    throw new ApiError(
+      401,
+      'Session user could not be found. Please sign out and sign in again before accepting the invitation.'
+    );
+  }
 
   // Make sure the user is logged in with the invited email address (Join via email)
   if (invitation.sentViaEmail && invitation.email !== email) {
@@ -263,11 +312,44 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
 
-  const teamMember = await addTeamMember(
-    invitation.team.id,
-    userId,
-    invitation.role
+  const isExistingMember = Boolean(
+    await countTeamMembers({
+      where: {
+        teamId: invitation.team.id,
+        userId,
+      },
+    })
   );
+
+  if (!isExistingMember) {
+    const currentMemberCount = await countTeamMembers({
+      where: {
+        teamId: invitation.team.id,
+      },
+    });
+    await enforceTeamMemberLimit(invitation.team.id, currentMemberCount + 1);
+  }
+
+  let teamMember;
+  try {
+    teamMember = await addTeamMember(
+      invitation.team.id,
+      userId,
+      invitation.role
+    );
+  } catch (error) {
+    if (
+      error instanceof Prisma.PrismaClientKnownRequestError &&
+      error.code === 'P2003'
+    ) {
+      throw new ApiError(
+        401,
+        'Session is stale for invitation acceptance. Please sign out and sign in again.'
+      );
+    }
+
+    throw error;
+  }
 
   await sendEvent(invitation.team.id, 'member.created', teamMember);
 

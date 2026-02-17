@@ -64,9 +64,11 @@ If Stripe product/price records are missing in app DB after deploy:
 
 ```bash
 npm run sync-stripe
+npm run stripe:sync-subscriptions
 ```
 
-This command requires a running application and valid `APP_URL`.
+`npm run sync-stripe` requires a running application and valid `APP_URL`.
+`npm run stripe:sync-subscriptions` reads Stripe + DB directly and does not require a running app server.
 
 ## Related Documents
 

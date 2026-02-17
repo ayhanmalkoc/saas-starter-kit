@@ -65,6 +65,8 @@ const emptyEntitlementValues = (): EntitlementValues => ({
   limits: {},
 });
 
+const TEAM_MEMBER_LIMIT_KEY = normalizeKey('team_members');
+
 type ServiceMetadata = {
   featureFlags: Record<string, boolean>;
   limits: Record<string, number>;
@@ -296,6 +298,30 @@ const mergeEntitlementValues = (
     base.limits[limitKey] =
       existing === undefined ? limitValue : Math.max(existing, limitValue);
   }
+};
+
+const applySubscriptionQuantityToEntitlements = (
+  entitlements: EntitlementValues,
+  subscription: Pick<Subscription, 'quantity'>
+) => {
+  const quantity = subscription.quantity ?? 1;
+  const teamMemberLimit = entitlements.limits[TEAM_MEMBER_LIMIT_KEY];
+
+  if (
+    !Number.isFinite(quantity) ||
+    quantity <= 1 ||
+    teamMemberLimit === undefined
+  ) {
+    return entitlements;
+  }
+
+  return {
+    features: { ...entitlements.features },
+    limits: {
+      ...entitlements.limits,
+      [TEAM_MEMBER_LIMIT_KEY]: teamMemberLimit * quantity,
+    },
+  };
 };
 
 const getEntitlementsFromStripeProduct = async (productId: string) => {
@@ -546,7 +572,12 @@ export const getTeamEntitlements = async (
       continue;
     }
 
-    mergeEntitlements(entitlements, planEntitlements, planId, source);
+    const quantityAwareEntitlements = applySubscriptionQuantityToEntitlements(
+      planEntitlements,
+      subscription
+    );
+
+    mergeEntitlements(entitlements, quantityAwareEntitlements, planId, source);
   }
 
   return entitlements;

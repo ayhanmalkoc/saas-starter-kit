@@ -23,8 +23,9 @@ Before any flow:
 | ----------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------ |
 | `npm run setup:db`                  | Reset local Docker stack + apply Prisma schema + initialize Svix/Retraced DBs      | No                                                     |
 | `npm run stripe:cleanup`            | Archive all active Stripe products/prices (destructive in selected Stripe account) | No                                                     |
-| `npm run setup:stripe`              | Validate plan model, seed Stripe products/prices, then sync Stripe -> DB directly  | No                                                     |
+| `npm run setup:stripe`              | Validate plan model, seed Stripe products/prices, sync catalog to DB, and backfill subscriptions from Stripe customers | No                                                     |
 | `npm run stripe:sync-db`            | Sync Stripe products/prices directly into DB (no API call)                         | No                                                     |
+| `npm run stripe:sync-subscriptions` | Backfill subscriptions from Stripe customers into DB (recovery path when webhook events are missed) | No                                                     |
 | `npm run sync-stripe`               | Sync via `/api/admin/stripe/sync` endpoint                                         | Yes                                                    |
 | `npm run dev`                       | Start local Next.js dev server on `:4002`                                          | N/A                                                    |
 | `npm run build-ci && npm run start` | Start app in production mode                                                       | N/A                                                    |
@@ -72,7 +73,8 @@ npm run dev
 Notes:
 
 - `stripe:cleanup` archives active catalog entries in the configured Stripe account. Use only when intentional.
-- If you only need DB sync without reseeding catalog, use `npm run stripe:sync-db`.
+- If you only need catalog sync without reseeding, use `npm run stripe:sync-db`.
+- If billing still shows Free after a successful Stripe checkout, run `npm run stripe:sync-subscriptions`.
 - If app is already running and you prefer API-based sync, use `npm run sync-stripe`.
 
 ## 3) Staging Environment Test Flow
@@ -98,6 +100,7 @@ npm run sync-stripe
 
 ```bash
 npm run stripe:sync-db
+npm run stripe:sync-subscriptions
 ```
 
 Staging rules:
@@ -121,6 +124,7 @@ For first-time or corrective catalog sync after deploy:
 
 ```bash
 npm run sync-stripe
+npm run stripe:sync-subscriptions
 ```
 
 Production rules:

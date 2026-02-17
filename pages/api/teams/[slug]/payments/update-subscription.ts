@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 import type Stripe from 'stripe';
 
+import { assertBusinessTierPrice } from '@/lib/billing/catalog';
 import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
 import { stripe } from '@/lib/stripe';
@@ -96,6 +97,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 
   await getSession(req, res);
   const teamMember = await throwIfNoTeamAccess(req, res);
+  await assertBusinessTierPrice(price);
 
   const subscription = await getBySubscriptionId(subscriptionId);
   if (!subscription || subscription.teamId !== teamMember.teamId) {

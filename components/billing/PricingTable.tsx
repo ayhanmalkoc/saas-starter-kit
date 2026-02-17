@@ -45,10 +45,17 @@ const PricingTable = ({
   const currentSubscription = activeSubscription;
 
   const { t } = useTranslation('common');
+  const isTeamContext = Boolean(team?.slug);
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>(
     'month'
   );
   const [tier, setTier] = useState<'individual' | 'business'>('individual');
+
+  useEffect(() => {
+    if (isTeamContext && tier !== 'business') {
+      setTier('business');
+    }
+  }, [isTeamContext, tier]);
 
   // Auto-trigger checkout if plan param exists and user is logged in (has team)
   useEffect(() => {
@@ -160,6 +167,9 @@ const PricingTable = ({
     .filter((plan) => {
       const metadata = plan.metadata as { tier?: string };
       const planTier = metadata?.tier || 'personal'; // Default to personal if missing
+      if (isTeamContext) {
+        return planTier === 'business';
+      }
       // Map 'personal' from DB to 'individual' for UI logic if needed, or just check against 'personal'
       // DB has 'personal' and 'business' tiers.
       if (tier === 'individual') {
@@ -180,11 +190,12 @@ const PricingTable = ({
       return a.name.localeCompare(b.name);
     });
 
-  const containerMaxWidth = tier === 'individual' ? 'max-w-7xl' : 'max-w-4xl';
+  const containerMaxWidth =
+    !isTeamContext && tier === 'individual' ? 'max-w-7xl' : 'max-w-4xl';
   // Individual: 3 columns (Free, Basic, Pro)
   // Business: 2 columns (Team, Enterprise)
   const gridCols =
-    tier === 'individual'
+    !isTeamContext && tier === 'individual'
       ? 'grid-cols-1 md:grid-cols-3'
       : 'grid-cols-1 md:grid-cols-2';
 
@@ -193,12 +204,14 @@ const PricingTable = ({
       <div className="flex flex-col items-center justify-center mb-8 space-y-6">
         {/* Tier Tabs */}
         <div className="tabs tabs-boxed p-1 bg-gray-100 rounded-full w-fit mx-auto">
-          <button
-            className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'individual' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
-            onClick={() => setTier('individual')}
-          >
-            {t('individual') || 'Individual'}
-          </button>
+          {!isTeamContext && (
+            <button
+              className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'individual' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setTier('individual')}
+            >
+              {t('individual') || 'Individual'}
+            </button>
+          )}
           <button
             className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'business' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
             onClick={() => setTier('business')}
