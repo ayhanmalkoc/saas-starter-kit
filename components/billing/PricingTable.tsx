@@ -278,12 +278,13 @@ const PricingTable = ({
           };
 
           if (!price) {
+            const defaultPrice = plan.prices[0];
             if (
-              plan.name.toLowerCase() === 'free' ||
+              defaultPrice?.amount === 0 ||
               metadata?.custom === 'true' ||
               metadata?.custom === true
             ) {
-              price = plan.prices[0];
+              price = defaultPrice;
             }
           }
 

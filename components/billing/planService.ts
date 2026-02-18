@@ -115,5 +115,15 @@ export const handlePlanChange = async ({
     return fallback.payload;
   }
 
+  if (!primary.response.ok || !primary.payload) {
+    return (
+      primary.payload || {
+        error: {
+          message: 'Plan change request failed.',
+        },
+      }
+    );
+  }
+
   return primary.payload;
 };

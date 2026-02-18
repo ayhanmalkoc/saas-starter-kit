@@ -13,7 +13,7 @@ import {
   getInvitations,
   isInvitationExpired,
 } from 'models/invitation';
-import { addTeamMember, throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoTeamAccess } from 'models/team';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import { extractEmailDomain, isEmailAllowed } from '@/lib/email/utils';
@@ -45,17 +45,6 @@ const enforceTeamMemberLimitValue = (
       `Team member limit exceeded (${memberLimit}). Increase seat capacity from billing before inviting more members.`
     );
   }
-};
-
-const enforceTeamMemberLimit = async (
-  teamId: string,
-  requestedMemberCount: number
-) => {
-  const entitlements = await getTeamEntitlements(teamId);
-  enforceTeamMemberLimitValue(
-    entitlements.limits.team_members,
-    requestedMemberCount
-  );
 };
 
 const createInvitationWithTeamLimit = async ({
@@ -141,6 +130,82 @@ const createInvitationWithTeamLimit = async ({
   throw new ApiError(
     409,
     'Invitation request conflicted with another request. Please retry.'
+  );
+};
+
+const addTeamMemberWithTeamLimit = async ({
+  teamId,
+  userId,
+  role,
+  memberLimit,
+}: {
+  teamId: string;
+  userId: string;
+  role: Role;
+  memberLimit: number | undefined;
+}) => {
+  for (let attempt = 1; attempt <= MAX_INVITATION_RETRIES; attempt++) {
+    try {
+      return await prisma.$transaction(
+        async (tx) => {
+          const existingMember = await tx.teamMember.findUnique({
+            where: {
+              teamId_userId: {
+                teamId,
+                userId,
+              },
+            },
+            select: {
+              teamId: true,
+            },
+          });
+
+          if (!existingMember) {
+            const currentMemberCount = await tx.teamMember.count({
+              where: {
+                teamId,
+              },
+            });
+            enforceTeamMemberLimitValue(memberLimit, currentMemberCount + 1);
+          }
+
+          return await tx.teamMember.upsert({
+            create: {
+              teamId,
+              userId,
+              role,
+            },
+            update: {
+              role,
+            },
+            where: {
+              teamId_userId: {
+                teamId,
+                userId,
+              },
+            },
+          });
+        },
+        {
+          isolationLevel: Prisma.TransactionIsolationLevel.Serializable,
+        }
+      );
+    } catch (error) {
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2034' &&
+        attempt < MAX_INVITATION_RETRIES
+      ) {
+        continue;
+      }
+
+      throw error;
+    }
+  }
+
+  throw new ApiError(
+    409,
+    'Invitation acceptance conflicted with another request. Please retry.'
   );
 };
 
@@ -392,31 +457,17 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
 
-  const isExistingMember = Boolean(
-    await countTeamMembers({
-      where: {
-        teamId: invitation.team.id,
-        userId,
-      },
-    })
-  );
-
-  if (!isExistingMember) {
-    const currentMemberCount = await countTeamMembers({
-      where: {
-        teamId: invitation.team.id,
-      },
-    });
-    await enforceTeamMemberLimit(invitation.team.id, currentMemberCount + 1);
-  }
+  const entitlements = await getTeamEntitlements(invitation.team.id);
+  const memberLimit = entitlements.limits.team_members;
 
   let teamMember;
   try {
-    teamMember = await addTeamMember(
-      invitation.team.id,
+    teamMember = await addTeamMemberWithTeamLimit({
+      teamId: invitation.team.id,
       userId,
-      invitation.role
-    );
+      role: invitation.role,
+      memberLimit,
+    });
   } catch (error) {
     if (
       error instanceof Prisma.PrismaClientKnownRequestError &&
