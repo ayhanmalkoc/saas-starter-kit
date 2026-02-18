@@ -45,10 +45,19 @@ const PricingTable = ({
   const currentSubscription = activeSubscription;
 
   const { t } = useTranslation('common');
+  const salesEmail =
+    process.env.NEXT_PUBLIC_SALES_EMAIL?.trim() || 'sales@example.com';
+  const isTeamContext = Boolean(team?.slug);
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>(
     'month'
   );
-  const [tier, setTier] = useState<'personal' | 'business'>('personal');
+  const [tier, setTier] = useState<'individual' | 'business'>('individual');
+
+  useEffect(() => {
+    if (isTeamContext && tier !== 'business') {
+      setTier('business');
+    }
+  }, [isTeamContext, tier]);
 
   // Auto-trigger checkout if plan param exists and user is logged in (has team)
   useEffect(() => {
@@ -156,19 +165,46 @@ const PricingTable = ({
     );
   };
 
-  const filteredPlans = plans.filter((plan) => {
-    const metadata = plan.metadata as { tier?: string };
-    const planTier = metadata?.tier || 'personal'; // Default to personal if missing
-    if (tier === 'personal') {
-      return planTier === 'personal' || planTier === 'free';
-    }
-    return planTier === tier;
-  });
+  const filteredPlans = plans
+    .filter((plan) => {
+      const metadata = plan.metadata as { tier?: string };
+      const planTier = metadata?.tier || 'personal'; // Default to personal if missing
+      if (isTeamContext) {
+        return planTier === 'business';
+      }
+      // Map 'personal' from DB to 'individual' for UI logic if needed, or just check against 'personal'
+      // DB has 'personal' and 'business' tiers.
+      if (tier === 'individual') {
+        return planTier === 'personal' || planTier === 'free';
+      }
+      return planTier === tier;
+    })
+    .sort((a, b) => {
+      const metadataA = a.metadata as { planLevel?: number | string };
+      const metadataB = b.metadata as { planLevel?: number | string };
+      const parsedLevelA = Number(metadataA?.planLevel);
+      const parsedLevelB = Number(metadataB?.planLevel);
+      const levelA = Number.isFinite(parsedLevelA)
+        ? parsedLevelA
+        : Number.MAX_SAFE_INTEGER;
+      const levelB = Number.isFinite(parsedLevelB)
+        ? parsedLevelB
+        : Number.MAX_SAFE_INTEGER;
 
-  const containerMaxWidth = tier === 'personal' ? 'max-w-7xl' : 'max-w-4xl';
+      if (levelA !== levelB) {
+        return levelA - levelB;
+      }
+
+      return a.name.localeCompare(b.name);
+    });
+
+  const containerMaxWidth =
+    !isTeamContext && tier === 'individual' ? 'max-w-7xl' : 'max-w-4xl';
+  // Individual: 3 columns (Free, Basic, Pro)
+  // Business: 2 columns (Team, Enterprise)
   const gridCols =
-    tier === 'personal'
-      ? 'grid-cols-1 md:grid-cols-2 lg:grid-cols-4'
+    !isTeamContext && tier === 'individual'
+      ? 'grid-cols-1 md:grid-cols-3'
       : 'grid-cols-1 md:grid-cols-2';
 
   return (
@@ -176,12 +212,14 @@ const PricingTable = ({
       <div className="flex flex-col items-center justify-center mb-8 space-y-6">
         {/* Tier Tabs */}
         <div className="tabs tabs-boxed p-1 bg-gray-100 rounded-full w-fit mx-auto">
-          <button
-            className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'personal' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
-            onClick={() => setTier('personal')}
-          >
-            {t('personal')}
-          </button>
+          {!isTeamContext && (
+            <button
+              className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'individual' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
+              onClick={() => setTier('individual')}
+            >
+              {t('individual') || 'Individual'}
+            </button>
+          )}
           <button
             className={`tab tab-lg px-8 transition-all duration-200 ${tier === 'business' ? 'tab-active !bg-primary !text-white !rounded-full shadow-md' : 'text-gray-500 hover:text-gray-700'}`}
             onClick={() => setTier('business')}
@@ -225,15 +263,33 @@ const PricingTable = ({
 
       <div className={`grid gap-6 ${gridCols}`}>
         {filteredPlans.map((plan) => {
-          const price = plan.prices.find((p: Price) => {
+          // Find price for the selected interval
+          let price = plan.prices.find((p: Price) => {
             const recurring =
               (p.metadata as any)?.recurring || (p as any).recurring;
             return recurring?.interval === billingInterval;
           });
 
+          // Fallback: If no price for interval, but plan is Free/Custom, use first available price
+          // This ensures Free/Enterprise plans show up even if they don't have explicit Yearly prices
+          const metadata = plan.metadata as {
+            recommended?: boolean | string;
+            custom?: string | boolean;
+          };
+
+          if (!price) {
+            const defaultPrice = plan.prices[0];
+            if (
+              defaultPrice?.amount === 0 ||
+              metadata?.custom === 'true' ||
+              metadata?.custom === true
+            ) {
+              price = defaultPrice;
+            }
+          }
+
           if (!price) return null;
 
-          const metadata = plan.metadata as { recommended?: boolean | string };
           const isRecommended =
             metadata?.recommended === 'true' || metadata?.recommended === true;
 
@@ -257,13 +313,26 @@ const PricingTable = ({
                 </p>
 
                 <div className="mt-4 flex items-baseline">
-                  <span className="text-3xl font-bold tracking-tight text-gray-900">
-                    ${((price.amount || 0) / 100).toFixed(2)}
-                  </span>
-                  <span className="ml-1 text-sm font-semibold text-gray-500">
-                    /{billingInterval}{' '}
-                    {tier === 'business' ? t('per-user') : ''}
-                  </span>
+                  {(metadata as any)?.custom === true ||
+                  (metadata as any)?.custom === 'true' ? (
+                    <span className="text-3xl font-bold tracking-tight text-gray-900">
+                      {t('contact-us')}
+                    </span>
+                  ) : (
+                    <>
+                      <span className="text-3xl font-bold tracking-tight text-gray-900">
+                        {new Intl.NumberFormat(router.locale, {
+                          style: 'currency',
+                          currency: price.currency,
+                          minimumFractionDigits: 2,
+                        }).format(price.amount || 0)}
+                      </span>
+                      <span className="ml-1 text-sm font-semibold text-gray-500">
+                        /{billingInterval}{' '}
+                        {tier === 'business' ? t('per-user') : ''}
+                      </span>
+                    </>
+                  )}
                 </div>
 
                 <ul className="mt-6 space-y-4">
@@ -291,7 +360,19 @@ const PricingTable = ({
               </div>
 
               <div className="p-6 pt-0 mt-auto">
-                {isCurrentPlan(price) ? (
+                {(metadata as any)?.custom === true ||
+                (metadata as any)?.custom === 'true' ? (
+                  <Button
+                    variant="outline"
+                    fullWidth
+                    className="rounded-xl"
+                    onClick={() =>
+                      (window.location.href = `mailto:${salesEmail}`)
+                    }
+                  >
+                    {t('contact-sales') || 'Contact Sales'}
+                  </Button>
+                ) : isCurrentPlan(price) ? (
                   <Button
                     variant="outline"
                     fullWidth
@@ -307,7 +388,7 @@ const PricingTable = ({
                     onPlanChange={(priceId, quantity) => {
                       initiatePlanChange(
                         priceId,
-                        isSeatBasedPrice(price)
+                        isSeatBasedPrice(price as Price)
                           ? (currentSubscription?.quantity ?? quantity ?? 1)
                           : undefined,
                         currentSubscription?.id

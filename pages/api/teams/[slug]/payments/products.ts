@@ -1,5 +1,6 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
+import { isBusinessService } from '@/lib/billing/catalog';
 import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
 import { getAllServices } from 'models/service';
@@ -44,9 +45,19 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     getInvoicesByTeamId(teamMember.teamId),
   ]);
 
+  const businessProducts = products.filter((product) =>
+    isBusinessService(product.metadata)
+  );
+  const businessProductIds = new Set(businessProducts.map((p) => p.id));
+
   // create a unified object with prices associated with the product
-  const productsWithPrices = products.map((product: any) => {
-    product.prices = prices.filter((price) => price.serviceId === product.id);
+  const productsWithPrices = businessProducts.map((product: any) => {
+    product.prices = prices.filter((price) => {
+      return (
+        price.serviceId === product.id &&
+        businessProductIds.has(price.serviceId)
+      );
+    });
     return product;
   });
 

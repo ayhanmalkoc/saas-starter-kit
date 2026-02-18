@@ -97,7 +97,7 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
   throwIfNotAllowed(teamMember, 'team', 'leave');
 
-  // countTeamMembers query performance notes are tracked in docs/db-query-notes.md.
+  // Keep owner-count checks index-friendly; monitor performance for large teams.
   const totalTeamOwners = await countTeamMembers({
     where: {
       role: Role.OWNER,

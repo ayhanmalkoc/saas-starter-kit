@@ -9,7 +9,7 @@ export type TeamInvitation = Pick<
   'id' | 'email' | 'role' | 'expires' | 'allowedDomains' | 'token'
 > & { url: string };
 
-// getInvitations query performance notes are tracked in docs/db-query-notes.md.
+// Keep this query index-friendly; monitor performance as invitation volume grows.
 export const getInvitations = async (teamId: string, sentViaEmail: boolean) => {
   const invitations = await prisma.invitation.findMany({
     where: {

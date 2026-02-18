@@ -10,6 +10,7 @@ services:
       - 5432:5432
     volumes:
       - ./docker/init-svix-db.sh:/docker-entrypoint-initdb.d/init-svix-db.sh
+      - ./docker/init-retraced-db.sh:/docker-entrypoint-initdb.d/init-retraced-db.sh
 
   mailpit:
     image: axllent/mailpit
@@ -21,39 +22,90 @@ services:
       MP_SMTP_AUTH_ACCEPT_ANY: 1
       MP_SMTP_AUTH_ALLOW_INSECURE: 1
 
-#   jackson:
-#     image: boxyhq/jackson:latest
-#     restart: always
-#     ports:
-#       - '5225:5225'
-#     environment:
-#       JACKSON_API_KEYS: 'jackson-secret'
-#       DB_ENGINE: 'sql'
-#       DB_TYPE: 'postgres'
-#       DB_URL: 'postgresql://postgres:postgres@db:5432/saas-starter-kit'
-#     depends_on:
-#       - db
-#
-#   mocksaml:
-#     image: boxyhq/mock-saml:latest
-#     restart: always
-#     ports:
-#       - '4000:4000'
-#     environment:
-#       CLIENT_ID: 'mock-saml-client-id'
-#       CLIENT_SECRET: 'mock-saml-client-secret'
-#       APP_URL: 'http://localhost:4000'
+  jackson:
+    image: boxyhq/jackson:latest
+    restart: always
+    ports:
+      - '5225:5225'
+    environment:
+      JACKSON_API_KEYS: 'jackson-secret'
+      DB_ENGINE: 'sql'
+      DB_TYPE: 'postgres'
+      DB_URL: 'postgresql://postgres:postgres@db:5432/saas-starter-kit'
+    depends_on:
+      - db
 
-#   svix:
-#     image: svix/svix-server:latest
-#     restart: always
-#     ports:
-#       - "8071:8071"
-#     environment:
-#       SVIX_DB_DSN: "postgresql://postgres:postgres@db:5432/svix"
-#       SVIX_JWT_SECRET: "svix-jwt-secret-change-me"
-#       SVIX_QUEUE_TYPE: "memory"
-#       SVIX_WHITELIST_SUBNETS: '["0.0.0.0/0"]'
-#       WAIT_FOR: "true"
-#     depends_on:
-#       - db
+  mocksaml:
+    image: boxyhq/mock-saml:latest
+    restart: always
+    ports:
+      - '4000:4000'
+    environment:
+      CLIENT_ID: 'mock-saml-client-id'
+      CLIENT_SECRET: 'mock-saml-client-secret'
+      APP_URL: 'http://localhost:4000'
+
+  svix:
+    image: svix/svix-server:latest
+    restart: always
+    ports:
+      - '8071:8071'
+    environment:
+      SVIX_DB_DSN: 'postgresql://postgres:postgres@db:5432/svix'
+      SVIX_JWT_SECRET: 'svix-jwt-secret-change-me'
+      SVIX_QUEUE_TYPE: 'memory'
+      SVIX_WHITELIST_SUBNETS: '["0.0.0.0/0"]'
+      WAIT_FOR: 'true'
+    depends_on:
+      - db
+
+  retraced:
+    image: retracedhq/retraced:latest
+    restart: always
+    ports:
+      - '3000:3000'
+    environment:
+      RETRACED_DB_POSTGRES_CONN_STRING: 'postgres://postgres:postgres@db:5432/retraced'
+      RETRACED_API_BASE_URL: 'http://localhost:3000/auditlog'
+      RETRACED_URL: 'http://localhost:3000'
+      RETRACED_ADMIN_ROOT_TOKEN: 'dev-admin-token'
+      PG_SEARCH: 'true'
+      POSTGRES_HOST: 'db'
+      POSTGRES_PORT: '5432'
+      POSTGRES_USER: 'postgres'
+      POSTGRES_PASSWORD: 'postgres'
+      POSTGRES_DB: 'retraced'
+      NSQD_HOST: 'nsq'
+      NSQD_HTTP_PORT: '4151'
+      NSQD_TCP_PORT: '4150'
+    depends_on:
+      - db
+      - nsq
+
+  retraced-processor:
+    image: retracedhq/retraced:latest
+    restart: always
+    command: ['node', 'build/src/_processor/index.js']
+    environment:
+      RETRACED_DB_POSTGRES_CONN_STRING: 'postgres://postgres:postgres@db:5432/retraced'
+      PG_SEARCH: 'true'
+      POSTGRES_HOST: 'db'
+      POSTGRES_PORT: '5432'
+      POSTGRES_USER: 'postgres'
+      POSTGRES_PASSWORD: 'postgres'
+      POSTGRES_DB: 'retraced'
+      NSQD_HOST: 'nsq'
+      NSQD_HTTP_PORT: '4151'
+      NSQD_TCP_PORT: '4150'
+      RETRACED_NO_ANALYTICS: '1'
+    depends_on:
+      - db
+      - nsq
+
+  nsq:
+    image: nsqio/nsq
+    command: /nsqd
+    restart: always
+    ports:
+      - "4150:4150"
+      - "4151:4151"

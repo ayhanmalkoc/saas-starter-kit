@@ -23,6 +23,7 @@ Additionally, product/price synchronization uses an admin endpoint and helper sc
 
 - `pages/api/admin/stripe/sync.ts`: pulls Stripe products/prices and writes them to the DB.
 - `sync-stripe.js`: helper script that calls this endpoint via `APP_URL`.
+- `scripts/sync-stripe-subscriptions.js`: backfills subscriptions from Stripe customers into DB when webhook delivery is missed.
 
 ## Flows
 
@@ -30,17 +31,25 @@ Additionally, product/price synchronization uses an admin endpoint and helper sc
 
 1. The client calls `POST /api/teams/[slug]/payments/create-checkout-session`.
 2. The API validates team access and user session.
-3. A billing provider resolves/creates the customer (`customerId`).
-4. A Stripe checkout session is created.
-5. Success/cancel URLs redirect back to the team billing page.
+3. The API enforces `business` tier price selection for team-scoped checkout.
+4. A billing provider resolves/creates the customer (`customerId`).
+5. Existing Stripe subscriptions for that customer are checked/synced first:
+   - if a blocking subscription exists, API returns `409 subscription_exists`
+   - client auto-falls back to `update-subscription` instead of creating a duplicate
+6. If no blocking subscription exists, a Stripe checkout session is created.
+7. Success/cancel URLs redirect back to the team billing page.
 
 ### 2) Plan update
 
 1. The client calls `POST /api/teams/[slug]/payments/update-subscription`.
 2. The API checks team authorization and confirms the subscription belongs to that team.
 3. It loads the Stripe subscription and first subscription item.
-4. It retrieves the new price and calculates quantity for seat-based plans.
-5. It updates the Stripe subscription with `proration_behavior: 'create_prorations'`.
+4. It retrieves current and target prices, then classifies the change as upgrade/downgrade/lateral.
+5. It calculates quantity for seat-based plans.
+6. It updates Stripe subscription with plan-aware proration:
+   - upgrade: `always_invoice`
+   - downgrade: `none`
+   - lateral: `create_prorations`
 
 ### 3) Open customer portal
 
@@ -53,13 +62,15 @@ Additionally, product/price synchronization uses an admin endpoint and helper sc
 
 1. Stripe sends events to `POST /api/webhooks/stripe`.
 2. The endpoint verifies the signature using the raw request body.
-3. For idempotency, it stores event id/type in `webhookEvent` (duplicate events are ignored).
-4. It processes by event type:
+3. It checks `webhookEvent` first and skips already-processed events.
+4. It processes by event type (with upsert-safe subscription handling):
+   - `checkout.session.completed` → fetches Stripe subscription and upserts DB
    - `customer.subscription.created/updated/deleted` → `subscription` updates
    - `invoice.payment_succeeded/failed` → `invoice` upserts
    - `product.created/updated` → `service` upserts
    - `price.created/updated` → `price` upserts
-5. Stripe-side changes are kept in sync with the DB.
+5. After successful processing, event id/type/payload is stored in `webhookEvent`.
+6. Stripe-side changes are kept in sync with the DB.
 
 ## Configuration
 
@@ -80,14 +91,30 @@ Recommended supporting variable:
 
 ## Operations
 
+For environment-by-environment command order (fresh clone, dev reset, staging, production), use:
+
+- `docs/environment-commands-playbook.md`
+
 ### Initial setup
 
-1. Create products and prices in the Stripe dashboard.
-2. Define at least these values in `.env`:
+1. Define at least these values in `.env`:
    - `STRIPE_SECRET_KEY`
    - `STRIPE_WEBHOOK_SECRET`
    - `STRIPE_SYNC_SECRET`
    - `APP_URL` (e.g., local: `http://localhost:4002`)
+2. Validate plan catalog and seed Stripe product/price data:
+
+```bash
+npm run setup:stripe
+```
+
+This command runs:
+
+- `npm run check-plans` (validates tier/plan_level/inheritance consistency)
+- `npm run stripe:setup-products` (idempotent Stripe catalog seed)
+- `npm run stripe:sync-db` (direct Stripe -> DB sync)
+- `npm run stripe:sync-subscriptions` (subscription backfill for Stripe-linked teams)
+
 3. Start the app:
 
 ```bash
@@ -98,6 +125,12 @@ npm run dev
    - URL: `<APP_URL>/api/webhooks/stripe`
    - For local testing, use the Stripe CLI forwarder.
 
+Example:
+
+```bash
+stripe listen --forward-to http://localhost:4002/api/webhooks/stripe
+```
+
 ### Running `sync-stripe`
 
 To import products/prices from Stripe into the DB in bulk:
@@ -106,9 +139,24 @@ To import products/prices from Stripe into the DB in bulk:
 npm run sync-stripe
 ```
 
+To reconcile subscriptions (especially after missed webhook delivery):
+
+```bash
+npm run stripe:sync-subscriptions
+```
+
 Expected successful output example:
 
 - `Sync completed successfully { synced: true, products: <count>, prices: <count> }`
+
+### Dev reset (optional)
+
+If you need to reset Stripe catalog entries in your local/test Stripe account:
+
+```bash
+npm run stripe:cleanup
+npm run setup:stripe
+```
 
 ## Troubleshooting
 
@@ -153,3 +201,4 @@ Checklist:
 - Are webhook events shown as successful in Stripe?
 - Are there webhook handler errors in application logs?
 - Were related `product/price/subscription/invoice` records written to the DB?
+- Run `npm run stripe:sync-subscriptions` to backfill missing subscription records.

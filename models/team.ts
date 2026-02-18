@@ -84,7 +84,7 @@ export const removeTeamMember = async (teamId: string, userId: string) => {
   });
 };
 
-// getTeams query performance notes are tracked in docs/db-query-notes.md.
+// Keep this query index-friendly; monitor performance on large team-member datasets.
 export const getTeams = async (userId: string) => {
   return await prisma.team.findMany({
     where: {
@@ -128,7 +128,7 @@ export async function isTeamAdmin(userId: string, teamId: string) {
   return teamMember.role === Role.ADMIN || teamMember.role === Role.OWNER;
 }
 
-// getTeamMembers query performance notes are tracked in docs/db-query-notes.md.
+// Keep this query index-friendly; monitor performance on large team-member datasets.
 export const getTeamMembers = async (slug: string) => {
   const members = await prisma.teamMember.findMany({
     where: {
@@ -181,7 +181,7 @@ export const setTeamBillingIfEmpty = async (
   return result.count > 0;
 };
 
-// isTeamExists query performance notes are tracked in docs/db-query-notes.md.
+// Keep this query index-friendly; monitor performance as team count grows.
 export const isTeamExists = async (slug: string) => {
   return await prisma.team.count({
     where: {
@@ -218,7 +218,7 @@ export const throwIfNoTeamAccess = async (
   };
 };
 
-// getTeamMember query performance notes are tracked in docs/db-query-notes.md.
+// Keep this query index-friendly; monitor performance for team/user joins.
 // Get the current user's team member object
 export const getTeamMember = async (userId: string, slug: string) => {
   return await prisma.teamMember.findFirstOrThrow({

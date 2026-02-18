@@ -1,5 +1,9 @@
 # Deployment Guide
 
+For environment-specific command sequences (local dev reset, staging, production), see:
+
+- `docs/environment-commands-playbook.md`
+
 ## Production database migrations
 
 Before starting the application build in CI/CD, apply pending Prisma migrations:
@@ -41,4 +45,4 @@ The app validates environment variables at startup using Zod. If any required va
 4. Run smoke/E2E tests
 5. Promote/deploy artifact
 
-For operational procedures when migrations fail or a rollback is required, see [Migration Operations Runbook](./operations-migration-runbook.md).
+For operational procedures when migrations fail or a rollback is required, see [Migration Operations Runbook](./migration-operations-runbook.md).

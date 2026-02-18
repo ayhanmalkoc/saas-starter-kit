@@ -4,6 +4,7 @@ import { useTranslation } from 'next-i18next';
 import useTheme from 'hooks/useTheme';
 import env from '@/lib/env';
 import UserDropdown from '../shared/shell/UserDropdown';
+import LanguageSwitcher from '../shared/shell/LanguageSwitcher';
 
 const Navbar = () => {
   const { toggleTheme, selectedTheme } = useTheme();
@@ -35,6 +36,7 @@ const Navbar = () => {
 
       {/* Araçlar - Sağa Hizalı */}
       <div className="navbar-end gap-2">
+        <LanguageSwitcher />
         {env.darkModeEnabled && (
           <button
             className="btn btn-ghost btn-circle btn-sm flex items-center justify-center p-0"

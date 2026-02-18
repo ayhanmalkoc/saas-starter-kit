@@ -97,6 +97,11 @@ const applySecurityHeaders = (
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
+  // Keep middleware matcher static for Next.js; apply test-audit bypass at runtime.
+  if (isDevelopment && pathname === '/api/test-audit') {
+    return NextResponse.next();
+  }
+
   const requestHeaders = new Headers(req.headers);
   const nonce = generateNonce();
   const csp = generateCSP(nonce);
@@ -122,7 +127,7 @@ export default async function middleware(req: NextRequest) {
   }
 
   const redirectUrl = new URL('/auth/login', req.url);
-  redirectUrl.searchParams.set('callbackUrl', encodeURI(req.url));
+  redirectUrl.searchParams.set('callbackUrl', req.url);
 
   // JWT strategy
   if (env.nextAuth.sessionStrategy === 'jwt') {

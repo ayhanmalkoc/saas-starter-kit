@@ -56,6 +56,7 @@ export const sendAudit = async (request: Request) => {
   }
 
   const { action, user, team, crud } = request;
+  const actorName = user.name ?? user.email ?? user.id;
 
   const event: Event = {
     action,
@@ -66,12 +67,14 @@ export const sendAudit = async (request: Request) => {
     },
     actor: {
       id: user.id,
-      name: user.name as string,
+      name: actorName as string,
     },
     created: new Date(),
   };
 
-  return await retracedClient.reportEvent(event);
+  // Use the bulk endpoint (single-event payload) so events are ingested
+  // directly instead of waiting in backlog.
+  return await retracedClient.reportEvents([event]);
 };
 
 export const getViewerToken = async (groupId: string, actorId: string) => {

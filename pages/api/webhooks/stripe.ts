@@ -4,13 +4,11 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import env from '@/lib/env';
 import type { Readable } from 'node:stream';
 import {
-  createStripeSubscription,
   deleteStripeSubscription,
-  getBySubscriptionId,
-  updateStripeSubscription,
+  upsertStripeSubscription,
 } from 'models/subscription';
 import { getByCustomerId } from 'models/team';
-import { createWebhookEvent } from 'models/webhookEvent';
+import { createWebhookEvent, getWebhookEventById } from 'models/webhookEvent';
 import { Prisma } from '@prisma/client';
 import { upsertServiceFromStripe } from 'models/service';
 import { upsertPriceFromStripe } from 'models/price';
@@ -66,18 +64,13 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
   }
 
   if (relevantEvents.includes(event.type)) {
-    try {
-      await createWebhookEvent(event.id, event.type);
-    } catch (error) {
-      if (
-        error instanceof Prisma.PrismaClientKnownRequestError &&
-        error.code === 'P2002'
-      ) {
-        return res.status(200).json({ received: true });
-      }
-      console.error('Stripe webhook event insert failed', error);
-      return res.status(500).json({ error: 'Internal server error' });
+    const existingEvent = await getWebhookEventById(event.id);
+    if (existingEvent) {
+      return res.status(200).json({ received: true });
     }
+
+    const eventPayload = JSON.parse(JSON.stringify(event.data.object));
+
     try {
       switch (event.type) {
         case 'checkout.session.completed':
@@ -114,21 +107,28 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
         default:
           throw new Error('Unhandled relevant event!');
       }
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
+      await createWebhookEvent(event.id, event.type, eventPayload);
     } catch (error) {
-      return res.status(400).json({
+      if (
+        error instanceof Prisma.PrismaClientKnownRequestError &&
+        error.code === 'P2002'
+      ) {
+        return res.status(200).json({ received: true });
+      }
+
+      console.error(
+        `Stripe webhook handler failed for event ${event.id} (${event.type})`,
+        error
+      );
+      return res.status(500).json({
         error: {
-          message: 'Webhook handler failed. View your nextjs function logs.',
+          message: 'Webhook handler failed.',
         },
       });
     }
   }
   return res.status(200).json({ received: true });
-}
-
-async function handleCheckoutSessionCompleted(event: Stripe.Event) {
-  void event;
-  console.warn('checkout.session.completed received but not handled');
 }
 
 async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
@@ -172,96 +172,77 @@ async function handlePriceCreatedOrUpdated(_event: Stripe.Event) {
   await upsertPriceFromStripe(price);
 }
 
-async function handleSubscriptionUpdated(event: Stripe.Event) {
-  const {
-    cancel_at,
-    cancel_at_period_end,
-    id,
-    status,
-    current_period_end,
-    current_period_start,
-    customer,
-    trial_end,
-    items,
-  } = event.data.object as Stripe.Subscription;
+const toDate = (timestamp: number | null | undefined) =>
+  typeof timestamp === 'number' ? new Date(timestamp * 1000) : null;
 
-  const subscription = await getBySubscriptionId(id);
-  if (!subscription) {
-    const teamExists = await getByCustomerId(customer as string);
-    if (!teamExists) {
-      return;
-    } else {
-      await handleSubscriptionCreated(event);
-    }
-  } else {
-    const subscriptionItem = items.data[0];
-    const priceId = subscriptionItem?.price?.id ?? null;
-    const productId =
-      typeof subscriptionItem?.price?.product === 'string'
-        ? subscriptionItem.price.product
-        : null;
-    //type Stripe.Subscription.Status = "active" | "canceled" | "incomplete" | "incomplete_expired" | "past_due" | "paused" | "trialing" | "unpaid"
-    await updateStripeSubscription(id, {
-      status,
-      quantity: subscriptionItem?.quantity ?? null,
-      currency: subscriptionItem?.price?.currency ?? null,
-      currentPeriodEnd: current_period_end
-        ? new Date(current_period_end * 1000)
-        : undefined,
-      currentPeriodStart: current_period_start
-        ? new Date(current_period_start * 1000)
-        : undefined,
-      cancelAt: cancel_at ? new Date(cancel_at * 1000) : undefined,
-      cancelAtPeriodEnd: cancel_at_period_end ?? undefined,
-      trialEnd: trial_end ? new Date(trial_end * 1000) : undefined,
-      priceId,
-      productId,
-    });
-  }
-}
+const upsertSubscriptionFromStripe = async (
+  subscription: Stripe.Subscription
+) => {
+  const customerId =
+    typeof subscription.customer === 'string'
+      ? subscription.customer
+      : subscription.customer?.id;
 
-async function handleSubscriptionCreated(event: Stripe.Event) {
-  const {
-    customer,
-    id,
-    status,
-    current_period_start,
-    current_period_end,
-    cancel_at,
-    cancel_at_period_end,
-    trial_end,
-    items,
-  } = event.data.object as Stripe.Subscription;
-
-  const team = await getByCustomerId(customer as string);
-  if (!team) {
+  if (!customerId) {
+    console.warn(
+      `Stripe subscription ${subscription.id} has no customer id. Skipping.`
+    );
     return;
   }
 
-  const subscriptionItem = items.data[0];
+  const team = await getByCustomerId(customerId);
+  if (!team) {
+    console.warn(
+      `No team found for Stripe customer ${customerId}. Skipping subscription ${subscription.id}.`
+    );
+    return;
+  }
+
+  const subscriptionItem = subscription.items.data[0];
   const priceId = subscriptionItem?.price?.id ?? null;
   const productId =
     typeof subscriptionItem?.price?.product === 'string'
       ? subscriptionItem.price.product
       : null;
 
-  await createStripeSubscription({
-    id,
+  await upsertStripeSubscription({
+    id: subscription.id,
     teamId: team.id,
-    customerId: customer as string,
-    status,
+    customerId,
+    status: subscription.status,
     quantity: subscriptionItem?.quantity ?? null,
     currency: subscriptionItem?.price?.currency ?? null,
-    currentPeriodStart: current_period_start
-      ? new Date(current_period_start * 1000)
-      : null,
-    currentPeriodEnd: current_period_end
-      ? new Date(current_period_end * 1000)
-      : null,
-    cancelAt: cancel_at ? new Date(cancel_at * 1000) : null,
-    cancelAtPeriodEnd: cancel_at_period_end ?? false,
-    trialEnd: trial_end ? new Date(trial_end * 1000) : null,
+    currentPeriodStart: toDate(subscription.current_period_start),
+    currentPeriodEnd: toDate(subscription.current_period_end),
+    cancelAt: toDate(subscription.cancel_at),
+    cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
+    trialEnd: toDate(subscription.trial_end),
     priceId,
     productId,
   });
+};
+
+async function handleCheckoutSessionCompleted(event: Stripe.Event) {
+  const session = event.data.object as Stripe.Checkout.Session;
+  const subscriptionId =
+    typeof session.subscription === 'string'
+      ? session.subscription
+      : session.subscription?.id;
+
+  if (!subscriptionId) {
+    return;
+  }
+
+  const subscription = await stripe.subscriptions.retrieve(subscriptionId);
+  await upsertSubscriptionFromStripe(subscription);
+}
+
+async function handleSubscriptionUpdated(event: Stripe.Event) {
+  const subscription = event.data.object as Stripe.Subscription;
+  await upsertSubscriptionFromStripe(subscription);
+}
+
+async function handleSubscriptionCreated(event: Stripe.Event) {
+  const subscription = event.data.object as Stripe.Subscription;
+  await upsertSubscriptionFromStripe(subscription);
 }

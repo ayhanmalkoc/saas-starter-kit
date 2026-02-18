@@ -32,7 +32,7 @@ jest.mock('@/lib/prisma', () => ({
       findUnique: jest.fn(),
     },
     service: {
-      findUnique: jest.fn(),
+      findMany: jest.fn(),
     },
   },
 }));
@@ -40,14 +40,17 @@ jest.mock('@/lib/prisma', () => ({
 const mockedGetByTeamId = jest.mocked(getByTeamId);
 const mockedRetrieve = jest.mocked(stripe.products.retrieve);
 const mockedPriceFindUnique = jest.mocked(prisma.price.findUnique);
-const mockedServiceFindUnique = jest.mocked(prisma.service.findUnique);
+const mockedServiceFindMany = jest.mocked(prisma.service.findMany);
 
 describe('lib/billing/entitlements', () => {
   beforeEach(() => {
     mockedGetByTeamId.mockReset();
     mockedRetrieve.mockReset();
     mockedPriceFindUnique.mockReset();
-    mockedServiceFindUnique.mockReset();
+    mockedServiceFindMany.mockReset();
+    mockedServiceFindMany.mockResolvedValue([]);
+    mockedPriceFindUnique.mockResolvedValue(null as any);
+    mockedRetrieve.mockResolvedValue({ metadata: {} } as any);
   });
 
   it('merges active subscription entitlements from stripe and database', async () => {
@@ -65,29 +68,50 @@ describe('lib/billing/entitlements', () => {
       },
     } as any);
 
-    mockedPriceFindUnique.mockResolvedValue({ serviceId: 'service_2' } as any);
-    mockedServiceFindUnique.mockResolvedValue({
-      features: ['Webhook'],
-      metadata: {
-        featureFlags: { Dsync: true },
-        limits: { members: 10 },
+    mockedPriceFindUnique.mockImplementation(async ({ where }) => {
+      if (where.id === 'price_2') {
+        return { serviceId: 'service_2' } as any;
+      }
+      return null;
+    });
+    mockedServiceFindMany.mockResolvedValue([
+      {
+        id: 'service_free',
+        name: 'Free',
+        features: ['api_keys'],
+        metadata: {
+          tier: 'personal',
+          planLevel: 0,
+          isDefault: true,
+        },
       },
-    } as any);
+      {
+        id: 'service_2',
+        name: 'Team',
+        features: ['Webhook'],
+        metadata: {
+          featureFlags: { Dsync: true },
+          limits: { members: 10 },
+          tier: 'business',
+          planLevel: 10,
+        },
+      },
+    ] as any);
 
     const entitlements = await getTeamEntitlements('team_1');
 
     expect(entitlements).toEqual({
       features: {
         sso: true,
-        audit_logs: true,
-        webhook: true,
-        dsync: true,
+        team_audit_log: true,
+        webhooks: true,
+        directory_sync: true,
       },
       limits: {
         members: 10,
         projects: 5,
       },
-      planIds: ['prod_1'],
+      planIds: ['prod_1', 'service_2'],
       sources: ['stripe', 'database'],
     });
   });
@@ -103,6 +127,95 @@ describe('lib/billing/entitlements', () => {
         message: 'Plan does not include required feature: SSO',
       })
     );
+  });
+
+  it('uses default plan entitlements when there is no active subscription', async () => {
+    mockedGetByTeamId.mockResolvedValue([] as any);
+    mockedServiceFindMany.mockResolvedValue([
+      {
+        id: 'service_free',
+        name: 'Free',
+        features: ['api_keys'],
+        metadata: {
+          tier: 'personal',
+          planLevel: 0,
+          isDefault: true,
+        },
+      },
+      {
+        id: 'service_basic',
+        name: 'Basic',
+        features: ['more_storage'],
+        metadata: {
+          tier: 'personal',
+          planLevel: 1,
+          inherits: ['Free'],
+        },
+      },
+    ] as any);
+
+    const entitlements = await getTeamEntitlements('team_default');
+
+    expect(entitlements).toEqual({
+      features: { api_keys: true },
+      limits: {},
+      planIds: ['service_free'],
+      sources: ['free_tier'],
+    });
+  });
+
+  it('resolves inherited features for database-backed plans', async () => {
+    mockedGetByTeamId.mockResolvedValue([
+      { status: 'active', productId: null, priceId: 'price_pro' },
+    ] as any);
+    mockedPriceFindUnique.mockResolvedValue({
+      serviceId: 'service_pro',
+    } as any);
+    mockedServiceFindMany.mockResolvedValue([
+      {
+        id: 'service_free',
+        name: 'Free',
+        features: ['api_keys'],
+        metadata: {
+          tier: 'personal',
+          planLevel: 0,
+          isDefault: true,
+        },
+      },
+      {
+        id: 'service_basic',
+        name: 'Basic',
+        features: ['more_storage'],
+        metadata: {
+          tier: 'personal',
+          planLevel: 1,
+          inherits: ['Free'],
+        },
+      },
+      {
+        id: 'service_pro',
+        name: 'Pro',
+        features: ['advanced_analytics'],
+        metadata: {
+          tier: 'personal',
+          planLevel: 2,
+          inherits: ['Basic'],
+        },
+      },
+    ] as any);
+
+    const entitlements = await getTeamEntitlements('team_inherited');
+
+    expect(entitlements).toEqual({
+      features: {
+        api_keys: true,
+        more_storage: true,
+        advanced_analytics: true,
+      },
+      limits: {},
+      planIds: ['service_pro'],
+      sources: ['database'],
+    });
   });
 
   it('maps ApiError(403) to false in hasTeamEntitlement', async () => {

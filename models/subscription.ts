@@ -49,6 +49,71 @@ export const createStripeSubscription = async ({
   });
 };
 
+export const upsertStripeSubscription = async ({
+  id,
+  teamId,
+  customerId,
+  status,
+  quantity,
+  currency,
+  currentPeriodStart,
+  currentPeriodEnd,
+  cancelAt,
+  cancelAtPeriodEnd,
+  trialEnd,
+  priceId,
+  productId,
+}: {
+  id: string;
+  teamId: string;
+  customerId: string;
+  status: string;
+  quantity?: number | null;
+  currency?: string | null;
+  currentPeriodStart?: Date | null;
+  currentPeriodEnd?: Date | null;
+  cancelAt?: Date | null;
+  cancelAtPeriodEnd?: boolean;
+  trialEnd?: Date | null;
+  priceId?: string | null;
+  productId?: string | null;
+}) => {
+  return await prisma.subscription.upsert({
+    where: {
+      id,
+    },
+    create: {
+      id,
+      teamId,
+      customerId,
+      status,
+      quantity,
+      currency,
+      currentPeriodStart,
+      currentPeriodEnd,
+      cancelAt,
+      cancelAtPeriodEnd,
+      trialEnd,
+      priceId,
+      productId,
+    },
+    update: {
+      teamId,
+      customerId,
+      status,
+      quantity,
+      currency,
+      currentPeriodStart,
+      currentPeriodEnd,
+      cancelAt,
+      cancelAtPeriodEnd,
+      trialEnd,
+      priceId,
+      productId,
+    },
+  });
+};
+
 export const deleteStripeSubscription = async (id: string) => {
   return await prisma.subscription.deleteMany({
     where: {

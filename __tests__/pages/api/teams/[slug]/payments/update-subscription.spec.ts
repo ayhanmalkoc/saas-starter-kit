@@ -66,14 +66,60 @@ describe('POST /api/teams/[slug]/payments/update-subscription', () => {
 
     (stripe.subscriptions.retrieve as jest.Mock).mockResolvedValue({
       items: {
-        data: [{ id: 'si_1', quantity: 1 }],
+        data: [{ id: 'si_1', quantity: 1, price: { id: 'price_current' } }],
       },
     });
 
-    (stripe.prices.retrieve as jest.Mock).mockResolvedValue({
-      id: 'price_2',
-      billing_scheme: 'per_unit',
-      recurring: { usage_type: 'licensed' },
+    (stripe.prices.retrieve as jest.Mock).mockImplementation((priceId) => {
+      if (priceId === 'price_current') {
+        return Promise.resolve({
+          id: 'price_current',
+          unit_amount: 900,
+          billing_scheme: 'per_unit',
+          recurring: {
+            usage_type: 'licensed',
+            interval: 'month',
+            interval_count: 1,
+          },
+        });
+      }
+
+      if (priceId === 'price_metered') {
+        return Promise.resolve({
+          id: 'price_metered',
+          unit_amount: 900,
+          billing_scheme: 'per_unit',
+          recurring: {
+            usage_type: 'metered',
+            interval: 'month',
+            interval_count: 1,
+          },
+        });
+      }
+
+      if (priceId === 'price_downgrade') {
+        return Promise.resolve({
+          id: 'price_downgrade',
+          unit_amount: 400,
+          billing_scheme: 'per_unit',
+          recurring: {
+            usage_type: 'licensed',
+            interval: 'month',
+            interval_count: 1,
+          },
+        });
+      }
+
+      return Promise.resolve({
+        id: 'price_2',
+        unit_amount: 1900,
+        billing_scheme: 'per_unit',
+        recurring: {
+          usage_type: 'licensed',
+          interval: 'month',
+          interval_count: 1,
+        },
+      });
     });
 
     (stripe.subscriptions.update as jest.Mock).mockResolvedValue({
@@ -94,17 +140,18 @@ describe('POST /api/teams/[slug]/payments/update-subscription', () => {
     expect(res.statusCode).toBe(200);
     expect(stripe.subscriptions.update).toHaveBeenCalledWith('sub_1', {
       items: [{ id: 'si_1', price: 'price_2', quantity: 12 }],
-      proration_behavior: 'create_prorations',
+      billing_cycle_anchor: 'unchanged',
+      proration_behavior: 'always_invoice',
     });
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        changeType: 'upgrade',
+        prorationBehavior: 'always_invoice',
+      })
+    );
   });
 
   it('omits quantity for metered pricing updates', async () => {
-    (stripe.prices.retrieve as jest.Mock).mockResolvedValueOnce({
-      id: 'price_metered',
-      billing_scheme: 'per_unit',
-      recurring: { usage_type: 'metered' },
-    });
-
     const req = {
       method: 'POST',
       body: { subscriptionId: 'sub_1', price: 'price_metered', quantity: 12 },
@@ -115,8 +162,31 @@ describe('POST /api/teams/[slug]/payments/update-subscription', () => {
 
     expect(stripe.subscriptions.update).toHaveBeenCalledWith('sub_1', {
       items: [{ id: 'si_1', price: 'price_metered' }],
+      billing_cycle_anchor: 'unchanged',
       proration_behavior: 'create_prorations',
     });
+  });
+
+  it('sets no proration when plan change is a downgrade', async () => {
+    const req = {
+      method: 'POST',
+      body: { subscriptionId: 'sub_1', price: 'price_downgrade', quantity: 1 },
+    } as NextApiRequest;
+    const res = createRes();
+
+    await handler(req, res);
+
+    expect(stripe.subscriptions.update).toHaveBeenCalledWith('sub_1', {
+      items: [{ id: 'si_1', price: 'price_downgrade', quantity: 1 }],
+      billing_cycle_anchor: 'unchanged',
+      proration_behavior: 'none',
+    });
+    expect(res.body).toEqual(
+      expect.objectContaining({
+        changeType: 'downgrade',
+        prorationBehavior: 'none',
+      })
+    );
   });
 
   it('returns not found for subscription owned by another team', async () => {
