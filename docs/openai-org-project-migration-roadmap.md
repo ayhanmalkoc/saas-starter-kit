@@ -45,6 +45,15 @@ Scope:
 - Move API-key/webhook/entitlement checks to project/org context explicitly.
 - Keep dual-read during transition.
 
+Current implementation status:
+
+- Added UI compatibility route:
+  - `pages/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].tsx`
+- Added API compatibility route:
+  - `pages/api/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].ts`
+- Added shared resolver:
+  - `lib/routing/org-project-compat.ts`
+
 ## PR-3: Billing Scope Cutover
 
 Scope:
