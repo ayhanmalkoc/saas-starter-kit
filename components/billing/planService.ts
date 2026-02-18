@@ -25,6 +25,29 @@ const buildRequestBody = ({
   return payload;
 };
 
+const parseResponsePayload = async (response: Response) => {
+  try {
+    return await response.clone().json();
+  } catch (jsonError) {
+    console.error('Failed to parse billing response as JSON', jsonError);
+
+    const payloadText = await response
+      .text()
+      .then((text) => text.trim())
+      .catch(() => '');
+
+    if (payloadText) {
+      return {
+        error: {
+          message: payloadText,
+        },
+      };
+    }
+
+    return null;
+  }
+};
+
 const sendPlanChangeRequest = async ({
   teamSlug,
   endpoint,
@@ -42,7 +65,7 @@ const sendPlanChangeRequest = async ({
     body: JSON.stringify(body),
   });
 
-  const payload = await response.json();
+  const payload = await parseResponsePayload(response);
   return { response, payload };
 };
 
@@ -78,6 +101,16 @@ export const handlePlanChange = async ({
         subscriptionId: primary.payload.data.subscriptionId,
       }),
     });
+
+    if (!fallback.response.ok) {
+      return (
+        fallback.payload || {
+          error: {
+            message: 'Plan update request failed.',
+          },
+        }
+      );
+    }
 
     return fallback.payload;
   }

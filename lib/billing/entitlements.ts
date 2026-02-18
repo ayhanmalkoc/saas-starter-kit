@@ -208,8 +208,7 @@ const parseMetadataEntitlements = (
 
     if (key.startsWith('feature_')) {
       const featureKey = normalizeFeatureKey(key.replace('feature_', ''));
-      entitlements.features[featureKey] =
-        rawValue === 'true' || rawValue === '1' || rawValue === 'yes';
+      entitlements.features[featureKey] = parseBoolean(rawValue);
       continue;
     }
 

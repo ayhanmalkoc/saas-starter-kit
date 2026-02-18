@@ -45,6 +45,8 @@ const PricingTable = ({
   const currentSubscription = activeSubscription;
 
   const { t } = useTranslation('common');
+  const salesEmail =
+    process.env.NEXT_PUBLIC_SALES_EMAIL?.trim() || 'sales@example.com';
   const isTeamContext = Boolean(team?.slug);
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>(
     'month'
@@ -178,10 +180,16 @@ const PricingTable = ({
       return planTier === tier;
     })
     .sort((a, b) => {
-      const metadataA = a.metadata as { planLevel?: number };
-      const metadataB = b.metadata as { planLevel?: number };
-      const levelA = metadataA?.planLevel ?? Number.MAX_SAFE_INTEGER;
-      const levelB = metadataB?.planLevel ?? Number.MAX_SAFE_INTEGER;
+      const metadataA = a.metadata as { planLevel?: number | string };
+      const metadataB = b.metadata as { planLevel?: number | string };
+      const parsedLevelA = Number(metadataA?.planLevel);
+      const parsedLevelB = Number(metadataB?.planLevel);
+      const levelA = Number.isFinite(parsedLevelA)
+        ? parsedLevelA
+        : Number.MAX_SAFE_INTEGER;
+      const levelB = Number.isFinite(parsedLevelB)
+        ? parsedLevelB
+        : Number.MAX_SAFE_INTEGER;
 
       if (levelA !== levelB) {
         return levelA - levelB;
@@ -269,7 +277,7 @@ const PricingTable = ({
             custom?: string | boolean;
           };
 
-          if (!price && (price === undefined || price === null)) {
+          if (!price) {
             if (
               plan.name.toLowerCase() === 'free' ||
               metadata?.custom === 'true' ||
@@ -358,7 +366,7 @@ const PricingTable = ({
                     fullWidth
                     className="rounded-xl"
                     onClick={() =>
-                      (window.location.href = 'mailto:sales@example.com')
+                      (window.location.href = `mailto:${salesEmail}`)
                     }
                   >
                     {t('contact-sales') || 'Contact Sales'}

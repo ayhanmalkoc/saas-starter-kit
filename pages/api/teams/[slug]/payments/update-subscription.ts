@@ -18,7 +18,7 @@ const getYearlyAmount = (price: Stripe.Price, quantity: number) => {
 
   const intervalCount = price.recurring?.interval_count ?? 1;
   if (!price.recurring?.interval) {
-    return price.unit_amount * quantity;
+    return null;
   }
 
   const cyclesPerYear =

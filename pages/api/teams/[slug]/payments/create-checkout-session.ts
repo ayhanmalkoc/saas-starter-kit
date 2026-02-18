@@ -1,10 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { assertBusinessTierPrice } from '@/lib/billing/catalog';
+import { ApiError } from '@/lib/errors';
 import { getSession } from '@/lib/session';
 import { stripe } from '@/lib/stripe';
 import { throwIfNoTeamAccess } from 'models/team';
-import { getByTeamId, upsertStripeSubscription } from 'models/subscription';
+import { getByTeamId } from 'models/subscription';
 import { getBillingProvider } from '@/lib/billing/provider';
 import type {
   BillingSession,
@@ -21,13 +22,7 @@ const BLOCKING_SUBSCRIPTION_STATUSES = new Set([
   'unpaid',
 ]);
 
-const toDate = (timestamp: number | null | undefined) =>
-  typeof timestamp === 'number' ? new Date(timestamp * 1000) : null;
-
-const syncBlockingStripeSubscriptions = async (
-  teamId: string,
-  customerId: string
-) => {
+const getBlockingStripeSubscriptionId = async (customerId: string) => {
   try {
     const subscriptions = await stripe.subscriptions.list({
       customer: customerId,
@@ -41,38 +36,16 @@ const syncBlockingStripeSubscriptions = async (
       )
       .sort((a, b) => b.created - a.created);
 
-    for (const subscription of blocking) {
-      const subscriptionItem = subscription.items.data[0];
-      const priceId = subscriptionItem?.price?.id ?? null;
-      const productId =
-        typeof subscriptionItem?.price?.product === 'string'
-          ? subscriptionItem.price.product
-          : null;
-
-      await upsertStripeSubscription({
-        id: subscription.id,
-        teamId,
-        customerId,
-        status: subscription.status,
-        quantity: subscriptionItem?.quantity ?? null,
-        currency: subscriptionItem?.price?.currency ?? null,
-        currentPeriodStart: toDate(subscription.current_period_start),
-        currentPeriodEnd: toDate(subscription.current_period_end),
-        cancelAt: toDate(subscription.cancel_at),
-        cancelAtPeriodEnd: subscription.cancel_at_period_end ?? false,
-        trialEnd: toDate(subscription.trial_end),
-        priceId,
-        productId,
-      });
-    }
-
     return blocking[0]?.id ?? null;
   } catch (error) {
     console.error(
       `Failed to check Stripe subscriptions for customer ${customerId}`,
       error
     );
-    return null;
+    throw new ApiError(
+      502,
+      'Unable to validate existing Stripe subscriptions. Please retry.'
+    );
   }
 };
 
@@ -80,10 +53,8 @@ const getExistingTeamSubscriptionId = async (
   teamId: string,
   customerId: string
 ) => {
-  const stripeSubscriptionId = await syncBlockingStripeSubscriptions(
-    teamId,
-    customerId
-  );
+  const stripeSubscriptionId =
+    await getBlockingStripeSubscriptionId(customerId);
   if (stripeSubscriptionId) {
     return stripeSubscriptionId;
   }
