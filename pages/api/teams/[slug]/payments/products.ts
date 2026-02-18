@@ -1,12 +1,13 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { isBusinessService } from '@/lib/billing/catalog';
+import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
 import { getAllServices } from 'models/service';
 import { getAllPrices } from 'models/price';
-import { getByTeamId } from 'models/subscription';
-import { getByTeamId as getInvoicesByTeamId } from 'models/invoice';
+import { getByBillingScope as getSubscriptionsByBillingScope } from 'models/subscription';
+import { getByBillingScope as getInvoicesByBillingScope } from 'models/invoice';
 
 export default async function handler(
   req: NextApiRequest,
@@ -38,11 +39,19 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     throw Error('Could not get user');
   }
 
+  const billingScope = await resolveBillingScopeFromTeamId(teamMember.teamId);
+
   const [subscriptions, products, prices, invoices] = await Promise.all([
-    getByTeamId(teamMember.teamId),
+    getSubscriptionsByBillingScope({
+      teamId: teamMember.teamId,
+      organizationId: billingScope.organizationId,
+    }),
     getAllServices(),
     getAllPrices(),
-    getInvoicesByTeamId(teamMember.teamId),
+    getInvoicesByBillingScope({
+      teamId: teamMember.teamId,
+      organizationId: billingScope.organizationId,
+    }),
   ]);
 
   const businessProducts = products.filter((product) =>

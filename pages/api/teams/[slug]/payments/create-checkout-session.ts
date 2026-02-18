@@ -1,11 +1,12 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { assertBusinessTierPrice } from '@/lib/billing/catalog';
+import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { ApiError } from '@/lib/errors';
 import { getSession } from '@/lib/session';
 import { stripe } from '@/lib/stripe';
 import { throwIfNoTeamAccess } from 'models/team';
-import { getByTeamId } from 'models/subscription';
+import { getByBillingScope } from 'models/subscription';
 import { getBillingProvider } from '@/lib/billing/provider';
 import type {
   BillingSession,
@@ -49,24 +50,33 @@ const getBlockingStripeSubscriptionId = async (customerId: string) => {
   }
 };
 
-const getExistingTeamSubscriptionId = async (
-  teamId: string,
-  customerId: string
-) => {
+const getExistingScopeSubscriptionId = async ({
+  teamId,
+  organizationId,
+  customerId,
+}: {
+  teamId: string;
+  organizationId?: string | null;
+  customerId: string;
+}) => {
   const stripeSubscriptionId =
     await getBlockingStripeSubscriptionId(customerId);
   if (stripeSubscriptionId) {
     return stripeSubscriptionId;
   }
 
-  const teamSubscriptions = await getByTeamId(teamId);
-  const blockingTeamSubscriptions = teamSubscriptions
+  const scopeSubscriptions = await getByBillingScope({
+    teamId,
+    organizationId,
+  });
+
+  const blockingScopeSubscriptions = scopeSubscriptions
     .filter((subscription) =>
       BLOCKING_SUBSCRIPTION_STATUSES.has(subscription.status)
     )
     .sort((a, b) => b.updatedAt.getTime() - a.updatedAt.getTime());
 
-  return blockingTeamSubscriptions[0]?.id ?? null;
+  return blockingScopeSubscriptions[0]?.id ?? null;
 };
 
 export default async function handler(
@@ -106,11 +116,13 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     teamMember as BillingTeamMember,
     session as BillingSession
   );
+  const billingScope = await resolveBillingScopeFromTeamId(teamMember.teamId);
 
-  const existingSubscriptionId = await getExistingTeamSubscriptionId(
-    teamMember.teamId,
-    customerId
-  );
+  const existingSubscriptionId = await getExistingScopeSubscriptionId({
+    teamId: teamMember.teamId,
+    organizationId: billingScope.organizationId,
+    customerId,
+  });
 
   if (existingSubscriptionId) {
     return res.status(409).json({

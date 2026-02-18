@@ -2,6 +2,7 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import type Stripe from 'stripe';
 
 import { assertBusinessTierPrice } from '@/lib/billing/catalog';
+import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
 import { stripe } from '@/lib/stripe';
@@ -98,9 +99,17 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   await getSession(req, res);
   const teamMember = await throwIfNoTeamAccess(req, res);
   await assertBusinessTierPrice(price);
+  const billingScope = await resolveBillingScopeFromTeamId(teamMember.teamId);
 
   const subscription = await getBySubscriptionId(subscriptionId);
-  if (!subscription || subscription.teamId !== teamMember.teamId) {
+  const canAccessByOrganization =
+    Boolean(billingScope.organizationId) &&
+    subscription?.organizationId === billingScope.organizationId;
+
+  if (
+    !subscription ||
+    (subscription.teamId !== teamMember.teamId && !canAccessByOrganization)
+  ) {
     throw new ApiError(404, 'Subscription not found');
   }
 

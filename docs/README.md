@@ -17,6 +17,8 @@ Use this index to find the right document quickly.
 
 - `billing-integration-guide.md`
   - Stripe architecture, checkout/update flows, and sync troubleshooting.
+- `openai-org-project-migration-roadmap.md`
+  - Organization/Project migration phases and compatibility strategy.
 
 ## Quality
 

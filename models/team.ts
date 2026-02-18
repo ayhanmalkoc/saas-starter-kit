@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session';
 import { findOrCreateApp } from '@/lib/svix';
 import { Role, Team } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { ensureOrganizationAndProjectForTeam } from './organization';
 import { getCurrentUser } from './user';
 import { normalizeUser } from './user';
 import { validateWithSchema, teamSlugSchema } from '@/lib/zod';
@@ -22,6 +23,7 @@ export const createTeam = async (param: {
   });
 
   await addTeamMember(team.id, userId, Role.OWNER);
+  await ensureOrganizationAndProjectForTeam(team.id);
 
   await findOrCreateApp(team.name, team.id);
 
@@ -31,11 +33,31 @@ export const createTeam = async (param: {
 export const getByCustomerId = async (
   billingId: string
 ): Promise<Team | null> => {
-  return await prisma.team.findFirst({
+  const team = await prisma.team.findFirst({
     where: {
       billingId,
     },
   });
+
+  if (team) {
+    return team;
+  }
+
+  const organization = await prisma.organization.findFirst({
+    where: {
+      billingId,
+    },
+    select: {
+      teams: {
+        orderBy: {
+          createdAt: 'asc',
+        },
+        take: 1,
+      },
+    },
+  });
+
+  return organization?.teams[0] ?? null;
 };
 
 export const getTeam = async (key: { id: string } | { slug: string }) => {
@@ -205,6 +227,16 @@ export const throwIfNoTeamAccess = async (
   const { slug } = validateWithSchema(teamSlugSchema, req.query);
 
   const teamMember = await getTeamMember(session.user.id, slug);
+
+  if (!teamMember.team.organizationId || !teamMember.team.projectId) {
+    await ensureOrganizationAndProjectForTeam(teamMember.team.id);
+    return {
+      ...(await getTeamMember(session.user.id, slug)),
+      user: {
+        ...session.user,
+      },
+    };
+  }
 
   if (!teamMember) {
     throw new Error('You do not have access to this team');

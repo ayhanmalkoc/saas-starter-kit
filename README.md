@@ -148,7 +148,7 @@ Once running, you can view caught emails at [http://localhost:8025](http://local
 npm run setup:stripe
 ```
 
-`setup:stripe` validates the plan catalog, seeds Stripe products/prices, syncs the catalog to DB, and backfills subscriptions for existing Stripe-linked teams.
+`setup:stripe` validates the plan catalog, bootstraps Organization/Project scope for legacy teams, seeds Stripe products/prices, syncs the catalog to DB, and backfills subscriptions for existing Stripe-linked teams.
 
 #### 7. Start the server
 
@@ -231,7 +231,7 @@ The default login options are email and GitHub. Configure below:
 1. Create an account on [Stripe](https://stripe.com/).
 2. Add the [Stripe API secret key](https://dashboard.stripe.com/apikeys) to the `.env` file as `STRIPE_SECRET_KEY`.
 3. Set `STRIPE_SYNC_SECRET` in your `.env` file (this must match the `x-stripe-sync-secret` header expected by the sync endpoint).
-4. Run `npm run setup:stripe` to validate plan inheritance, create/update Stripe products/prices, sync catalog data, and backfill subscriptions into your local database.
+4. Run `npm run setup:stripe` to validate plan inheritance, bootstrap Organization/Project scope for legacy teams, create/update Stripe products/prices, sync catalog data, and backfill subscriptions into your local database.
 5. Create a webhook in the [Stripe dashboard](https://dashboard.stripe.com/webhooks). The URL is your app hostname plus `/api/webhooks/stripe`. If you want to set this up locally you will need to use the [Stripe CLI forwarder](https://docs.stripe.com/webhooks#test-webhook).
 6. Once created, add the signing secret to the `.env` file as `STRIPE_WEBHOOK_SECRET`.
 

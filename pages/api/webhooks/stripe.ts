@@ -7,6 +7,7 @@ import {
   deleteStripeSubscription,
   upsertStripeSubscription,
 } from 'models/subscription';
+import { ensureOrganizationAndProjectForTeam } from 'models/organization';
 import { getByCustomerId } from 'models/team';
 import { createWebhookEvent, getWebhookEventById } from 'models/webhookEvent';
 import { Prisma } from '@prisma/client';
@@ -141,7 +142,8 @@ async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
   if (!team) {
     return;
   }
-  await upsertInvoiceFromStripe(invoice, team.id);
+  const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
+  await upsertInvoiceFromStripe(invoice, team.id, billingScope.organizationId);
 }
 
 async function handleInvoicePaymentFailed(_event: Stripe.Event) {
@@ -154,7 +156,8 @@ async function handleInvoicePaymentFailed(_event: Stripe.Event) {
   if (!team) {
     return;
   }
-  await upsertInvoiceFromStripe(invoice, team.id);
+  const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
+  await upsertInvoiceFromStripe(invoice, team.id, billingScope.organizationId);
 }
 
 async function handleCustomerUpdated(event: Stripe.Event) {
@@ -197,6 +200,7 @@ const upsertSubscriptionFromStripe = async (
     );
     return;
   }
+  const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
 
   const subscriptionItem = subscription.items.data[0];
   const priceId = subscriptionItem?.price?.id ?? null;
@@ -208,6 +212,8 @@ const upsertSubscriptionFromStripe = async (
   await upsertStripeSubscription({
     id: subscription.id,
     teamId: team.id,
+    organizationId: billingScope.organizationId,
+    projectId: billingScope.projectId,
     customerId,
     status: subscription.status,
     quantity: subscriptionItem?.quantity ?? null,

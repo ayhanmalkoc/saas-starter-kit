@@ -3,9 +3,10 @@ import type { Subscription } from '@prisma/client';
 
 import { ApiError } from '@/lib/errors';
 import env from '@/lib/env';
+import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
-import { getByTeamId } from 'models/subscription';
+import { getByBillingScope } from 'models/subscription';
 
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set([
   'active',
@@ -516,7 +517,11 @@ export const getTeamEntitlements = async (
   const serviceByName = buildServiceNameMap(services);
   const cache = new Map<string, EntitlementValues>();
 
-  const subscriptions = await getByTeamId(teamId);
+  const billingScope = await resolveBillingScopeFromTeamId(teamId);
+  const subscriptions = await getByBillingScope({
+    teamId,
+    organizationId: billingScope.organizationId,
+  });
   const activeSubscriptions = subscriptions.filter((subscription) =>
     ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)
   );
