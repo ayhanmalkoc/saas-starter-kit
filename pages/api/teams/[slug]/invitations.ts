@@ -20,6 +20,7 @@ import { extractEmailDomain, isEmailAllowed } from '@/lib/email/utils';
 import { Invitation, Prisma, Role } from '@prisma/client';
 import { randomUUID } from 'crypto';
 import { countTeamMembers } from 'models/teamMember';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 import {
   acceptInvitationSchema,
   deleteInvitationSchema,
@@ -213,6 +214,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   const { method } = req;
 
   try {

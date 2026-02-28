@@ -10,33 +10,15 @@ import {
   resolveLegacyTeamContextFromOrgProject,
 } from '@/lib/routing/org-project-compat';
 
-import TeamApiKeysPage, {
-  getServerSideProps as getApiKeysServerSideProps,
-} from '../../../../teams/[slug]/api-keys';
-import TeamAuditLogsPage, {
-  getServerSideProps as getAuditLogsServerSideProps,
-} from '../../../../teams/[slug]/audit-logs';
-import TeamBillingPage, {
-  getServerSideProps as getBillingServerSideProps,
-} from '../../../../teams/[slug]/billing';
-import TeamDirectorySyncPage, {
-  getServerSideProps as getDirectorySyncServerSideProps,
-} from '../../../../teams/[slug]/directory-sync';
-import TeamMembersPage, {
-  getServerSideProps as getMembersServerSideProps,
-} from '../../../../teams/[slug]/members';
-import TeamProductsPage, {
-  getServerSideProps as getProductsServerSideProps,
-} from '../../../../teams/[slug]/products';
-import TeamSettingsPage, {
-  getServerSideProps as getSettingsServerSideProps,
-} from '../../../../teams/[slug]/settings';
-import TeamSSOPage, {
-  getServerSideProps as getSSOServerSideProps,
-} from '../../../../teams/[slug]/sso';
-import TeamWebhooksPage, {
-  getServerSideProps as getWebhooksServerSideProps,
-} from '../../../../teams/[slug]/webhooks';
+import TeamApiKeysPage from '../../../../teams/[slug]/api-keys';
+import TeamAuditLogsPage from '../../../../teams/[slug]/audit-logs';
+import TeamBillingPage from '../../../../teams/[slug]/billing';
+import TeamDirectorySyncPage from '../../../../teams/[slug]/directory-sync';
+import TeamMembersPage from '../../../../teams/[slug]/members';
+import TeamProductsPage from '../../../../teams/[slug]/products';
+import TeamSettingsPage from '../../../../teams/[slug]/settings';
+import TeamSSOPage from '../../../../teams/[slug]/sso';
+import TeamWebhooksPage from '../../../../teams/[slug]/webhooks';
 
 type TeamPageKey =
   | 'settings'
@@ -51,46 +33,80 @@ type TeamPageKey =
 
 type TeamPageConfig = {
   component: NextPage<any>;
-  getServerSideProps: (context: GetServerSidePropsContext) => Promise<any>;
 };
 
 const TEAM_PAGE_CONFIG_BY_KEY: Record<TeamPageKey, TeamPageConfig> = {
   settings: {
     component: TeamSettingsPage,
-    getServerSideProps: getSettingsServerSideProps,
   },
   members: {
     component: TeamMembersPage,
-    getServerSideProps: getMembersServerSideProps,
   },
   sso: {
     component: TeamSSOPage,
-    getServerSideProps: getSSOServerSideProps,
   },
   'directory-sync': {
     component: TeamDirectorySyncPage,
-    getServerSideProps: getDirectorySyncServerSideProps,
   },
   'audit-logs': {
     component: TeamAuditLogsPage,
-    getServerSideProps: getAuditLogsServerSideProps,
   },
   billing: {
     component: TeamBillingPage,
-    getServerSideProps: getBillingServerSideProps,
   },
   webhooks: {
     component: TeamWebhooksPage,
-    getServerSideProps: getWebhooksServerSideProps,
   },
   'api-keys': {
     component: TeamApiKeysPage,
-    getServerSideProps: getApiKeysServerSideProps,
   },
   products: {
     component: TeamProductsPage,
-    getServerSideProps: getProductsServerSideProps,
   },
+};
+
+const runTeamPageServerSideProps = async (
+  pageKey: TeamPageKey,
+  context: GetServerSidePropsContext
+) => {
+  switch (pageKey) {
+    case 'settings': {
+      const pageModule = await import('../../../../teams/[slug]/settings');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'members': {
+      const pageModule = await import('../../../../teams/[slug]/members');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'sso': {
+      const pageModule = await import('../../../../teams/[slug]/sso');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'directory-sync': {
+      const pageModule = await import('../../../../teams/[slug]/directory-sync');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'audit-logs': {
+      const pageModule = await import('../../../../teams/[slug]/audit-logs');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'billing': {
+      const pageModule = await import('../../../../teams/[slug]/billing');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'webhooks': {
+      const pageModule = await import('../../../../teams/[slug]/webhooks');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'api-keys': {
+      const pageModule = await import('../../../../teams/[slug]/api-keys');
+      return pageModule.getServerSideProps(context);
+    }
+    case 'products': {
+      const pageModule = await import('../../../../teams/[slug]/products');
+      return pageModule.getServerSideProps(context);
+    }
+  }
 };
 
 const normalizePathSegments = (path: string | string[] | undefined) => {
@@ -138,7 +154,6 @@ export const getServerSideProps: GetServerSideProps<{
     return { notFound: true };
   }
 
-  const pageConfig = TEAM_PAGE_CONFIG_BY_KEY[pageKey];
   const delegatedContext = {
     ...context,
     params: {
@@ -151,7 +166,15 @@ export const getServerSideProps: GetServerSideProps<{
     },
   } as GetServerSidePropsContext;
 
-  const result = await pageConfig.getServerSideProps(delegatedContext);
+  const result = await runTeamPageServerSideProps(pageKey, delegatedContext);
+
+  if ('redirect' in result) {
+    return result;
+  }
+
+  if ('notFound' in result) {
+    return { notFound: true };
+  }
 
   if ('props' in result) {
     const delegatedProps = await Promise.resolve(result.props);

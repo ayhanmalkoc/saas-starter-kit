@@ -10,6 +10,7 @@ import { useRouter } from 'next/router';
 import type { ApiResponse } from 'types';
 import { defaultHeaders, maxLengthPolicies } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -30,7 +31,7 @@ const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
       context: routeContext,
       teamSlug: team.slug,
       suffix: 'invitations',
-    }) ?? `/api/teams/${team.slug}/invitations`;
+    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
 
   const FormValidationSchema = Yup.object().shape({
     email: Yup.string()

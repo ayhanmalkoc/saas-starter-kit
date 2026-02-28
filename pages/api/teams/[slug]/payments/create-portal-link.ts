@@ -10,14 +10,20 @@ import type {
 } from '@/lib/billing/provider/types';
 import env from '@/lib/env';
 import {
+  buildTeamWorkspaceAppPath,
   buildWorkspaceAppPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   try {
     switch (req.method) {
       case 'POST':
@@ -56,7 +62,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       context: routeContext,
       teamSlug: teamMember.team.slug,
       suffix: 'billing',
-    }) ?? `/teams/${teamMember.team.slug}/billing`;
+    }) ?? buildTeamWorkspaceAppPath({ team: teamMember.team, suffix: 'billing' });
 
   const { url } = await billingProvider.createPortalSession({
     customerId,

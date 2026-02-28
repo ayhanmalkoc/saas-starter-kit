@@ -9,6 +9,7 @@ import useCanAccess from 'hooks/useCanAccess';
 import useTeam from 'hooks/useTeam';
 import { getTeamMember } from 'models/team';
 import { throwIfNotAllowed } from 'models/user';
+import { getLegacyTeamRouteRedirect } from '@/lib/routing/legacy-team-redirect';
 import { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
 import { requireTeamEntitlement } from '@/lib/billing/entitlements';
@@ -75,6 +76,11 @@ const Events: NextPageWithLayout<inferSSRProps<typeof getServerSideProps>> = ({
 };
 
 export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const redirect = await getLegacyTeamRouteRedirect(context);
+  if (redirect) {
+    return redirect;
+  }
+
   if (!env.teamFeatures.auditLog) {
     return {
       notFound: true,

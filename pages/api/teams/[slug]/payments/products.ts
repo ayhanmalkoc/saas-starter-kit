@@ -8,11 +8,16 @@ import { getAllServices } from 'models/service';
 import { getAllPrices } from 'models/price';
 import { getByBillingScope as getSubscriptionsByBillingScope } from 'models/subscription';
 import { getByBillingScope as getInvoicesByBillingScope } from 'models/invoice';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   try {
     switch (req.method) {
       case 'GET':

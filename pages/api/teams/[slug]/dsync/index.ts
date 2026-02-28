@@ -6,6 +6,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { ApiError } from '@/lib/errors';
 import { dsyncManager } from '@/lib/jackson/dsync';
 import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 
 const dsync = dsyncManager();
 
@@ -13,6 +14,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   const { method } = req;
 
   try {

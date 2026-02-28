@@ -9,6 +9,7 @@ import type { ApiResponse } from 'types';
 import Modal from '../shared/Modal';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -31,7 +32,7 @@ const NewAPIKey = ({
       context: routeContext,
       teamSlug: team.slug,
       suffix: 'api-keys',
-    }) ?? `/api/teams/${team.slug}/api-keys`;
+    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'api-keys' });
 
   const onNewAPIKey = (apiKey: string) => {
     setApiKey(apiKey);

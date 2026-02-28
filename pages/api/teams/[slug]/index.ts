@@ -11,6 +11,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import { ApiError } from '@/lib/errors';
 import env from '@/lib/env';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 import { updateTeamSchema, validateWithSchema } from '@/lib/zod';
 import { Prisma, Team } from '@prisma/client';
 
@@ -18,6 +19,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   try {
     await throwIfNoTeamAccess(req, res);
 

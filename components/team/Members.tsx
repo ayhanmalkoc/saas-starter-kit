@@ -11,6 +11,7 @@ import { InviteMember } from '@/components/invitation';
 import UpdateMemberRole from './UpdateMemberRole';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -59,7 +60,7 @@ const Members = ({ team }: { team: Team }) => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'members',
-      }) ?? `/api/teams/${team.slug}/members`;
+      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'members' });
 
     const response = await fetch(`${membersUrl}?${sp.toString()}`, {
       method: 'DELETE',

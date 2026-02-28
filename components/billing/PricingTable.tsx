@@ -11,6 +11,7 @@ import { Price, Prisma, Service, Subscription } from '@prisma/client';
 import PaymentButton from './PaymentButton';
 import { handlePlanChange } from './planService';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -37,7 +38,11 @@ const PricingTable = ({
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'payments/products',
-      }) ?? `/api/teams/${team.slug}/payments/products`)
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: 'payments/products',
+      }))
     : null;
 
   const { data, isLoading: isBillingLoading } = useSWR(
@@ -128,7 +133,7 @@ const PricingTable = ({
         buildWorkspaceApiPath({
           context: routeContext,
           teamSlug: team.slug,
-        }) ?? `/api/teams/${team.slug}`,
+        }) ?? buildTeamWorkspaceApiPath({ team }),
     });
 
     if (data?.data?.url) {

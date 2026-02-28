@@ -12,7 +12,7 @@ The target model mirrors OpenAI Platform structure:
 
 ## PR Series
 
-## PR-1: Additive Foundation (current branch)
+## PR-1: Additive Foundation
 
 Scope:
 
@@ -77,7 +77,7 @@ Scope:
 
 Status:
 
-- Implemented on `feat/org-project-architecture-phase1` (pending merge to `main`).
+- Implemented and merged to `main`.
 
 Current implementation status:
 
@@ -105,6 +105,51 @@ Scope:
 
 - Keep `Team` as backward-compatible alias layer or remove if fully migrated.
 - Finalize docs and remove dual-write paths.
+
+Current implementation status:
+
+- Team UI routes now enforce canonical app URL shape at SSR:
+  - Requests on `/teams/:slug/*` are redirected to `/orgs/:orgSlug/projects/:projectSlug/*`.
+  - Redirect preserves route suffix (`settings`, `members`, `billing`, etc.) and query string.
+- Team API routes now enforce canonical API URL shape at handler entry:
+  - Requests on `/api/teams/:slug/*` are redirected (307) to `/api/orgs/:orgSlug/projects/:projectSlug/*`.
+  - Redirect preserves endpoint suffix and query string.
+- Workspace URL fallback generation now uses canonical-aware helpers:
+  - Added API helper `buildTeamWorkspaceApiPath` in `lib/routing/workspace-routes.ts`.
+  - Team UI/API clients now prefer helper-based fallback over hardcoded `/teams` or `/api/teams` path strings.
+- Legacy alias behavior is now environment-controlled:
+  - `LEGACY_TEAM_ROUTE_MODE=enabled` keeps legacy team-slug routes active.
+  - `LEGACY_TEAM_ROUTE_MODE=redirect` (default) redirects legacy team-slug routes to canonical org/project routes.
+  - `LEGACY_TEAM_ROUTE_MODE=disabled` blocks legacy team-slug routes (`404/410`) for hard cutover.
+- Production guardrail for deprecation mode:
+  - Production boot fails if `LEGACY_TEAM_ROUTE_MODE=enabled` unless explicit emergency override `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true` is set.
+- Added shared redirect helper:
+  - `lib/routing/legacy-team-redirect.ts`
+- Added shared API redirect helper:
+  - `lib/routing/legacy-team-api-redirect.ts`
+- Added canonical route resolution from team slug:
+  - `models/team.ts` (`getTeamCanonicalRouteBySlug`)
+
+## Completion Snapshot (as of February 28, 2026)
+
+- PR-1: Complete
+- PR-2: Complete
+- PR-3: Complete
+- PR-4: Complete as compatibility/deprecation-control layer
+
+Open items are operational, not architectural:
+
+- Monitor redirect traffic on legacy `/teams/*` and `/api/teams/*` routes.
+- Execute controlled hard-cutover by switching production route mode from `redirect` to `disabled` after release sign-off.
+
+## Production Route-Mode Decision
+
+Current production policy:
+
+- Default production mode is `LEGACY_TEAM_ROUTE_MODE=redirect`.
+- `LEGACY_TEAM_ROUTE_MODE=enabled` is prohibited in production except emergency rollback with
+  `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true`.
+- `LEGACY_TEAM_ROUTE_MODE=disabled` is a planned hard-cutover mode and should be enabled only in a controlled release window.
 
 ## Operational Commands
 

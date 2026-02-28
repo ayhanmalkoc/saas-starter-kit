@@ -5,6 +5,7 @@ import { useTranslation } from 'next-i18next';
 
 import type { ApiResponse } from 'types';
 import { defaultHeaders } from '@/lib/common';
+import { buildTeamWorkspaceApiPath } from '@/lib/routing/workspace-routes';
 import { Invitation, Team } from '@prisma/client';
 
 interface AcceptInvitationProps {
@@ -16,14 +17,15 @@ const AcceptInvitation = ({ invitation }: AcceptInvitationProps) => {
   const { t } = useTranslation('common');
 
   const acceptInvitation = async () => {
-    const response = await fetch(
-      `/api/teams/${invitation.team.slug}/invitations`,
-      {
-        method: 'PUT',
-        headers: defaultHeaders,
-        body: JSON.stringify({ inviteToken: invitation.token }),
-      }
-    );
+    const invitationsUrl = buildTeamWorkspaceApiPath({
+      team: invitation.team,
+      suffix: 'invitations',
+    });
+    const response = await fetch(invitationsUrl, {
+      method: 'PUT',
+      headers: defaultHeaders,
+      body: JSON.stringify({ inviteToken: invitation.token }),
+    });
 
     if (!response.ok) {
       const result = (await response.json()) as ApiResponse;

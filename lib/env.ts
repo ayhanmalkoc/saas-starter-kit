@@ -72,6 +72,10 @@ const envSchema = z.object({
   FEATURE_TEAM_AUDIT_LOG: z.string().optional(),
   FEATURE_TEAM_PAYMENTS: z.string().optional(),
   FEATURE_TEAM_DELETION: z.string().optional(),
+  LEGACY_TEAM_ROUTE_MODE: z
+    .enum(['enabled', 'redirect', 'disabled'])
+    .optional(),
+  ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION: z.string().optional(),
 
   RECAPTCHA_SITE_KEY: z.string().optional(),
   RECAPTCHA_SECRET_KEY: z.string().optional(),
@@ -104,6 +108,20 @@ export const validateEnv = (
 };
 
 const rawEnv = validateEnv(process.env);
+const legacyTeamRouteMode = rawEnv.LEGACY_TEAM_ROUTE_MODE ?? 'redirect';
+const allowLegacyTeamEnabledInProduction =
+  rawEnv.ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION === 'true';
+
+if (
+  process.env.NODE_ENV === 'production' &&
+  legacyTeamRouteMode === 'enabled' &&
+  !allowLegacyTeamEnabledInProduction
+) {
+  throw new Error(
+    'Invalid production configuration: LEGACY_TEAM_ROUTE_MODE=enabled is not allowed. ' +
+      'Use LEGACY_TEAM_ROUTE_MODE=redirect|disabled, or set ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true for temporary emergency override.'
+  );
+}
 
 const trimTrailingSlashes = (value: string | undefined): string =>
   (value ?? '').replace(/\/+$/, '');
@@ -219,6 +237,10 @@ const env = {
         ? false
         : Boolean(rawEnv.STRIPE_SECRET_KEY && rawEnv.STRIPE_WEBHOOK_SECRET),
     deleteTeam: rawEnv.FEATURE_TEAM_DELETION !== 'false',
+  },
+
+  routing: {
+    legacyTeamRouteMode,
   },
 
   recaptcha: {

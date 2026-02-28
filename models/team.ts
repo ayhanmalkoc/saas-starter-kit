@@ -77,6 +77,75 @@ export const getTeam = async (key: { id: string } | { slug: string }) => {
   });
 };
 
+export type TeamCanonicalRoute = {
+  teamSlug: string;
+  organizationSlug: string;
+  projectSlug: string;
+};
+
+const getTeamCanonicalRouteBySlugQuery = async (slug: string) => {
+  return await prisma.team.findUnique({
+    where: {
+      slug,
+    },
+    select: {
+      id: true,
+      slug: true,
+      organization: {
+        select: {
+          slug: true,
+        },
+      },
+      project: {
+        select: {
+          slug: true,
+          organization: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+export const getTeamCanonicalRouteBySlug = async (
+  slug: string
+): Promise<TeamCanonicalRoute | null> => {
+  let team = await getTeamCanonicalRouteBySlugQuery(slug);
+
+  if (!team) {
+    return null;
+  }
+
+  const hasCanonicalRoute = Boolean(
+    team.project?.slug && team.project.organization?.slug
+  );
+
+  if (!hasCanonicalRoute) {
+    await ensureOrganizationAndProjectForTeam(team.id);
+    team = await getTeamCanonicalRouteBySlugQuery(slug);
+    if (!team) {
+      return null;
+    }
+  }
+
+  const organizationSlug =
+    team.project?.organization?.slug ?? team.organization?.slug ?? null;
+  const projectSlug = team.project?.slug ?? null;
+
+  if (!organizationSlug || !projectSlug) {
+    return null;
+  }
+
+  return {
+    teamSlug: team.slug,
+    organizationSlug,
+    projectSlug,
+  };
+};
+
 export const deleteTeam = async (key: { id: string } | { slug: string }) => {
   return await prisma.team.delete({
     where: key,

@@ -19,9 +19,11 @@ import type {
 import env from '@/lib/env';
 import { checkoutSessionSchema, validateWithSchema } from '@/lib/zod';
 import {
+  buildTeamWorkspaceAppPath,
   buildWorkspaceAppPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 
 const getBlockingStripeSubscriptions = async (customerId: string) => {
   try {
@@ -119,6 +121,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   try {
     switch (req.method) {
       case 'POST':
@@ -165,7 +171,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       context: routeContext,
       teamSlug: teamMember.team.slug,
       suffix: 'billing',
-    }) ?? `/teams/${teamMember.team.slug}/billing`;
+    }) ?? buildTeamWorkspaceAppPath({ team: teamMember.team, suffix: 'billing' });
 
   const existingSubscriptionState = await getExistingScopeSubscriptionState({
     teamId: teamMember.teamId,

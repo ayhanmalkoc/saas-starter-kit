@@ -125,3 +125,23 @@ export const buildTeamWorkspaceAppPath = ({
   const base = `/teams/${team.slug}`;
   return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
 };
+
+export const buildTeamWorkspaceApiPath = ({
+  team,
+  suffix,
+}: {
+  team: TeamRouteTarget;
+  suffix?: string;
+}) => {
+  const normalizedSuffix = suffix?.trim().replace(/^\/+|\/+$/g, '');
+  const projectSlug = team.project?.slug;
+  const organizationSlug = team.project?.organization?.slug;
+
+  if (organizationSlug && projectSlug) {
+    const base = `/api/orgs/${organizationSlug}/projects/${projectSlug}`;
+    return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
+  }
+
+  const base = `/api/teams/${team.slug}`;
+  return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
+};

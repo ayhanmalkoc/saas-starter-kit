@@ -13,6 +13,7 @@ import { availableRoles } from '@/lib/permissions';
 import type { Team } from '@prisma/client';
 import { defaultHeaders, isValidDomain, maxLengthPolicies } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -33,7 +34,7 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
       context: routeContext,
       teamSlug: team.slug,
       suffix: 'invitations',
-    }) ?? `/api/teams/${team.slug}/invitations`;
+    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
   const { invitations } = useInvitations({
     slug: team.slug,
     sentViaEmail: false,

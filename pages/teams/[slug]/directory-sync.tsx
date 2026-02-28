@@ -9,7 +9,9 @@ import { toast } from 'react-hot-toast';
 import env from '@/lib/env';
 import { DirectoriesWrapper } from '@boxyhq/react-ui/dsync';
 import { BOXYHQ_UI_CSS } from '@/components/styles';
+import { getLegacyTeamRouteRedirect } from '@/lib/routing/legacy-team-redirect';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -37,7 +39,7 @@ const DirectorySync = ({ teamFeatures }) => {
       context: routeContext,
       teamSlug: team.slug,
       suffix: 'dsync',
-    }) ?? `/api/teams/${team.slug}/dsync`;
+    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'dsync' });
 
   return (
     <>
@@ -94,9 +96,14 @@ const DirectorySync = ({ teamFeatures }) => {
   );
 };
 
-export async function getServerSideProps({
-  locale,
-}: GetServerSidePropsContext) {
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const redirect = await getLegacyTeamRouteRedirect(context);
+  if (redirect) {
+    return redirect;
+  }
+
+  const { locale } = context;
+
   if (!env.teamFeatures.dsync) {
     return {
       notFound: true,

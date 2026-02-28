@@ -1,6 +1,7 @@
 import { LetterAvatar } from '@/components/shared';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildTeamWorkspaceAppPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
@@ -42,7 +43,7 @@ const Teams = () => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'members',
-      }) ?? `/api/teams/${team.slug}/members`;
+      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'members' });
 
     const response = await fetch(membersUrl, {
       method: 'PUT',

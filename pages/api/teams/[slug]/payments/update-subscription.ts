@@ -9,6 +9,7 @@ import { stripe } from '@/lib/stripe';
 import { updateSubscriptionSchema, validateWithSchema } from '@/lib/zod';
 import { getBlockingByBillingScope, getBySubscriptionId } from 'models/subscription';
 import { ApiError } from '@/lib/errors';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 
 type PlanChangeType = 'upgrade' | 'downgrade' | 'lateral';
 
@@ -98,6 +99,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   try {
     switch (req.method) {
       case 'POST':

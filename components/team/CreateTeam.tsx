@@ -1,5 +1,6 @@
 import { defaultHeaders, maxLengthPolicies } from '@/lib/common';
 import type { Team } from '@prisma/client';
+import { buildTeamWorkspaceAppPath } from '@/lib/routing/workspace-routes';
 import { useFormik } from 'formik';
 import useTeams from 'hooks/useTeams';
 import { useTranslation } from 'next-i18next';
@@ -47,7 +48,14 @@ const CreateTeam = ({ visible, setVisible }: CreateTeamProps) => {
       mutateTeams();
       setVisible(false);
       toast.success(t('team-created'));
-      router.push(`/teams/${json.data.slug}/settings`);
+      router.push(
+        buildTeamWorkspaceAppPath({
+          team: {
+            slug: json.data.slug,
+          },
+          suffix: 'settings',
+        })
+      );
     },
   });
 

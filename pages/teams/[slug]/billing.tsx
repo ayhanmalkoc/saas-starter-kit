@@ -13,7 +13,9 @@ import Help from '@/components/billing/Help';
 import { Error, Loading } from '@/components/shared';
 import LinkToPortal from '@/components/billing/LinkToPortal';
 import Subscriptions from '@/components/billing/Subscriptions';
+import { getLegacyTeamRouteRedirect } from '@/lib/routing/legacy-team-redirect';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -44,7 +46,11 @@ const Payments = ({ teamFeatures }) => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'payments/products',
-      }) ?? `/api/teams/${team.slug}/payments/products`)
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: 'payments/products',
+      }))
     : null;
 
   const { data, isLoading: isBillingLoading } = useSWR(
@@ -224,9 +230,14 @@ const Payments = ({ teamFeatures }) => {
   );
 };
 
-export async function getServerSideProps({
-  locale,
-}: GetServerSidePropsContext) {
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const redirect = await getLegacyTeamRouteRedirect(context);
+  if (redirect) {
+    return redirect;
+  }
+
+  const { locale } = context;
+
   if (!env.teamFeatures.payments) {
     return {
       notFound: true,

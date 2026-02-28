@@ -13,6 +13,7 @@ import type { ApiResponse } from 'types';
 import ModalForm from './Form';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -52,7 +53,11 @@ const EditWebhook = ({
         context: routeContext,
         teamSlug: team.slug,
         suffix: `webhooks/${endpoint.id}`,
-      }) ?? `/api/teams/${team.slug}/webhooks/${endpoint.id}`;
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: `webhooks/${endpoint.id}`,
+      });
 
     const response = await fetch(webhookUrl, {
       method: 'PUT',

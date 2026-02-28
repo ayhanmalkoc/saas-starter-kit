@@ -9,6 +9,7 @@ import toast from 'react-hot-toast';
 import ConfirmationDialog from '../shared/ConfirmationDialog';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -33,7 +34,7 @@ const RemoveTeam = ({ team, allowDelete }: RemoveTeamProps) => {
       buildWorkspaceApiPath({
         context: routeContext,
         teamSlug: team.slug,
-      }) ?? `/api/teams/${team.slug}`;
+      }) ?? buildTeamWorkspaceApiPath({ team });
 
     const response = await fetch(removeTeamUrl, {
       method: 'DELETE',

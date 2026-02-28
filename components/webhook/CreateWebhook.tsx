@@ -10,6 +10,7 @@ import type { WebhookFormSchema } from 'types';
 import ModalForm from './Form';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -38,7 +39,7 @@ const CreateWebhook = ({
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'webhooks',
-      }) ?? `/api/teams/${team.slug}/webhooks`;
+      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'webhooks' });
 
     const response = await fetch(webhooksUrl, {
       method: 'POST',

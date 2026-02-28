@@ -1,6 +1,8 @@
 import { Card, InputWithLabel } from '@/components/shared';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceAppPath,
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   buildWorkspaceAppPath,
   getWorkspaceRouteContextFromQuery,
@@ -45,7 +47,7 @@ const TeamSettings = ({ team }: { team: Team }) => {
         buildWorkspaceApiPath({
           context: routeContext,
           teamSlug: team.slug,
-        }) ?? `/api/teams/${team.slug}`;
+        }) ?? buildTeamWorkspaceApiPath({ team });
 
       const response = await fetch(updateTeamUrl, {
         method: 'PUT',
@@ -67,7 +69,13 @@ const TeamSettings = ({ team }: { team: Team }) => {
           context: routeContext,
           teamSlug: json.data.slug,
           suffix: 'settings',
-        }) ?? `/teams/${json.data.slug}/settings`;
+        }) ??
+        buildTeamWorkspaceAppPath({
+          team: {
+            slug: json.data.slug,
+          },
+          suffix: 'settings',
+        });
 
       router.push(settingsPath);
     },

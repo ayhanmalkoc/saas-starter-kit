@@ -1,5 +1,6 @@
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -26,7 +27,7 @@ const UpdateMemberRole = ({ team, member }: UpdateMemberRoleProps) => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'members',
-      }) ?? `/api/teams/${team.slug}/members`;
+      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'members' });
 
     const response = await fetch(membersUrl, {
       method: 'PATCH',

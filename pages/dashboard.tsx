@@ -1,4 +1,5 @@
 import { Loading } from '@/components/shared';
+import { buildTeamWorkspaceAppPath } from '@/lib/routing/workspace-routes';
 import useTeams from 'hooks/useTeams';
 import { GetServerSidePropsContext } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
@@ -16,7 +17,12 @@ const Dashboard: NextPageWithLayout = () => {
     }
 
     if (teams.length > 0) {
-      router.push(`/teams/${teams[0].slug}/settings`);
+      router.push(
+        buildTeamWorkspaceAppPath({
+          team: teams[0],
+          suffix: 'settings',
+        })
+      );
     } else {
       router.push('teams?newTeam=true');
     }

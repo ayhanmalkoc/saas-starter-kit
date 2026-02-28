@@ -1,6 +1,7 @@
 import { Error, Loading } from '@/components/shared';
 import { TeamTab } from '@/components/team';
 import { Webhooks } from '@/components/webhook';
+import { getLegacyTeamRouteRedirect } from '@/lib/routing/legacy-team-redirect';
 import useTeam from 'hooks/useTeam';
 import { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
@@ -31,9 +32,14 @@ const WebhookList = ({ teamFeatures }) => {
   );
 };
 
-export async function getServerSideProps({
-  locale,
-}: GetServerSidePropsContext) {
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const redirect = await getLegacyTeamRouteRedirect(context);
+  if (redirect) {
+    return redirect;
+  }
+
+  const { locale } = context;
+
   if (!env.teamFeatures.webhook) {
     return {
       notFound: true,

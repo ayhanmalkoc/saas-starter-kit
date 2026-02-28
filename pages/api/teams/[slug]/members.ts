@@ -12,6 +12,7 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import { countTeamMembers, updateTeamMember } from 'models/teamMember';
 import { validateMembershipOperation } from '@/lib/rbac';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 import {
   deleteMemberSchema,
   updateMemberSchema,
@@ -22,6 +23,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   const { method } = req;
 
   try {

@@ -7,11 +7,16 @@ import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { createApiKeySchema, validateWithSchema } from '@/lib/zod';
 import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   try {
     if (!env.teamFeatures.apiKey) {
       throw new ApiError(404, 'Not Found');

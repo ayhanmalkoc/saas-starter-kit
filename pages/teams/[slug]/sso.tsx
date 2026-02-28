@@ -9,7 +9,9 @@ import toast from 'react-hot-toast';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import env from '@/lib/env';
 import { BOXYHQ_UI_CSS } from '@/components/styles';
+import { getLegacyTeamRouteRedirect } from '@/lib/routing/legacy-team-redirect';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -38,7 +40,7 @@ const TeamSSO = ({ teamFeatures, SPConfigURL }) => {
       context: routeContext,
       teamSlug: team.slug,
       suffix: 'sso',
-    }) ?? `/api/teams/${team.slug}/sso`;
+    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'sso' });
 
   return (
     <>
@@ -85,9 +87,14 @@ const TeamSSO = ({ teamFeatures, SPConfigURL }) => {
   );
 };
 
-export async function getServerSideProps({
-  locale,
-}: GetServerSidePropsContext) {
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const redirect = await getLegacyTeamRouteRedirect(context);
+  if (redirect) {
+    return redirect;
+  }
+
+  const { locale } = context;
+
   if (!env.teamFeatures.sso) {
     return {
       notFound: true,

@@ -8,6 +8,7 @@ import { Card } from '@/components/shared';
 import { Team } from '@prisma/client';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -32,7 +33,11 @@ const LinkToPortal = ({ team }: LinkToPortalProps) => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'payments/create-portal-link',
-      }) ?? `/api/teams/${team.slug}/payments/create-portal-link`;
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: 'payments/create-portal-link',
+      });
 
     const response = await fetch(portalUrl, {
       method: 'POST',

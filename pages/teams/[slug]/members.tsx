@@ -2,6 +2,7 @@ import { PendingInvitations } from '@/components/invitation';
 import { Error, Loading } from '@/components/shared';
 import { Members, TeamTab } from '@/components/team';
 import env from '@/lib/env';
+import { getLegacyTeamRouteRedirect } from '@/lib/routing/legacy-team-redirect';
 import useTeam from 'hooks/useTeam';
 import { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
@@ -34,9 +35,14 @@ const TeamMembers = ({ teamFeatures }) => {
   );
 };
 
-export async function getServerSideProps({
-  locale,
-}: GetServerSidePropsContext) {
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const redirect = await getLegacyTeamRouteRedirect(context);
+  if (redirect) {
+    return redirect;
+  }
+
+  const { locale } = context;
+
   return {
     props: {
       ...(locale ? await serverSideTranslations(locale, ['common']) : {}),

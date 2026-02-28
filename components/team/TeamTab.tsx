@@ -8,6 +8,7 @@ import {
   BanknotesIcon,
 } from '@heroicons/react/24/outline';
 import {
+  buildTeamWorkspaceAppPath,
   buildWorkspaceAppPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -35,7 +36,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
       context: routeContext,
       teamSlug: team.slug,
       suffix,
-    }) ?? `/teams/${team.slug}/${suffix}`;
+    }) ?? buildTeamWorkspaceAppPath({ team, suffix });
 
   const navigations = [
     {

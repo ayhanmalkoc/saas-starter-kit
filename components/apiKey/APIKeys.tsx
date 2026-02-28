@@ -11,6 +11,7 @@ import useAPIKeys from 'hooks/useAPIKeys';
 import { Table } from '@/components/shared/table/Table';
 import { useRouter } from 'next/router';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -40,7 +41,11 @@ const APIKeys = ({ team }: APIKeysProps) => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: `api-keys/${apiKey.id}`,
-      }) ?? `/api/teams/${team.slug}/api-keys/${apiKey.id}`;
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: `api-keys/${apiKey.id}`,
+      });
 
     const response = await fetch(apiKeyUrl, {
       method: 'DELETE',

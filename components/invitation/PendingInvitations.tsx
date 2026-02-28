@@ -1,6 +1,7 @@
 import { Error, LetterAvatar, Loading } from '@/components/shared';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -50,7 +51,7 @@ const PendingInvitations = ({ team }: { team: Team }) => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'invitations',
-      }) ?? `/api/teams/${team.slug}/invitations`;
+      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
 
     const response = await fetch(`${invitationsUrl}?${sp.toString()}`, {
       method: 'DELETE',

@@ -11,6 +11,7 @@ import type { EndpointOut } from 'svix';
 import { CreateWebhook, EditWebhook } from '@/components/webhook';
 import { defaultHeaders } from '@/lib/common';
 import {
+  buildTeamWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -49,7 +50,7 @@ const Webhooks = ({ team }: { team: Team }) => {
         context: routeContext,
         teamSlug: team.slug,
         suffix: 'webhooks',
-      }) ?? `/api/teams/${team.slug}/webhooks`;
+      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'webhooks' });
 
     const response = await fetch(`${webhooksUrl}?${sp.toString()}`, {
       method: 'DELETE',

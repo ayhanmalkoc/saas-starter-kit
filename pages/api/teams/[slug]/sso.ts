@@ -11,6 +11,7 @@ import {
   extractClientId,
   throwIfNoAccessToConnection,
 } from '@/lib/guards/team-sso';
+import { maybeRedirectLegacyTeamApiRoute } from '@/lib/routing/legacy-team-api-redirect';
 
 const sso = ssoManager();
 
@@ -18,6 +19,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
+  if (await maybeRedirectLegacyTeamApiRoute(req, res)) {
+    return;
+  }
+
   const { method } = req;
 
   try {

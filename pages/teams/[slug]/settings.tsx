@@ -2,6 +2,7 @@ import { Error, Loading } from '@/components/shared';
 import { AccessControl } from '@/components/shared/AccessControl';
 import { RemoveTeam, TeamSettings, TeamTab } from '@/components/team';
 import env from '@/lib/env';
+import { getLegacyTeamRouteRedirect } from '@/lib/routing/legacy-team-redirect';
 import useTeam from 'hooks/useTeam';
 import type { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
@@ -37,9 +38,14 @@ const Settings = ({ teamFeatures }: { teamFeatures: TeamFeature }) => {
   );
 };
 
-export async function getServerSideProps({
-  locale,
-}: GetServerSidePropsContext) {
+export async function getServerSideProps(context: GetServerSidePropsContext) {
+  const redirect = await getLegacyTeamRouteRedirect(context);
+  if (redirect) {
+    return redirect;
+  }
+
+  const { locale } = context;
+
   return {
     props: {
       ...(locale ? await serverSideTranslations(locale, ['common']) : {}),
