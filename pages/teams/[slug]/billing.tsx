@@ -13,6 +13,11 @@ import Help from '@/components/billing/Help';
 import { Error, Loading } from '@/components/shared';
 import LinkToPortal from '@/components/billing/LinkToPortal';
 import Subscriptions from '@/components/billing/Subscriptions';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
+import { useRouter } from 'next/router';
 
 const LinkToPricing = () => {
   const { t } = useTranslation('common');
@@ -29,11 +34,21 @@ const LinkToPricing = () => {
 };
 
 const Payments = ({ teamFeatures }) => {
+  const router = useRouter();
   const { t } = useTranslation('common');
   const { canAccess } = useCanAccess();
   const { isLoading, isError, team } = useTeam();
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const billingProductsUrl = team?.slug
+    ? (buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'payments/products',
+      }) ?? `/api/teams/${team.slug}/payments/products`)
+    : null;
+
   const { data, isLoading: isBillingLoading } = useSWR(
-    team?.slug ? `/api/teams/${team?.slug}/payments/products` : null,
+    billingProductsUrl,
     fetcher
   );
 

@@ -59,6 +59,7 @@ Current implementation status:
   - Team tabs/navigation/dropdown
   - Team members/invitations/webhooks/API keys/billing portal calls
   - Team SSO and Directory Sync settings pages
+  - Pricing/billing product fetches and plan-change actions
 - Teams listing now includes project/organization slug context for canonical links.
 - Replaced org/project UI compatibility redirect with native page dispatch:
   - `pages/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].tsx` now delegates to team page modules

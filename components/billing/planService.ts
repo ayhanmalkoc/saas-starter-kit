@@ -3,6 +3,7 @@ interface PlanChangeParams {
   priceId: string;
   quantity?: number;
   subscriptionId?: string | null;
+  apiBasePath?: string;
 }
 
 const buildRequestBody = ({
@@ -50,14 +51,17 @@ const parseResponsePayload = async (response: Response) => {
 
 const sendPlanChangeRequest = async ({
   teamSlug,
+  apiBasePath,
   endpoint,
   body,
 }: {
   teamSlug: string;
+  apiBasePath?: string;
   endpoint: 'create-checkout-session' | 'update-subscription';
   body: Record<string, unknown>;
 }) => {
-  const response = await fetch(`/api/teams/${teamSlug}/payments/${endpoint}`, {
+  const basePath = apiBasePath || `/api/teams/${teamSlug}`;
+  const response = await fetch(`${basePath}/payments/${endpoint}`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -74,6 +78,7 @@ export const handlePlanChange = async ({
   priceId,
   quantity,
   subscriptionId,
+  apiBasePath,
 }: PlanChangeParams) => {
   const requestBody = buildRequestBody({ priceId, quantity, subscriptionId });
   const endpoint = subscriptionId
@@ -82,6 +87,7 @@ export const handlePlanChange = async ({
 
   const primary = await sendPlanChangeRequest({
     teamSlug,
+    apiBasePath,
     endpoint,
     body: requestBody,
   });
@@ -94,6 +100,7 @@ export const handlePlanChange = async ({
   ) {
     const fallback = await sendPlanChangeRequest({
       teamSlug,
+      apiBasePath,
       endpoint: 'update-subscription',
       body: buildRequestBody({
         priceId,
