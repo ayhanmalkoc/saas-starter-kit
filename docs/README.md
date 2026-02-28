@@ -6,6 +6,8 @@ Use this index to find the right document quickly.
 
 - `environment-commands-playbook.md`
   - Environment-specific command order (fresh clone, dev reset, staging, production).
+- `branch-strategy.md`
+  - Long-lived branch governance for `main`, `org`, and `team` tracks.
 - `deployment-guide.md`
   - CI/CD deployment order and migration rules.
 - `production-readiness-guide.md`

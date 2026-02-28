@@ -27,6 +27,7 @@ Blog - [Enterprise-ready Saas Starter Kit](https://boxyhq.com/blog/enterprise-re
 Project docs:
 
 - [Docs Index](docs/README.md)
+- [Branch Strategy](docs/branch-strategy.md)
 - [Environment Commands Playbook](docs/environment-commands-playbook.md)
 - [Billing Integration Guide](docs/billing-integration-guide.md)
 - [Deployment Guide](docs/deployment-guide.md)
