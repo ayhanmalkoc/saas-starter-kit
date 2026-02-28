@@ -1,6 +1,8 @@
 export interface BillingTeam {
   id: string;
   slug: string;
+  organizationId?: string | null;
+  projectId?: string | null;
   billingId: string | null;
   billingProvider: string | null;
 }
@@ -31,6 +33,7 @@ export interface BillingProvider {
     customerId: string;
     price: string;
     quantity?: number;
+    metadata?: Record<string, string>;
     successUrl: string;
     cancelUrl: string;
   }): Promise<CheckoutSessionResult>;

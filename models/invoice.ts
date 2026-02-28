@@ -62,14 +62,7 @@ export const getByBillingScope = async ({
   organizationId?: string | null;
 }) => {
   if (organizationId) {
-    return await prisma.invoice.findMany({
-      where: {
-        OR: [{ organizationId }, { teamId }],
-      },
-      orderBy: {
-        createdAt: 'desc',
-      },
-    });
+    return await getByOrganizationId(organizationId);
   }
 
   return await getByTeamId(teamId);

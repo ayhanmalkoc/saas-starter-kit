@@ -33,16 +33,6 @@ export const createTeam = async (param: {
 export const getByCustomerId = async (
   billingId: string
 ): Promise<Team | null> => {
-  const team = await prisma.team.findFirst({
-    where: {
-      billingId,
-    },
-  });
-
-  if (team) {
-    return team;
-  }
-
   const organization = await prisma.organization.findFirst({
     where: {
       billingId,
@@ -57,7 +47,28 @@ export const getByCustomerId = async (
     },
   });
 
-  return organization?.teams[0] ?? null;
+  if (organization?.teams[0]) {
+    return organization.teams[0];
+  }
+
+  return await prisma.team.findFirst({
+    where: {
+      billingId,
+    },
+  });
+};
+
+export const getFirstTeamByOrganizationId = async (
+  organizationId: string
+): Promise<Team | null> => {
+  return await prisma.team.findFirst({
+    where: {
+      organizationId,
+    },
+    orderBy: {
+      createdAt: 'asc',
+    },
+  });
 };
 
 export const getTeam = async (key: { id: string } | { slug: string }) => {

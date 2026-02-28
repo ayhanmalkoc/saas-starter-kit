@@ -1,6 +1,14 @@
 import { prisma } from '@/lib/prisma';
 import { Prisma, Subscription } from '@prisma/client';
 
+export const BLOCKING_SUBSCRIPTION_STATUSES = new Set([
+  'active',
+  'trialing',
+  'past_due',
+  'incomplete',
+  'unpaid',
+]);
+
 type StripeSubscriptionInput = {
   id: string;
   teamId: string;
@@ -125,14 +133,40 @@ export const getByBillingScope = async ({
   organizationId?: string | null;
 }) => {
   if (organizationId) {
-    return await prisma.subscription.findMany({
-      where: {
-        OR: [{ organizationId }, { teamId }],
-      },
-    });
+    return await getByOrganizationId(organizationId);
   }
 
   return await getByTeamId(teamId);
+};
+
+const sortByMostRecent = (a: Subscription, b: Subscription) => {
+  const aPeriod = a.currentPeriodEnd?.getTime() ?? 0;
+  const bPeriod = b.currentPeriodEnd?.getTime() ?? 0;
+
+  if (aPeriod !== bPeriod) {
+    return bPeriod - aPeriod;
+  }
+
+  return b.updatedAt.getTime() - a.updatedAt.getTime();
+};
+
+export const getBlockingByBillingScope = async ({
+  teamId,
+  organizationId,
+}: {
+  teamId: string;
+  organizationId?: string | null;
+}) => {
+  const subscriptions = await getByBillingScope({
+    teamId,
+    organizationId,
+  });
+
+  return subscriptions
+    .filter((subscription) =>
+      BLOCKING_SUBSCRIPTION_STATUSES.has(subscription.status)
+    )
+    .sort(sortByMostRecent);
 };
 
 export const getByCustomerId = async (customerId: string) => {

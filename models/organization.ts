@@ -207,3 +207,22 @@ export const getOrganizationById = async (id: string) => {
     },
   });
 };
+
+export const setOrganizationBillingIfEmpty = async (
+  organizationId: string,
+  billingId: string,
+  billingProvider: string
+) => {
+  const result = await prisma.organization.updateMany({
+    where: {
+      id: organizationId,
+      billingId: null,
+    },
+    data: {
+      billingId,
+      billingProvider,
+    },
+  });
+
+  return result.count > 0;
+};

@@ -5,15 +5,17 @@ import env from '@/lib/env';
 import type { Readable } from 'node:stream';
 import {
   deleteStripeSubscription,
+  getBySubscriptionId,
   upsertStripeSubscription,
 } from 'models/subscription';
 import { ensureOrganizationAndProjectForTeam } from 'models/organization';
-import { getByCustomerId } from 'models/team';
+import { getByCustomerId, getFirstTeamByOrganizationId, getTeam } from 'models/team';
 import { createWebhookEvent, getWebhookEventById } from 'models/webhookEvent';
 import { Prisma } from '@prisma/client';
 import { upsertServiceFromStripe } from 'models/service';
 import { upsertPriceFromStripe } from 'models/price';
 import { upsertInvoiceFromStripe } from 'models/invoice';
+import type { Team } from '@prisma/client';
 
 export const config = {
   api: {
@@ -138,12 +140,16 @@ async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
   if (!customerId) {
     return;
   }
-  const team = await getByCustomerId(customerId);
+  const team = await resolveTeamForInvoice({ invoice, customerId });
   if (!team) {
     return;
   }
   const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
-  await upsertInvoiceFromStripe(invoice, team.id, billingScope.organizationId);
+  await upsertInvoiceFromStripe(
+    invoice,
+    team.id,
+    billingScope.organizationId
+  );
 }
 
 async function handleInvoicePaymentFailed(_event: Stripe.Event) {
@@ -152,13 +158,47 @@ async function handleInvoicePaymentFailed(_event: Stripe.Event) {
   if (!customerId) {
     return;
   }
-  const team = await getByCustomerId(customerId);
+  const team = await resolveTeamForInvoice({ invoice, customerId });
   if (!team) {
     return;
   }
   const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
-  await upsertInvoiceFromStripe(invoice, team.id, billingScope.organizationId);
+  await upsertInvoiceFromStripe(
+    invoice,
+    team.id,
+    billingScope.organizationId
+  );
 }
+
+const resolveTeamForInvoice = async ({
+  invoice,
+  customerId,
+}: {
+  invoice: Stripe.Invoice;
+  customerId: string;
+}) => {
+  const subscriptionId =
+    typeof invoice.subscription === 'string'
+      ? invoice.subscription
+      : invoice.subscription?.id;
+
+  if (subscriptionId) {
+    const existingSubscription = await getBySubscriptionId(subscriptionId);
+
+    if (existingSubscription?.teamId) {
+      try {
+        const teamFromSubscription = await getTeam({
+          id: existingSubscription.teamId,
+        });
+        return teamFromSubscription;
+      } catch {
+        // fall back to customer-level lookup
+      }
+    }
+  }
+
+  return await getByCustomerId(customerId);
+};
 
 async function handleCustomerUpdated(event: Stripe.Event) {
   void event;
@@ -193,7 +233,35 @@ const upsertSubscriptionFromStripe = async (
     return;
   }
 
-  const team = await getByCustomerId(customerId);
+  const metadataTeamId =
+    typeof subscription.metadata?.teamId === 'string' &&
+    subscription.metadata.teamId.trim()
+      ? subscription.metadata.teamId.trim()
+      : null;
+  const metadataOrganizationId =
+    typeof subscription.metadata?.organizationId === 'string' &&
+    subscription.metadata.organizationId.trim()
+      ? subscription.metadata.organizationId.trim()
+      : null;
+
+  let team: Team | null = null;
+
+  if (metadataTeamId) {
+    try {
+      team = await getTeam({ id: metadataTeamId });
+    } catch {
+      team = null;
+    }
+  }
+
+  if (!team && metadataOrganizationId) {
+    team = await getFirstTeamByOrganizationId(metadataOrganizationId);
+  }
+
+  if (!team) {
+    team = await getByCustomerId(customerId);
+  }
+
   if (!team) {
     console.warn(
       `No team found for Stripe customer ${customerId}. Skipping subscription ${subscription.id}.`

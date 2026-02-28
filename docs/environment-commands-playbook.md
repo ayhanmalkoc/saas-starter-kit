@@ -24,9 +24,10 @@ Before any flow:
 | `npm run setup:db`                  | Reset local Docker stack + apply Prisma schema + initialize Svix/Retraced DBs                                                                       | No                                                     |
 | `npm run org:bootstrap`             | Backfill OpenAI-style Organization/Project scope from existing Team records                                                                         | No                                                     |
 | `npm run stripe:cleanup`            | Archive all active Stripe products/prices (destructive in selected Stripe account)                                                                  | No                                                     |
-| `npm run setup:stripe`              | Validate plan model, bootstrap org/project scope, seed Stripe products/prices, sync catalog to DB, and backfill subscriptions from Stripe customers | No                                                     |
+| `npm run setup:stripe`              | Validate plan model, bootstrap org/project scope, seed Stripe products/prices, sync catalog to DB, backfill subscriptions, then backfill org-scope billing rows | No                                                     |
 | `npm run stripe:sync-db`            | Sync Stripe products/prices directly into DB (no API call)                                                                                          | No                                                     |
-| `npm run stripe:sync-subscriptions` | Backfill subscriptions from Stripe customers into DB (recovery path when webhook events are missed)                                                 | No                                                     |
+| `npm run stripe:sync-subscriptions` | Backfill subscriptions from Stripe customers into DB and then backfill org-scope billing rows                                                       | No                                                     |
+| `npm run billing:backfill-org-scope` | Backfill legacy team-scoped subscription/invoice rows to organization/project scope                                                                  | No                                                     |
 | `npm run sync-stripe`               | Sync via `/api/admin/stripe/sync` endpoint                                                                                                          | Yes                                                    |
 | `npm run dev`                       | Start local Next.js dev server on `:4002`                                                                                                           | N/A                                                    |
 | `npm run build-ci && npm run start` | Start app in production mode                                                                                                                        | N/A                                                    |
@@ -76,6 +77,7 @@ Notes:
 - `stripe:cleanup` archives active catalog entries in the configured Stripe account. Use only when intentional.
 - If you only need catalog sync without reseeding, use `npm run stripe:sync-db`.
 - If billing still shows Free after a successful Stripe checkout, run `npm run stripe:sync-subscriptions`.
+- `npm run setup:stripe` and `npm run stripe:sync-subscriptions` already include org-scope backfill.
 - If app is already running and you prefer API-based sync, use `npm run sync-stripe`.
 
 ## 3) Staging Environment Test Flow

@@ -218,10 +218,108 @@ const listStripeSubscriptionsByCustomer = async (customerId) =>
     })
     .autoPagingToArray({ limit: 10000 });
 
+const syncSubscriptionsForTeamAndCustomer = async ({
+  team,
+  teamsInScope,
+  customerId,
+  sourceLabel,
+}) => {
+  const scopedTeams =
+    teamsInScope && teamsInScope.length > 0 ? teamsInScope : [team];
+  const billingScopeByTeamId = new Map();
+
+  // Backfill legacy team-scoped rows into organization scope before upsert.
+  for (const scopedTeam of scopedTeams) {
+    const billingScope = await ensureBillingScopeForTeam(scopedTeam.id);
+    billingScopeByTeamId.set(scopedTeam.id, billingScope);
+
+    await db.subscription.updateMany({
+      where: {
+        teamId: scopedTeam.id,
+        organizationId: null,
+      },
+      data: {
+        organizationId: billingScope.organizationId,
+        projectId: billingScope.projectId,
+      },
+    });
+  }
+
+  const subscriptions = await listStripeSubscriptionsByCustomer(customerId);
+  if (subscriptions.length === 0) {
+    return { createdCount: 0, updatedCount: 0, syncedCount: 0 };
+  }
+
+  let createdCount = 0;
+  let updatedCount = 0;
+
+  for (const subscription of subscriptions) {
+    const metadataTeamId =
+      typeof subscription.metadata?.teamId === 'string' &&
+      subscription.metadata.teamId.trim()
+        ? subscription.metadata.teamId.trim()
+        : null;
+
+    const resolvedTeam =
+      (metadataTeamId
+        ? scopedTeams.find((candidate) => candidate.id === metadataTeamId)
+        : undefined) || team;
+    const billingScope = billingScopeByTeamId.get(resolvedTeam.id);
+
+    if (!billingScope) {
+      console.warn(
+        `Billing scope not found for team ${resolvedTeam.slug}. Skipping subscription ${subscription.id}.`
+      );
+      continue;
+    }
+
+    const data = extractStripeSubscriptionShape(subscription);
+    const existing = await db.subscription.findUnique({
+      where: { id: subscription.id },
+      select: { id: true },
+    });
+
+    await db.subscription.upsert({
+      where: { id: subscription.id },
+      create: {
+        id: subscription.id,
+        teamId: resolvedTeam.id,
+        organizationId: billingScope.organizationId,
+        projectId: billingScope.projectId,
+        customerId,
+        ...data,
+      },
+      update: {
+        teamId: resolvedTeam.id,
+        organizationId: billingScope.organizationId,
+        projectId: billingScope.projectId,
+        customerId,
+        ...data,
+      },
+    });
+
+    if (existing) {
+      updatedCount += 1;
+    } else {
+      createdCount += 1;
+    }
+  }
+
+  console.log(
+    `Synced ${subscriptions.length} subscription(s) for ${sourceLabel}.`
+  );
+
+  return {
+    createdCount,
+    updatedCount,
+    syncedCount: subscriptions.length,
+  };
+};
+
 async function main() {
   console.log('Starting Stripe subscription backfill...');
 
-  const teams = await db.team.findMany({
+  const organizations = await db.organization.findMany({
     where: {
       billingProvider: 'stripe',
       billingId: { not: null },
@@ -229,7 +327,77 @@ async function main() {
     select: {
       id: true,
       slug: true,
-      name: true,
+      billingId: true,
+      teams: {
+        orderBy: {
+          createdAt: 'asc',
+        },
+        select: {
+          id: true,
+          slug: true,
+          billingId: true,
+          billingProvider: true,
+          organizationId: true,
+          projectId: true,
+        },
+      },
+    },
+  });
+
+  let createdCount = 0;
+  let updatedCount = 0;
+  let syncedCount = 0;
+
+  for (const organization of organizations) {
+    const customerId = organization.billingId;
+    if (!customerId) {
+      continue;
+    }
+
+    const team =
+      organization.teams.find((candidate) => candidate.billingId === customerId) ||
+      organization.teams[0];
+
+    if (!team) {
+      console.warn(
+        `No team found under organization ${organization.slug}. Skipping customer ${customerId}.`
+      );
+      continue;
+    }
+
+    const result = await syncSubscriptionsForTeamAndCustomer({
+      team,
+      teamsInScope: organization.teams,
+      customerId,
+      sourceLabel: `organization ${organization.slug}`,
+    });
+
+    createdCount += result.createdCount;
+    updatedCount += result.updatedCount;
+    syncedCount += result.syncedCount;
+  }
+
+  // Legacy fallback for installations that still only have team-level billing ids.
+  const legacyTeams = await db.team.findMany({
+    where: {
+      billingProvider: 'stripe',
+      billingId: { not: null },
+      OR: [
+        {
+          organizationId: null,
+        },
+        {
+          organization: {
+            is: {
+              billingId: null,
+            },
+          },
+        },
+      ],
+    },
+    select: {
+      id: true,
+      slug: true,
       billingId: true,
       billingProvider: true,
       organizationId: true,
@@ -237,66 +405,30 @@ async function main() {
     },
   });
 
-  if (teams.length === 0) {
-    console.log('No Stripe-linked teams found. Nothing to sync.');
-    return;
-  }
-
-  let createdCount = 0;
-  let updatedCount = 0;
-
-  for (const team of teams) {
+  for (const team of legacyTeams) {
     const customerId = team.billingId;
     if (!customerId) {
       continue;
     }
-    const billingScope = await ensureBillingScopeForTeam(team.id);
 
-    const subscriptions = await listStripeSubscriptionsByCustomer(customerId);
-    if (subscriptions.length === 0) {
-      continue;
-    }
+    const result = await syncSubscriptionsForTeamAndCustomer({
+      team,
+      customerId,
+      sourceLabel: `legacy team ${team.slug}`,
+    });
 
-    for (const subscription of subscriptions) {
-      const data = extractStripeSubscriptionShape(subscription);
-      const existing = await db.subscription.findUnique({
-        where: { id: subscription.id },
-        select: { id: true },
-      });
+    createdCount += result.createdCount;
+    updatedCount += result.updatedCount;
+    syncedCount += result.syncedCount;
+  }
 
-      await db.subscription.upsert({
-        where: { id: subscription.id },
-        create: {
-          id: subscription.id,
-          teamId: team.id,
-          organizationId: billingScope.organizationId,
-          projectId: billingScope.projectId,
-          customerId,
-          ...data,
-        },
-        update: {
-          teamId: team.id,
-          organizationId: billingScope.organizationId,
-          projectId: billingScope.projectId,
-          customerId,
-          ...data,
-        },
-      });
-
-      if (existing) {
-        updatedCount += 1;
-      } else {
-        createdCount += 1;
-      }
-    }
-
-    console.log(
-      `Synced ${subscriptions.length} subscription(s) for team ${team.slug}.`
-    );
+  if (syncedCount === 0) {
+    console.log('No Stripe-linked organizations/teams found. Nothing to sync.');
+    return;
   }
 
   console.log(
-    `Stripe subscription backfill completed. Created: ${createdCount}, Updated: ${updatedCount}`
+    `Stripe subscription backfill completed. Synced: ${syncedCount}, Created: ${createdCount}, Updated: ${updatedCount}`
   );
 }
 

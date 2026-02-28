@@ -503,6 +503,21 @@ const resolveDefaultPlan = (services: BillingService[]) => {
   return orderedByLevel[0]?.service ?? null;
 };
 
+const pickAuthoritativeSubscription = (
+  subscriptions: Subscription[]
+): Subscription => {
+  return [...subscriptions].sort((a, b) => {
+    const aPeriod = a.currentPeriodEnd?.getTime() ?? 0;
+    const bPeriod = b.currentPeriodEnd?.getTime() ?? 0;
+
+    if (aPeriod !== bPeriod) {
+      return bPeriod - aPeriod;
+    }
+
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
+  })[0];
+};
+
 export const getTeamEntitlements = async (
   teamId: string
 ): Promise<TeamEntitlements> => {
@@ -547,7 +562,23 @@ export const getTeamEntitlements = async (
     return entitlements;
   }
 
-  for (const subscription of activeSubscriptions) {
+  const subscriptionsToEvaluate =
+    activeSubscriptions.length > 1
+      ? [pickAuthoritativeSubscription(activeSubscriptions)]
+      : activeSubscriptions;
+
+  if (activeSubscriptions.length > 1) {
+    console.warn(
+      `Multiple active subscriptions found for billing scope (teamId=${teamId}, organizationId=${billingScope.organizationId}). Using authoritative subscription ${subscriptionsToEvaluate[0].id}.`,
+      {
+        subscriptionIds: activeSubscriptions.map(
+          (subscription) => subscription.id
+        ),
+      }
+    );
+  }
+
+  for (const subscription of subscriptionsToEvaluate) {
     const resolvedServiceId = await resolveServiceIdForSubscription(
       subscription,
       serviceById

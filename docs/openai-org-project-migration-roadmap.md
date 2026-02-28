@@ -75,6 +75,30 @@ Scope:
 - Backfill/cleanup stale team-only subscription records.
 - Harden guardrails for duplicate subscriptions across projects.
 
+Status:
+
+- Implemented on `feat/org-project-architecture-phase1` (pending merge to `main`).
+
+Current implementation status:
+
+- Subscription/invoice billing scope reads are now organization-authoritative when `organizationId` exists.
+- Stripe customer authority moved to `Organization.billingId` (team billing remains compatibility fallback).
+- Checkout/portal provider selection now prefers organization billing provider before team fallback.
+- Checkout session metadata now carries `teamId`/`organizationId`/`projectId` for stronger webhook correlation.
+- Stripe webhook subscription upsert now prefers metadata-based team/org mapping before customer lookup fallback.
+- Stripe invoice webhook mapping now prefers existing subscription→team correlation before customer fallback.
+- Duplicate-subscription guardrails added in checkout/update flows:
+  - hard-fail on multiple blocking subscriptions in Stripe or DB scope (`duplicate_subscriptions`)
+  - hard-fail on non-authoritative update target (`subscription_mismatch`)
+  - cross-source duplicate detection (Stripe + DB merged view)
+- Entitlement resolution now picks a single authoritative active subscription in duplicate states (with warning logs).
+- Added backfill command for existing records:
+  - `npm run billing:backfill-org-scope`
+- Updated Stripe subscription sync script to:
+  - prioritize organization-scoped customers
+  - map subscriptions to teams via metadata (`teamId`) when available
+  - backfill legacy team-scoped rows
+
 ## PR-4: Team as Legacy Alias (optional deprecation step)
 
 Scope:

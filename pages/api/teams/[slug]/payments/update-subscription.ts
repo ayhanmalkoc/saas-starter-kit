@@ -7,10 +7,37 @@ import { getSession } from '@/lib/session';
 import { throwIfNoTeamAccess } from 'models/team';
 import { stripe } from '@/lib/stripe';
 import { updateSubscriptionSchema, validateWithSchema } from '@/lib/zod';
-import { getBySubscriptionId } from 'models/subscription';
+import { getBlockingByBillingScope, getBySubscriptionId } from 'models/subscription';
 import { ApiError } from '@/lib/errors';
 
 type PlanChangeType = 'upgrade' | 'downgrade' | 'lateral';
+
+const getBlockingStripeSubscriptionIds = async (customerId: string) => {
+  try {
+    const subscriptions = await stripe.subscriptions.list({
+      customer: customerId,
+      status: 'all',
+      limit: 100,
+    });
+
+    return subscriptions.data
+      .filter((subscription) =>
+        ['active', 'trialing', 'past_due', 'incomplete', 'unpaid'].includes(
+          subscription.status
+        )
+      )
+      .map((subscription) => subscription.id);
+  } catch (error) {
+    console.error(
+      `Failed to check Stripe subscriptions for customer ${customerId}`,
+      error
+    );
+    throw new ApiError(
+      502,
+      'Unable to validate existing Stripe subscriptions. Please retry.'
+    );
+  }
+};
 
 const getYearlyAmount = (price: Stripe.Price, quantity: number) => {
   if (typeof price.unit_amount !== 'number') {
@@ -113,6 +140,77 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ApiError(404, 'Subscription not found');
   }
 
+  const blockingScopeSubscriptions = await getBlockingByBillingScope({
+    teamId: teamMember.teamId,
+    organizationId: billingScope.organizationId,
+  });
+  if (blockingScopeSubscriptions.length > 1) {
+    return res.status(409).json({
+      error: {
+        code: 'duplicate_subscriptions',
+        message:
+          'Multiple active subscriptions found in billing scope. Resolve duplicates before updating subscription.',
+      },
+      data: {
+        subscriptionIds: blockingScopeSubscriptions.map(
+          (scopeSubscription) => scopeSubscription.id
+        ),
+      },
+    });
+  }
+
+  const authoritativeScopeSubscription = blockingScopeSubscriptions[0];
+  if (
+    authoritativeScopeSubscription &&
+    authoritativeScopeSubscription.id !== subscriptionId
+  ) {
+    return res.status(409).json({
+      error: {
+        code: 'subscription_mismatch',
+        message:
+          'Requested subscription is not the authoritative active subscription for this billing scope.',
+      },
+      data: {
+        authoritativeSubscriptionId: authoritativeScopeSubscription.id,
+      },
+    });
+  }
+
+  const stripeBlockingSubscriptionIds = await getBlockingStripeSubscriptionIds(
+    subscription.customerId
+  );
+
+  if (stripeBlockingSubscriptionIds.length > 1) {
+    return res.status(409).json({
+      error: {
+        code: 'duplicate_subscriptions',
+        message:
+          'Multiple active subscriptions found in Stripe. Resolve duplicates before updating subscription.',
+      },
+      data: {
+        source: 'stripe',
+        subscriptionIds: stripeBlockingSubscriptionIds,
+      },
+    });
+  }
+
+  if (
+    stripeBlockingSubscriptionIds.length === 1 &&
+    stripeBlockingSubscriptionIds[0] !== subscriptionId
+  ) {
+    return res.status(409).json({
+      error: {
+        code: 'subscription_mismatch',
+        message:
+          'Requested subscription is not the authoritative active subscription in Stripe for this billing scope.',
+      },
+      data: {
+        source: 'stripe',
+        authoritativeSubscriptionId: stripeBlockingSubscriptionIds[0],
+      },
+    });
+  }
+
   const stripeSubscription =
     await stripe.subscriptions.retrieve(subscriptionId);
   const subscriptionItem = stripeSubscription.items.data[0];
@@ -121,9 +219,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   const stripePrice = await stripe.prices.retrieve(price);
-  const currentStripePrice = await stripe.prices.retrieve(
-    subscriptionItem.price.id
-  );
+  const currentStripePrice = subscriptionItem.price;
   const isNextPlanSeatBased = isSeatBasedPrice(stripePrice);
 
   const nextQuantity = isNextPlanSeatBased

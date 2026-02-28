@@ -1,6 +1,7 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { getSession } from '@/lib/session';
+import { getOrganizationById } from 'models/organization';
 import { throwIfNoTeamAccess } from 'models/team';
 import { getBillingProvider } from '@/lib/billing/provider';
 import type {
@@ -8,6 +9,10 @@ import type {
   BillingTeamMember,
 } from '@/lib/billing/provider/types';
 import env from '@/lib/env';
+import {
+  buildWorkspaceAppPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 
 export default async function handler(
   req: NextApiRequest,
@@ -35,15 +40,27 @@ export default async function handler(
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   const teamMember = await throwIfNoTeamAccess(req, res);
   const session = await getSession(req, res);
-  const billingProvider = getBillingProvider(teamMember.team.billingProvider);
+  const billingOrganization = teamMember.team.organizationId
+    ? await getOrganizationById(teamMember.team.organizationId)
+    : null;
+  const billingProvider = getBillingProvider(
+    billingOrganization?.billingProvider ?? teamMember.team.billingProvider
+  );
   const customerId = await billingProvider.getCustomerId(
     teamMember as BillingTeamMember,
     session as BillingSession
   );
+  const routeContext = getWorkspaceRouteContextFromQuery(req.query);
+  const billingPath =
+    buildWorkspaceAppPath({
+      context: routeContext,
+      teamSlug: teamMember.team.slug,
+      suffix: 'billing',
+    }) ?? `/teams/${teamMember.team.slug}/billing`;
 
   const { url } = await billingProvider.createPortalSession({
     customerId,
-    returnUrl: `${env.appUrl}/teams/${teamMember.team.slug}/billing`,
+    returnUrl: `${env.appUrl}${billingPath}`,
   });
 
   res.json({ data: { url } });
