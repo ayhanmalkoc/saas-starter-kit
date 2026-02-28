@@ -10,6 +10,11 @@ import useTeams from 'hooks/useTeams';
 import { Price, Prisma, Service, Subscription } from '@prisma/client';
 import PaymentButton from './PaymentButton';
 import { handlePlanChange } from './planService';
+import {
+  buildTeamWorkspaceApiPath,
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 
 interface PricingTableProps {
   plans: (Service & { prices: Price[] })[];
@@ -21,14 +26,27 @@ const PricingTable = ({
   currentSubscription: initialSubscription,
 }: PricingTableProps) => {
   const router = useRouter();
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
   const { team: teamFromSlug } = useTeam();
   const { teams } = useTeams();
 
   // Create a fallback to the first team if we don't have a team from the slug (e.g. on /pricing public page)
   const team = teamFromSlug || (teams && teams.length > 0 ? teams[0] : null);
 
+  const billingProductsUrl = team?.slug
+    ? (buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'payments/products',
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: 'payments/products',
+      }))
+    : null;
+
   const { data, isLoading: isBillingLoading } = useSWR(
-    team?.slug ? `/api/teams/${team?.slug}/payments/products` : null,
+    billingProductsUrl,
     fetcher
   );
 
@@ -111,6 +129,13 @@ const PricingTable = ({
       priceId,
       quantity,
       subscriptionId,
+      apiBasePath:
+        buildWorkspaceApiPath({
+          context: routeContext,
+          teamSlug: team.slug,
+        }) ??
+        buildTeamWorkspaceApiPath({ team }) ??
+        undefined,
     });
 
     if (data?.data?.url) {

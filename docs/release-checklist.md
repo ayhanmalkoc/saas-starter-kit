@@ -7,6 +7,8 @@ Use this checklist before cutting a release.
 - [ ] `npm run build` completes for release environment configuration.
 - [ ] Build output does **not** include the browser baseline warning (`outdated dataset currency`).
 - [ ] Build output does not contain new untriaged warnings compared to the previous release baseline.
+- [ ] Canonical org/project routes are used in product navigation and integration docs.
+- [ ] No new environment-variable-based legacy route mode toggle was introduced.
 
 ## Dependency hygiene
 

@@ -43,6 +43,16 @@ export const getInvitation = async (
           id: true,
           name: true,
           slug: true,
+          project: {
+            select: {
+              slug: true,
+              organization: {
+                select: {
+                  slug: true,
+                },
+              },
+            },
+          },
         },
       },
     },

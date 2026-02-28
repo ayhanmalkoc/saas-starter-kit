@@ -1,6 +1,11 @@
 import useSWR, { mutate } from 'swr';
 
 import fetcher from '@/lib/fetcher';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
+import { useRouter } from 'next/router';
 import type { ApiResponse } from 'types';
 import { TeamInvitation } from 'models/invitation';
 
@@ -10,7 +15,15 @@ interface Props {
 }
 
 const useInvitations = ({ slug, sentViaEmail }: Props) => {
-  const url = `/api/teams/${slug}/invitations?sentViaEmail=${sentViaEmail}`;
+  const router = useRouter();
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const baseUrl = buildWorkspaceApiPath({
+    context: routeContext,
+    teamSlug: slug,
+    suffix: 'invitations',
+  });
+  const url =
+    baseUrl === null ? null : `${baseUrl}?sentViaEmail=${sentViaEmail}`;
 
   const { data, error, isLoading } = useSWR<ApiResponse<TeamInvitation[]>>(
     url,
@@ -18,7 +31,9 @@ const useInvitations = ({ slug, sentViaEmail }: Props) => {
   );
 
   const mutateInvitation = async () => {
-    mutate(url);
+    if (url) {
+      mutate(url);
+    }
   };
 
   return {

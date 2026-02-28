@@ -5,12 +5,18 @@ import toast from 'react-hot-toast';
 import React, { useState } from 'react';
 import { Button, Input } from 'react-daisyui';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 
 import type { ApiResponse } from 'types';
 import useInvitations from 'hooks/useInvitations';
 import { availableRoles } from '@/lib/permissions';
 import type { Team } from '@prisma/client';
 import { defaultHeaders, isValidDomain, maxLengthPolicies } from '@/lib/common';
+import {
+  buildTeamWorkspaceApiPath,
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import { InputWithCopyButton } from '../shared';
 import ConfirmationDialog from '../shared/ConfirmationDialog';
 
@@ -19,8 +25,16 @@ interface InviteViaLinkProps {
 }
 
 const InviteViaLink = ({ team }: InviteViaLinkProps) => {
+  const router = useRouter();
   const [showDelDialog, setShowDelDialog] = useState(false);
   const { t } = useTranslation('common');
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const invitationsUrl =
+    buildWorkspaceApiPath({
+      context: routeContext,
+      teamSlug: team.slug,
+      suffix: 'invitations',
+    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
   const { invitations } = useInvitations({
     slug: team.slug,
     sentViaEmail: false,
@@ -55,7 +69,12 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
     },
     validationSchema: FormValidationSchema,
     onSubmit: async (values) => {
-      const response = await fetch(`/api/teams/${team.slug}/invitations`, {
+      if (!invitationsUrl) {
+        toast.error('Workspace API route could not be resolved.');
+        return;
+      }
+
+      const response = await fetch(invitationsUrl, {
         method: 'POST',
         headers: defaultHeaders,
         body: JSON.stringify(values),
@@ -67,7 +86,7 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
         return;
       }
 
-      mutate(`/api/teams/${team.slug}/invitations?sentViaEmail=false`);
+      mutate(`${invitationsUrl}?sentViaEmail=false`);
       toast.success(t('invitation-link-created'));
       formik.resetForm();
     },
@@ -75,13 +94,15 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
 
   // Delete an existing invitation link
   const deleteInvitationLink = async (id: string) => {
-    const response = await fetch(
-      `/api/teams/${team.slug}/invitations?id=${id}`,
-      {
-        method: 'DELETE',
-        headers: defaultHeaders,
-      }
-    );
+    if (!invitationsUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
+    const response = await fetch(`${invitationsUrl}?id=${id}`, {
+      method: 'DELETE',
+      headers: defaultHeaders,
+    });
 
     if (!response.ok) {
       const result = (await response.json()) as ApiResponse;
@@ -89,7 +110,7 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
       return;
     }
 
-    mutate(`/api/teams/${team.slug}/invitations?sentViaEmail=false`);
+    mutate(`${invitationsUrl}?sentViaEmail=false`);
     toast.success(t('invitation-link-deleted'));
     setShowDelDialog(false);
   };

@@ -16,19 +16,22 @@ Before any flow:
 1. Ensure `.env` exists and contains valid values (do not keep dummy Stripe keys for real sync).
 2. Ensure Docker is running for local (`setup:db`) workflows.
 3. Ensure Stripe CLI is installed if you test webhooks locally.
+4. Use canonical org/project routes (`/orgs/:org/projects/:project/*`) in all app and API integrations.
 
 ## Command Reference
 
-| Command                             | Purpose                                                                            | Requires running app (`npm run dev` / `npm run start`) |
-| ----------------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `npm run setup:db`                  | Reset local Docker stack + apply Prisma schema + initialize Svix/Retraced DBs      | No                                                     |
-| `npm run stripe:cleanup`            | Archive all active Stripe products/prices (destructive in selected Stripe account) | No                                                     |
-| `npm run setup:stripe`              | Validate plan model, seed Stripe products/prices, sync catalog to DB, and backfill subscriptions from Stripe customers | No                                                     |
-| `npm run stripe:sync-db`            | Sync Stripe products/prices directly into DB (no API call)                         | No                                                     |
-| `npm run stripe:sync-subscriptions` | Backfill subscriptions from Stripe customers into DB (recovery path when webhook events are missed) | No                                                     |
-| `npm run sync-stripe`               | Sync via `/api/admin/stripe/sync` endpoint                                         | Yes                                                    |
-| `npm run dev`                       | Start local Next.js dev server on `:4002`                                          | N/A                                                    |
-| `npm run build-ci && npm run start` | Start app in production mode                                                       | N/A                                                    |
+| Command                             | Purpose                                                                                                                                             | Requires running app (`npm run dev` / `npm run start`) |
+| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `npm run setup:db`                  | Reset local Docker stack + apply Prisma schema + initialize Svix/Retraced DBs                                                                       | No                                                     |
+| `npm run org:bootstrap`             | Backfill OpenAI-style Organization/Project scope from existing Team records                                                                         | No                                                     |
+| `npm run stripe:cleanup`            | Archive all active Stripe products/prices (destructive in selected Stripe account)                                                                  | No                                                     |
+| `npm run setup:stripe`              | Validate plan model, bootstrap org/project scope, seed Stripe products/prices, sync catalog to DB, backfill subscriptions, then backfill org-scope billing rows | No                                                     |
+| `npm run stripe:sync-db`            | Sync Stripe products/prices directly into DB (no API call)                                                                                          | No                                                     |
+| `npm run stripe:sync-subscriptions` | Backfill subscriptions from Stripe customers into DB and then backfill org-scope billing rows                                                       | No                                                     |
+| `npm run billing:backfill-org-scope` | Backfill legacy team-scoped subscription/invoice rows to organization/project scope                                                                  | No                                                     |
+| `npm run sync-stripe`               | Sync via `/api/admin/stripe/sync` endpoint                                                                                                          | Yes                                                    |
+| `npm run dev`                       | Start local Next.js dev server on `:4002`                                                                                                           | N/A                                                    |
+| `npm run build-ci && npm run start` | Start app in production mode                                                                                                                        | N/A                                                    |
 
 ## 1) Fresh Clone (Local Dev Bootstrap)
 
@@ -75,6 +78,7 @@ Notes:
 - `stripe:cleanup` archives active catalog entries in the configured Stripe account. Use only when intentional.
 - If you only need catalog sync without reseeding, use `npm run stripe:sync-db`.
 - If billing still shows Free after a successful Stripe checkout, run `npm run stripe:sync-subscriptions`.
+- `npm run setup:stripe` and `npm run stripe:sync-subscriptions` already include org-scope backfill.
 - If app is already running and you prefer API-based sync, use `npm run sync-stripe`.
 
 ## 3) Staging Environment Test Flow
@@ -141,6 +145,15 @@ After running the selected flow:
 2. Team billing page shows current subscription correctly.
 3. Feature-gated pages (e.g., audit logs/webhooks/SSO) match plan entitlements.
 4. Stripe webhook endpoint is reachable and signature secret is valid where applicable.
+
+## Legacy Route Behavior
+
+- Legacy team-slug routes are removed:
+  - `/teams/:slug/*`
+  - `/api/teams/:slug/*`
+- Use canonical org/project routes:
+  - `/orgs/:orgSlug/projects/:projectSlug/*`
+  - `/api/orgs/:orgSlug/projects/:projectSlug/*`
 
 ## Related Documents
 

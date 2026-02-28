@@ -3,6 +3,7 @@ import { getSession } from '@/lib/session';
 import { findOrCreateApp } from '@/lib/svix';
 import { Role, Team } from '@prisma/client';
 import type { NextApiRequest, NextApiResponse } from 'next';
+import { ensureOrganizationAndProjectForTeam } from './organization';
 import { getCurrentUser } from './user';
 import { normalizeUser } from './user';
 import { validateWithSchema, teamSlugSchema } from '@/lib/zod';
@@ -14,26 +15,74 @@ export const createTeam = async (param: {
 }) => {
   const { userId, name, slug } = param;
 
-  const team = await prisma.team.create({
+  const createdTeam = await prisma.team.create({
     data: {
       name,
       slug,
     },
   });
 
-  await addTeamMember(team.id, userId, Role.OWNER);
+  await addTeamMember(createdTeam.id, userId, Role.OWNER);
+  await ensureOrganizationAndProjectForTeam(createdTeam.id);
 
-  await findOrCreateApp(team.name, team.id);
+  await findOrCreateApp(createdTeam.name, createdTeam.id);
 
-  return team;
+  return await prisma.team.findUniqueOrThrow({
+    where: {
+      id: createdTeam.id,
+    },
+    include: {
+      project: {
+        select: {
+          slug: true,
+          organization: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
+    },
+  });
 };
 
 export const getByCustomerId = async (
   billingId: string
 ): Promise<Team | null> => {
+  const organization = await prisma.organization.findFirst({
+    where: {
+      billingId,
+    },
+    select: {
+      teams: {
+        orderBy: {
+          createdAt: 'asc',
+        },
+        take: 1,
+      },
+    },
+  });
+
+  if (organization?.teams[0]) {
+    return organization.teams[0];
+  }
+
   return await prisma.team.findFirst({
     where: {
       billingId,
+    },
+  });
+};
+
+export const getFirstTeamByOrganizationId = async (
+  organizationId: string
+): Promise<Team | null> => {
+  return await prisma.team.findFirst({
+    where: {
+      organizationId,
+    },
+    orderBy: {
+      createdAt: 'asc',
     },
   });
 };
@@ -42,6 +91,75 @@ export const getTeam = async (key: { id: string } | { slug: string }) => {
   return await prisma.team.findUniqueOrThrow({
     where: key,
   });
+};
+
+export type TeamCanonicalRoute = {
+  teamSlug: string;
+  organizationSlug: string;
+  projectSlug: string;
+};
+
+const getTeamCanonicalRouteBySlugQuery = async (slug: string) => {
+  return await prisma.team.findUnique({
+    where: {
+      slug,
+    },
+    select: {
+      id: true,
+      slug: true,
+      organization: {
+        select: {
+          slug: true,
+        },
+      },
+      project: {
+        select: {
+          slug: true,
+          organization: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
+    },
+  });
+};
+
+export const getTeamCanonicalRouteBySlug = async (
+  slug: string
+): Promise<TeamCanonicalRoute | null> => {
+  let team = await getTeamCanonicalRouteBySlugQuery(slug);
+
+  if (!team) {
+    return null;
+  }
+
+  const hasCanonicalRoute = Boolean(
+    team.project?.slug && team.project.organization?.slug
+  );
+
+  if (!hasCanonicalRoute) {
+    await ensureOrganizationAndProjectForTeam(team.id);
+    team = await getTeamCanonicalRouteBySlugQuery(slug);
+    if (!team) {
+      return null;
+    }
+  }
+
+  const organizationSlug =
+    team.project?.organization?.slug ?? team.organization?.slug ?? null;
+  const projectSlug = team.project?.slug ?? null;
+
+  if (!organizationSlug || !projectSlug) {
+    return null;
+  }
+
+  return {
+    teamSlug: team.slug,
+    organizationSlug,
+    projectSlug,
+  };
 };
 
 export const deleteTeam = async (key: { id: string } | { slug: string }) => {
@@ -97,6 +215,16 @@ export const getTeams = async (userId: string) => {
     include: {
       _count: {
         select: { members: true },
+      },
+      project: {
+        select: {
+          slug: true,
+          organization: {
+            select: {
+              slug: true,
+            },
+          },
+        },
       },
     },
   });
@@ -205,6 +333,16 @@ export const throwIfNoTeamAccess = async (
   const { slug } = validateWithSchema(teamSlugSchema, req.query);
 
   const teamMember = await getTeamMember(session.user.id, slug);
+
+  if (!teamMember.team.organizationId || !teamMember.team.projectId) {
+    await ensureOrganizationAndProjectForTeam(teamMember.team.id);
+    return {
+      ...(await getTeamMember(session.user.id, slug)),
+      user: {
+        ...session.user,
+      },
+    };
+  }
 
   if (!teamMember) {
     throw new Error('You do not have access to this team');

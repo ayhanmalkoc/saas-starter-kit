@@ -63,14 +63,83 @@ model User {
   invalid_login_attempts Int       @default(0)
   lockedAt               DateTime?
 
-  teamMembers TeamMember[]
-  accounts    Account[]
-  sessions    Session[]
-  invitations Invitation[]
+  teamMembers         TeamMember[]
+  organizationMembers OrganizationMember[]
+  projectMembers      ProjectMember[]
+  accounts            Account[]
+  sessions            Session[]
+  invitations         Invitation[]
+}
+
+model Organization {
+  id              String               @id @default(uuid())
+  name            String
+  slug            String               @unique
+  billingId       String?
+  billingProvider String?
+  createdAt       DateTime             @default(now())
+  updatedAt       DateTime             @default(now()) @updatedAt
+  members         OrganizationMember[]
+  projects        Project[]
+  teams           Team[]
+  subscriptions   Subscription[]
+  invoices        Invoice[]
+
+  @@index([billingId])
+}
+
+model OrganizationMember {
+  id             String   @id @default(uuid())
+  organizationId String
+  userId         String
+  role           Role     @default(MEMBER)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @default(now()) @updatedAt
+
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([organizationId, userId])
+  @@index([userId])
+}
+
+model Project {
+  id             String          @id @default(uuid())
+  organizationId String
+  name           String
+  slug           String
+  description    String?
+  legacyTeamId   String?         @unique
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @default(now()) @updatedAt
+  organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  members        ProjectMember[]
+  teams          Team[]
+  subscriptions  Subscription[]
+
+  @@unique([organizationId, slug])
+  @@index([organizationId])
+}
+
+model ProjectMember {
+  id        String   @id @default(uuid())
+  projectId String
+  userId    String
+  role      Role     @default(MEMBER)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @default(now()) @updatedAt
+
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  user    User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([projectId, userId])
+  @@index([userId])
 }
 
 model Team {
   id              String         @id @default(uuid())
+  organizationId  String?
+  projectId       String?
   name            String
   slug            String         @unique
   domain          String?        @unique
@@ -79,6 +148,8 @@ model Team {
   billingProvider String?
   createdAt       DateTime       @default(now())
   updatedAt       DateTime       @default(now()) @updatedAt
+  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
   members         TeamMember[]
   invitations     Invitation[]
   apiKeys         ApiKey[]
@@ -86,6 +157,8 @@ model Team {
   invoices        Invoice[]
 
   @@index([billingId])
+  @@index([organizationId])
+  @@index([projectId])
 }
 
 model TeamMember {
@@ -150,6 +223,8 @@ model ApiKey {
 model Subscription {
   id                 String    @id
   teamId             String
+  organizationId     String?
+  projectId          String?
   customerId         String
   status             String
   quantity           Int?
@@ -164,16 +239,21 @@ model Subscription {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @default(now()) @updatedAt
 
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team         Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([teamId])
+  @@index([organizationId])
+  @@index([projectId])
   @@index([priceId])
 }
 
 model Invoice {
   id               String    @id
   teamId           String
+  organizationId   String?
   status           String
   amount           Int
   currency         String
@@ -182,9 +262,11 @@ model Invoice {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  team         Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
 
   @@index([teamId])
+  @@index([organizationId])
   @@index([status])
 }
 

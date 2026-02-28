@@ -6,7 +6,9 @@ This document summarizes the Stripe-based payments/subscription architecture in 
 
 The following files form the core of the billing domain:
 
-- `pages/api/teams/[slug]/payments/*`
+- `pages/api/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].ts`
+  - Canonical workspace API entrypoint; dispatches billing operations by path suffix.
+- `modules/workspace/api/payments/*`
   - `create-checkout-session.ts`: creates a checkout session.
   - `update-subscription.ts`: updates an existing subscription plan/price (and quantity when needed).
   - `create-portal-link.ts`: generates a Stripe Customer Portal link.
@@ -29,7 +31,7 @@ Additionally, product/price synchronization uses an admin endpoint and helper sc
 
 ### 1) Checkout
 
-1. The client calls `POST /api/teams/[slug]/payments/create-checkout-session`.
+1. The client calls `POST /api/orgs/:orgSlug/projects/:projectSlug/payments/create-checkout-session`.
 2. The API validates team access and user session.
 3. The API enforces `business` tier price selection for team-scoped checkout.
 4. A billing provider resolves/creates the customer (`customerId`).
@@ -41,7 +43,7 @@ Additionally, product/price synchronization uses an admin endpoint and helper sc
 
 ### 2) Plan update
 
-1. The client calls `POST /api/teams/[slug]/payments/update-subscription`.
+1. The client calls `POST /api/orgs/:orgSlug/projects/:projectSlug/payments/update-subscription`.
 2. The API checks team authorization and confirms the subscription belongs to that team.
 3. It loads the Stripe subscription and first subscription item.
 4. It retrieves current and target prices, then classifies the change as upgrade/downgrade/lateral.
@@ -53,7 +55,7 @@ Additionally, product/price synchronization uses an admin endpoint and helper sc
 
 ### 3) Open customer portal
 
-1. The client calls `POST /api/teams/[slug]/payments/create-portal-link`.
+1. The client calls `POST /api/orgs/:orgSlug/projects/:projectSlug/payments/create-portal-link`.
 2. The API validates team access and session.
 3. It creates a customer portal session via the billing provider.
 4. It returns the portal `url`, and the user is redirected to Stripe.

@@ -9,18 +9,26 @@ import type { ApiResponse } from 'types';
 import NewAPIKey from './NewAPIKey';
 import useAPIKeys from 'hooks/useAPIKeys';
 import { Table } from '@/components/shared/table/Table';
+import { useRouter } from 'next/router';
+import {
+  buildTeamWorkspaceApiPath,
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 
 interface APIKeysProps {
   team: Team;
 }
 
 const APIKeys = ({ team }: APIKeysProps) => {
+  const router = useRouter();
   const { t } = useTranslation('common');
   const { data, isLoading, error, mutate } = useAPIKeys(team.slug);
   const [selectedApiKey, setSelectedApiKey] = useState<ApiKey | null>(null);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [confirmationDialogVisible, setConfirmationDialogVisible] =
     useState(false);
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   // Delete API Key
   const deleteApiKey = async (apiKey: ApiKey | null) => {
@@ -28,12 +36,25 @@ const APIKeys = ({ team }: APIKeysProps) => {
       return;
     }
 
-    const response = await fetch(
-      `/api/teams/${team.slug}/api-keys/${apiKey.id}`,
-      {
-        method: 'DELETE',
-      }
-    );
+    const apiKeyUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: `api-keys/${apiKey.id}`,
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: `api-keys/${apiKey.id}`,
+      });
+
+    if (!apiKeyUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
+    const response = await fetch(apiKeyUrl, {
+      method: 'DELETE',
+    });
 
     setSelectedApiKey(null);
     setConfirmationDialogVisible(false);

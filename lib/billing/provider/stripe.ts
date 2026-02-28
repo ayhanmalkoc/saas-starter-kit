@@ -1,4 +1,9 @@
-import { getTeam, setTeamBillingIfEmpty } from 'models/team';
+import {
+  ensureOrganizationAndProjectForTeam,
+  getOrganizationById,
+  setOrganizationBillingIfEmpty,
+} from 'models/organization';
+import { setTeamBillingIfEmpty } from 'models/team';
 
 import { stripe } from '@/lib/stripe';
 
@@ -12,18 +17,58 @@ const getStripeCustomerId = async (
   teamMember: BillingTeamMember,
   session?: BillingSession
 ) => {
+  const billingScope = await ensureOrganizationAndProjectForTeam(
+    teamMember.teamId
+  );
+
+  if (!billingScope.organizationId) {
+    throw new Error(
+      `Billing scope missing organization for team ${teamMember.teamId}`
+    );
+  }
+
+  const organization = await getOrganizationById(billingScope.organizationId);
+  if (!organization) {
+    throw new Error(
+      `Organization not found while resolving billing scope: ${billingScope.organizationId}`
+    );
+  }
+
+  if (organization.billingId) {
+    return organization.billingId;
+  }
+
   if (teamMember.team.billingId) {
-    return teamMember.team.billingId;
+    const didReserveLegacyId = await setOrganizationBillingIfEmpty(
+      organization.id,
+      teamMember.team.billingId,
+      teamMember.team.billingProvider || 'stripe'
+    );
+
+    if (didReserveLegacyId) {
+      return teamMember.team.billingId;
+    }
+
+    const latestOrganization = await getOrganizationById(organization.id);
+    if (latestOrganization?.billingId) {
+      return latestOrganization.billingId;
+    }
+  }
+
+  const customerMetadata: Record<string, string> = {
+    teamId: teamMember.teamId,
+    organizationId: billingScope.organizationId,
+  };
+  if (billingScope.projectId) {
+    customerMetadata.projectId = billingScope.projectId;
   }
 
   const customerData: {
-    metadata: { teamId: string };
+    metadata: Record<string, string>;
     email?: string;
     name?: string;
   } = {
-    metadata: {
-      teamId: teamMember.teamId,
-    },
+    metadata: customerMetadata,
   };
 
   if (session?.user?.email) {
@@ -37,25 +82,32 @@ const getStripeCustomerId = async (
   const customer = await stripe.customers.create(customerData);
 
   try {
-    const didReserveBillingSlot = await setTeamBillingIfEmpty(
-      teamMember.team.slug,
+    const didReserveBillingSlot = await setOrganizationBillingIfEmpty(
+      organization.id,
       customer.id,
       'stripe'
     );
 
     if (didReserveBillingSlot) {
+      // Keep legacy team billing fields filled for backward compatibility.
+      await setTeamBillingIfEmpty(teamMember.team.slug, customer.id, 'stripe');
       return customer.id;
     }
 
-    const latestTeam = await getTeam({ slug: teamMember.team.slug });
+    const latestOrganization = await getOrganizationById(organization.id);
 
-    if (latestTeam.billingId) {
+    if (latestOrganization?.billingId) {
       await stripe.customers.del(customer.id);
-      return latestTeam.billingId;
+      await setTeamBillingIfEmpty(
+        teamMember.team.slug,
+        latestOrganization.billingId,
+        latestOrganization.billingProvider || 'stripe'
+      );
+      return latestOrganization.billingId;
     }
 
     throw new Error(
-      `Failed to reserve billing slot for team ${teamMember.team.slug}`
+      `Failed to reserve billing slot for organization ${organization.slug}`
     );
   } catch (error) {
     try {
@@ -74,9 +126,11 @@ export const stripeBillingProvider: BillingProvider = {
     customerId,
     price,
     quantity,
+    metadata,
     successUrl,
     cancelUrl,
   }) {
+    const stripeMetadata = metadata ? metadata : undefined;
     const checkoutSession = await stripe.checkout.sessions.create({
       customer: customerId,
       mode: 'subscription',
@@ -86,6 +140,12 @@ export const stripeBillingProvider: BillingProvider = {
           quantity,
         },
       ],
+      metadata: stripeMetadata,
+      subscription_data: stripeMetadata
+        ? {
+            metadata: stripeMetadata,
+          }
+        : undefined,
       success_url: successUrl,
       cancel_url: cancelUrl,
     });

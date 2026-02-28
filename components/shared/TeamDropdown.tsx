@@ -5,6 +5,10 @@ import {
   RectangleStackIcon,
   UserCircleIcon,
 } from '@heroicons/react/24/outline';
+import {
+  buildTeamWorkspaceAppPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import useTeams from 'hooks/useTeams';
 import { useSession } from 'next-auth/react';
 import { useTranslation } from 'next-i18next';
@@ -18,9 +22,23 @@ const TeamDropdown = () => {
   const { teams } = useTeams();
   const { data } = useSession();
   const { t } = useTranslation('common');
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const currentTeam = (teams || []).find(
-    (team) => team.slug === router.query.slug
+    (team) => {
+      if (routeContext.teamSlug) {
+        return team.slug === routeContext.teamSlug;
+      }
+
+      if (routeContext.organizationSlug && routeContext.projectSlug) {
+        return (
+          team.project?.organization?.slug === routeContext.organizationSlug &&
+          team.project?.slug === routeContext.projectSlug
+        );
+      }
+
+      return false;
+    }
   );
 
   const menus = [
@@ -30,7 +48,11 @@ const TeamDropdown = () => {
       items: (teams || []).map((team) => ({
         id: team.id,
         name: team.name,
-        href: `/teams/${team.slug}/settings`,
+        href:
+          buildTeamWorkspaceAppPath({
+            team,
+            suffix: 'settings',
+          }) ?? '/teams',
         icon: FolderIcon,
       })),
     },

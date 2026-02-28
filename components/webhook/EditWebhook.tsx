@@ -12,6 +12,12 @@ import type { ApiResponse } from 'types';
 
 import ModalForm from './Form';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildTeamWorkspaceApiPath,
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
+import { useRouter } from 'next/router';
 
 const EditWebhook = ({
   visible,
@@ -24,9 +30,11 @@ const EditWebhook = ({
   team: Team;
   endpoint: EndpointOut;
 }) => {
+  const router = useRouter();
   const { isLoading, isError, webhook } = useWebhook(team.slug, endpoint.id);
   const { t } = useTranslation('common');
   const { mutateWebhooks } = useWebhooks(team.slug);
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   if (isLoading || !webhook) {
     return <Loading />;
@@ -40,14 +48,27 @@ const EditWebhook = ({
     values: WebhookFormSchema,
     formikHelpers: FormikHelpers<WebhookFormSchema>
   ) => {
-    const response = await fetch(
-      `/api/teams/${team.slug}/webhooks/${endpoint.id}`,
-      {
-        method: 'PUT',
-        headers: defaultHeaders,
-        body: JSON.stringify(values),
-      }
-    );
+    const webhookUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: `webhooks/${endpoint.id}`,
+      }) ??
+      buildTeamWorkspaceApiPath({
+        team,
+        suffix: `webhooks/${endpoint.id}`,
+      });
+
+    if (!webhookUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
+    const response = await fetch(webhookUrl, {
+      method: 'PUT',
+      headers: defaultHeaders,
+      body: JSON.stringify(values),
+    });
 
     const json = (await response.json()) as ApiResponse;
 

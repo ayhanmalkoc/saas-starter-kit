@@ -5,9 +5,15 @@ import { useFormik } from 'formik';
 import toast from 'react-hot-toast';
 import { Button, Input } from 'react-daisyui';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 
 import type { ApiResponse } from 'types';
 import { defaultHeaders, maxLengthPolicies } from '@/lib/common';
+import {
+  buildTeamWorkspaceApiPath,
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import { availableRoles } from '@/lib/permissions';
 import type { Team } from '@prisma/client';
 
@@ -17,7 +23,15 @@ interface InviteViaEmailProps {
 }
 
 const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
+  const router = useRouter();
   const { t } = useTranslation('common');
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const invitationsUrl =
+    buildWorkspaceApiPath({
+      context: routeContext,
+      teamSlug: team.slug,
+      suffix: 'invitations',
+    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
 
   const FormValidationSchema = Yup.object().shape({
     email: Yup.string()
@@ -37,7 +51,12 @@ const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
     },
     validationSchema: FormValidationSchema,
     onSubmit: async (values) => {
-      const response = await fetch(`/api/teams/${team.slug}/invitations`, {
+      if (!invitationsUrl) {
+        toast.error('Workspace API route could not be resolved.');
+        return;
+      }
+
+      const response = await fetch(invitationsUrl, {
         method: 'POST',
         headers: defaultHeaders,
         body: JSON.stringify(values),
@@ -50,7 +69,7 @@ const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
       }
 
       toast.success(t('invitation-sent'));
-      mutate(`/api/teams/${team.slug}/invitations?sentViaEmail=true`);
+      mutate(`${invitationsUrl}?sentViaEmail=true`);
       setVisible(false);
       formik.resetForm();
     },

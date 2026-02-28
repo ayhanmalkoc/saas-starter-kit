@@ -1,5 +1,12 @@
 import { Card, InputWithLabel } from '@/components/shared';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildTeamWorkspaceAppPath,
+  buildTeamWorkspaceApiPath,
+  buildWorkspaceApiPath,
+  buildWorkspaceAppPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import { Team } from '@prisma/client';
 import { useFormik } from 'formik';
 import { useTranslation } from 'next-i18next';
@@ -18,6 +25,7 @@ const TeamSettings = ({ team }: { team: Team }) => {
   const router = useRouter();
   const { t } = useTranslation('common');
   const { mutateTeams } = useTeams();
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const formik = useFormik<z.infer<typeof updateTeamSchema>>({
     initialValues: {
@@ -35,7 +43,18 @@ const TeamSettings = ({ team }: { team: Team }) => {
       }
     },
     onSubmit: async (values) => {
-      const response = await fetch(`/api/teams/${team.slug}`, {
+      const updateTeamUrl =
+        buildWorkspaceApiPath({
+          context: routeContext,
+          teamSlug: team.slug,
+        }) ?? buildTeamWorkspaceApiPath({ team });
+
+      if (!updateTeamUrl) {
+        toast.error('Workspace API route could not be resolved.');
+        return;
+      }
+
+      const response = await fetch(updateTeamUrl, {
         method: 'PUT',
         headers: defaultHeaders,
         body: JSON.stringify(values),
@@ -50,7 +69,20 @@ const TeamSettings = ({ team }: { team: Team }) => {
 
       toast.success(t('successfully-updated'));
       mutateTeams();
-      router.push(`/teams/${json.data.slug}/settings`);
+      const settingsPath =
+        buildWorkspaceAppPath({
+          context: routeContext,
+          teamSlug: json.data.slug,
+          suffix: 'settings',
+        }) ??
+        buildTeamWorkspaceAppPath({
+          team: {
+            slug: json.data.slug,
+          },
+          suffix: 'settings',
+        });
+
+      router.push(settingsPath ?? '/teams');
     },
   });
 

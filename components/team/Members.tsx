@@ -10,12 +10,19 @@ import toast from 'react-hot-toast';
 import { InviteMember } from '@/components/invitation';
 import UpdateMemberRole from './UpdateMemberRole';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildTeamWorkspaceApiPath,
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import type { ApiResponse } from 'types';
 import ConfirmationDialog from '../shared/ConfirmationDialog';
 import { useState } from 'react';
 import { Table } from '@/components/shared/table/Table';
+import { useRouter } from 'next/router';
 
 const Members = ({ team }: { team: Team }) => {
+  const router = useRouter();
   const { data: session } = useSession();
   const { t } = useTranslation('common');
   const { canAccess } = useCanAccess();
@@ -24,6 +31,7 @@ const Members = ({ team }: { team: Team }) => {
     useState<TeamMemberWithUser | null>(null);
   const [confirmationDialogVisible, setConfirmationDialogVisible] =
     useState(false);
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const { isLoading, isError, members, mutateTeamMembers } = useTeamMembers(
     team.slug
@@ -47,14 +55,17 @@ const Members = ({ team }: { team: Team }) => {
     }
 
     const sp = new URLSearchParams({ memberId: member.userId });
+    const membersUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'members',
+      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'members' });
 
-    const response = await fetch(
-      `/api/teams/${team.slug}/members?${sp.toString()}`,
-      {
-        method: 'DELETE',
-        headers: defaultHeaders,
-      }
-    );
+    const response = await fetch(`${membersUrl}?${sp.toString()}`, {
+      method: 'DELETE',
+      headers: defaultHeaders,
+    });
 
     const json = (await response.json()) as ApiResponse;
 

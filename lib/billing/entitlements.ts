@@ -3,9 +3,10 @@ import type { Subscription } from '@prisma/client';
 
 import { ApiError } from '@/lib/errors';
 import env from '@/lib/env';
+import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
-import { getByTeamId } from 'models/subscription';
+import { getByBillingScope } from 'models/subscription';
 
 const ACTIVE_SUBSCRIPTION_STATUSES = new Set([
   'active',
@@ -502,6 +503,21 @@ const resolveDefaultPlan = (services: BillingService[]) => {
   return orderedByLevel[0]?.service ?? null;
 };
 
+const pickAuthoritativeSubscription = (
+  subscriptions: Subscription[]
+): Subscription => {
+  return [...subscriptions].sort((a, b) => {
+    const aPeriod = a.currentPeriodEnd?.getTime() ?? 0;
+    const bPeriod = b.currentPeriodEnd?.getTime() ?? 0;
+
+    if (aPeriod !== bPeriod) {
+      return bPeriod - aPeriod;
+    }
+
+    return b.updatedAt.getTime() - a.updatedAt.getTime();
+  })[0];
+};
+
 export const getTeamEntitlements = async (
   teamId: string
 ): Promise<TeamEntitlements> => {
@@ -516,7 +532,11 @@ export const getTeamEntitlements = async (
   const serviceByName = buildServiceNameMap(services);
   const cache = new Map<string, EntitlementValues>();
 
-  const subscriptions = await getByTeamId(teamId);
+  const billingScope = await resolveBillingScopeFromTeamId(teamId);
+  const subscriptions = await getByBillingScope({
+    teamId,
+    organizationId: billingScope.organizationId,
+  });
   const activeSubscriptions = subscriptions.filter((subscription) =>
     ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)
   );
@@ -542,7 +562,23 @@ export const getTeamEntitlements = async (
     return entitlements;
   }
 
-  for (const subscription of activeSubscriptions) {
+  const subscriptionsToEvaluate =
+    activeSubscriptions.length > 1
+      ? [pickAuthoritativeSubscription(activeSubscriptions)]
+      : activeSubscriptions;
+
+  if (activeSubscriptions.length > 1) {
+    console.warn(
+      `Multiple active subscriptions found for billing scope (teamId=${teamId}, organizationId=${billingScope.organizationId}). Using authoritative subscription ${subscriptionsToEvaluate[0].id}.`,
+      {
+        subscriptionIds: activeSubscriptions.map(
+          (subscription) => subscription.id
+        ),
+      }
+    );
+  }
+
+  for (const subscription of subscriptionsToEvaluate) {
     const resolvedServiceId = await resolveServiceIdForSubscription(
       subscription,
       serviceById
