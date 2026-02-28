@@ -39,6 +39,12 @@ const LinkToPortal = ({ team }: LinkToPortalProps) => {
         suffix: 'payments/create-portal-link',
       });
 
+    if (!portalUrl) {
+      setLoading(false);
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(portalUrl, {
       method: 'POST',
       headers: defaultHeaders,

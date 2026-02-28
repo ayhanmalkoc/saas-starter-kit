@@ -47,6 +47,11 @@ const APIKeys = ({ team }: APIKeysProps) => {
         suffix: `api-keys/${apiKey.id}`,
       });
 
+    if (!apiKeyUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(apiKeyUrl, {
       method: 'DELETE',
     });

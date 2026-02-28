@@ -37,16 +37,12 @@ export const getWorkspaceAppPrefix = ({
   context: WorkspaceRouteContext;
   teamSlug?: string | null;
 }) => {
+  void teamSlug;
+
   if (hasOrgProjectRouteContext(context)) {
     return `/orgs/${context.organizationSlug}/projects/${context.projectSlug}`;
   }
-
-  const resolvedTeamSlug = teamSlug ?? context.teamSlug;
-  if (!resolvedTeamSlug) {
-    return null;
-  }
-
-  return `/teams/${resolvedTeamSlug}`;
+  return null;
 };
 
 export const buildWorkspaceAppPath = ({
@@ -58,7 +54,9 @@ export const buildWorkspaceAppPath = ({
   teamSlug?: string | null;
   suffix?: string;
 }) => {
-  const prefix = getWorkspaceAppPrefix({ context, teamSlug });
+  void teamSlug;
+
+  const prefix = getWorkspaceAppPrefix({ context });
   if (!prefix) {
     return null;
   }
@@ -80,23 +78,18 @@ export const buildWorkspaceApiPath = ({
   teamSlug?: string | null;
   suffix?: string;
 }) => {
+  void teamSlug;
+
   const normalizedSuffix = suffix?.trim().replace(/^\/+|\/+$/g, '');
 
   if (hasOrgProjectRouteContext(context)) {
     const base = `/api/orgs/${context.organizationSlug}/projects/${context.projectSlug}`;
     return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
   }
-
-  const resolvedTeamSlug = teamSlug ?? context.teamSlug;
-  if (!resolvedTeamSlug) {
-    return null;
-  }
-
-  const base = `/api/teams/${resolvedTeamSlug}`;
-  return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
+  return null;
 };
 
-type TeamRouteTarget = {
+export type TeamRouteTarget = {
   slug: string;
   project?: {
     slug: string;
@@ -121,9 +114,7 @@ export const buildTeamWorkspaceAppPath = ({
     const base = `/orgs/${organizationSlug}/projects/${projectSlug}`;
     return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
   }
-
-  const base = `/teams/${team.slug}`;
-  return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
+  return null;
 };
 
 export const buildTeamWorkspaceApiPath = ({
@@ -141,7 +132,5 @@ export const buildTeamWorkspaceApiPath = ({
     const base = `/api/orgs/${organizationSlug}/projects/${projectSlug}`;
     return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
   }
-
-  const base = `/api/teams/${team.slug}`;
-  return normalizedSuffix ? `${base}/${normalizedSuffix}` : base;
+  return null;
 };

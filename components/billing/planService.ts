@@ -50,17 +50,19 @@ const parseResponsePayload = async (response: Response) => {
 };
 
 const sendPlanChangeRequest = async ({
-  teamSlug,
   apiBasePath,
   endpoint,
   body,
 }: {
-  teamSlug: string;
   apiBasePath?: string;
   endpoint: 'create-checkout-session' | 'update-subscription';
   body: Record<string, unknown>;
 }) => {
-  const basePath = apiBasePath || `/api/teams/${teamSlug}`;
+  if (!apiBasePath) {
+    throw new Error('Workspace billing API base path is missing.');
+  }
+
+  const basePath = apiBasePath;
   const response = await fetch(`${basePath}/payments/${endpoint}`, {
     method: 'POST',
     headers: {
@@ -80,13 +82,20 @@ export const handlePlanChange = async ({
   subscriptionId,
   apiBasePath,
 }: PlanChangeParams) => {
+  if (!apiBasePath) {
+    return {
+      error: {
+        message: `Could not resolve billing endpoint for team "${teamSlug}".`,
+      },
+    };
+  }
+
   const requestBody = buildRequestBody({ priceId, quantity, subscriptionId });
   const endpoint = subscriptionId
     ? 'update-subscription'
     : 'create-checkout-session';
 
   const primary = await sendPlanChangeRequest({
-    teamSlug,
     apiBasePath,
     endpoint,
     body: requestBody,
@@ -99,7 +108,6 @@ export const handlePlanChange = async ({
     primary.payload?.data?.subscriptionId
   ) {
     const fallback = await sendPlanChangeRequest({
-      teamSlug,
       apiBasePath,
       endpoint: 'update-subscription',
       body: buildRequestBody({

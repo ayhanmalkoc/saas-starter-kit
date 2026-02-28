@@ -17,14 +17,19 @@ const Dashboard: NextPageWithLayout = () => {
     }
 
     if (teams.length > 0) {
-      router.push(
-        buildTeamWorkspaceAppPath({
-          team: teams[0],
-          suffix: 'settings',
-        })
-      );
+      const settingsPath = buildTeamWorkspaceAppPath({
+        team: teams[0],
+        suffix: 'settings',
+      });
+
+      if (!settingsPath) {
+        router.push('/teams?newTeam=true');
+        return;
+      }
+
+      router.push(settingsPath);
     } else {
-      router.push('teams?newTeam=true');
+      router.push('/teams?newTeam=true');
     }
   }, [isLoading, router, teams]);
 

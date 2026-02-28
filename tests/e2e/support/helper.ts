@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { Role } from '@prisma/client';
 import { hash } from 'bcryptjs';
+import { ensureOrganizationAndProjectForTeam } from '@/models/organization';
 
 export const user = {
   name: 'Jackson',
@@ -59,4 +60,6 @@ export async function seedDefaultAccount() {
       role: Role.OWNER,
     },
   });
+
+  await ensureOrganizationAndProjectForTeam(createdTeam.id);
 }

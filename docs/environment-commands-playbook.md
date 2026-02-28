@@ -16,8 +16,7 @@ Before any flow:
 1. Ensure `.env` exists and contains valid values (do not keep dummy Stripe keys for real sync).
 2. Ensure Docker is running for local (`setup:db`) workflows.
 3. Ensure Stripe CLI is installed if you test webhooks locally.
-4. Keep `LEGACY_TEAM_ROUTE_MODE=redirect` during migration; switch to `disabled` only when all clients use `/orgs/:org/projects/:project/*`.
-5. In production, do not use `LEGACY_TEAM_ROUTE_MODE=enabled` unless you intentionally enable `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true` for emergency rollback.
+4. Use canonical org/project routes (`/orgs/:org/projects/:project/*`) in all app and API integrations.
 
 ## Command Reference
 
@@ -147,11 +146,14 @@ After running the selected flow:
 3. Feature-gated pages (e.g., audit logs/webhooks/SSO) match plan entitlements.
 4. Stripe webhook endpoint is reachable and signature secret is valid where applicable.
 
-## Legacy Route Cutover
+## Legacy Route Behavior
 
-- `LEGACY_TEAM_ROUTE_MODE=enabled`: legacy `/teams/:slug/*` and `/api/teams/:slug/*` remain active (no redirect).
-- `LEGACY_TEAM_ROUTE_MODE=redirect` (default): legacy routes redirect to canonical org/project routes.
-- `LEGACY_TEAM_ROUTE_MODE=disabled`: legacy team-slug routes are blocked (`404` for UI, `410` for API).
+- Legacy team-slug routes are removed:
+  - `/teams/:slug/*`
+  - `/api/teams/:slug/*`
+- Use canonical org/project routes:
+  - `/orgs/:orgSlug/projects/:projectSlug/*`
+  - `/api/orgs/:orgSlug/projects/:projectSlug/*`
 
 ## Related Documents
 

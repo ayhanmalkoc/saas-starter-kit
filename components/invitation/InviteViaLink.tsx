@@ -69,6 +69,11 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
     },
     validationSchema: FormValidationSchema,
     onSubmit: async (values) => {
+      if (!invitationsUrl) {
+        toast.error('Workspace API route could not be resolved.');
+        return;
+      }
+
       const response = await fetch(invitationsUrl, {
         method: 'POST',
         headers: defaultHeaders,
@@ -89,6 +94,11 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
 
   // Delete an existing invitation link
   const deleteInvitationLink = async (id: string) => {
+    if (!invitationsUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(`${invitationsUrl}?id=${id}`, {
       method: 'DELETE',
       headers: defaultHeaders,

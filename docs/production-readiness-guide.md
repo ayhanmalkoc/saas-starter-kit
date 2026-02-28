@@ -24,9 +24,9 @@ Set and verify these before production release:
   - `ENABLE_COEP=true` (only if your external assets are compatible)
   - `NEXTAUTH_TRUST_HOST=false`
   - `NEXTAUTH_DEBUG=false`
-- Route migration mode is production-safe:
-  - `LEGACY_TEAM_ROUTE_MODE=redirect` (recommended during transition) or `disabled` (after cutover)
-  - `LEGACY_TEAM_ROUTE_MODE=enabled` is blocked in production unless emergency override `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true` is explicitly set.
+- Route usage is canonical:
+  - Integrations and internal links use `/orgs/:orgSlug/projects/:projectSlug/*` routes.
+  - Legacy team-slug routes are compatibility redirects and not runtime-configurable.
 
 ## 2) Build and Migration Gate
 

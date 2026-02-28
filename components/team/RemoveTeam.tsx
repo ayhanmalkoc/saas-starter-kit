@@ -36,6 +36,12 @@ const RemoveTeam = ({ team, allowDelete }: RemoveTeamProps) => {
         teamSlug: team.slug,
       }) ?? buildTeamWorkspaceApiPath({ team });
 
+    if (!removeTeamUrl) {
+      setLoading(false);
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(removeTeamUrl, {
       method: 'DELETE',
       headers: defaultHeaders,

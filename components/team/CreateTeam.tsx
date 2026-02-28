@@ -18,6 +18,15 @@ interface CreateTeamProps {
   setVisible: (visible: boolean) => void;
 }
 
+type CreatedTeamPayload = Team & {
+  project?: {
+    slug: string;
+    organization?: {
+      slug: string;
+    } | null;
+  } | null;
+};
+
 const CreateTeam = ({ visible, setVisible }: CreateTeamProps) => {
   const { t } = useTranslation('common');
   const { mutateTeams } = useTeams();
@@ -31,13 +40,13 @@ const CreateTeam = ({ visible, setVisible }: CreateTeamProps) => {
       name: Yup.string().required().max(maxLengthPolicies.team),
     }),
     onSubmit: async (values) => {
-      const response = await fetch('/api/teams/', {
+      const response = await fetch('/api/teams', {
         method: 'POST',
         headers: defaultHeaders,
         body: JSON.stringify(values),
       });
 
-      const json = (await response.json()) as ApiResponse<Team>;
+      const json = (await response.json()) as ApiResponse<CreatedTeamPayload>;
 
       if (!response.ok) {
         toast.error(json.error.message);
@@ -48,14 +57,17 @@ const CreateTeam = ({ visible, setVisible }: CreateTeamProps) => {
       mutateTeams();
       setVisible(false);
       toast.success(t('team-created'));
-      router.push(
-        buildTeamWorkspaceAppPath({
-          team: {
-            slug: json.data.slug,
-          },
-          suffix: 'settings',
-        })
-      );
+      const settingsPath = buildTeamWorkspaceAppPath({
+        team: json.data,
+        suffix: 'settings',
+      });
+
+      if (!settingsPath) {
+        router.push('/teams');
+        return;
+      }
+
+      router.push(settingsPath);
     },
   });
 

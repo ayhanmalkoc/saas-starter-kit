@@ -15,19 +15,35 @@ export const createTeam = async (param: {
 }) => {
   const { userId, name, slug } = param;
 
-  const team = await prisma.team.create({
+  const createdTeam = await prisma.team.create({
     data: {
       name,
       slug,
     },
   });
 
-  await addTeamMember(team.id, userId, Role.OWNER);
-  await ensureOrganizationAndProjectForTeam(team.id);
+  await addTeamMember(createdTeam.id, userId, Role.OWNER);
+  await ensureOrganizationAndProjectForTeam(createdTeam.id);
 
-  await findOrCreateApp(team.name, team.id);
+  await findOrCreateApp(createdTeam.name, createdTeam.id);
 
-  return team;
+  return await prisma.team.findUniqueOrThrow({
+    where: {
+      id: createdTeam.id,
+    },
+    include: {
+      project: {
+        select: {
+          slug: true,
+          organization: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
+    },
+  });
 };
 
 export const getByCustomerId = async (

@@ -36,7 +36,9 @@ const NewAPIKey = ({
 
   const onNewAPIKey = (apiKey: string) => {
     setApiKey(apiKey);
-    mutate(apiKeysUrl);
+    if (apiKeysUrl) {
+      mutate(apiKeysUrl);
+    }
   };
 
   const toggleVisible = () => {
@@ -79,6 +81,11 @@ const CreateAPIKeyForm = ({
       }
     },
     onSubmit: async (values) => {
+      if (!apiKeysUrl) {
+        toast.error('Workspace API route could not be resolved.');
+        return;
+      }
+
       const response = await fetch(apiKeysUrl, {
         method: 'POST',
         body: JSON.stringify(values),
@@ -165,7 +172,7 @@ interface NewAPIKeyProps {
 }
 
 interface CreateAPIKeyFormProps {
-  apiKeysUrl: string;
+  apiKeysUrl: string | null;
   onNewAPIKey: (apiKey: string) => void;
   closeModal: () => void;
 }

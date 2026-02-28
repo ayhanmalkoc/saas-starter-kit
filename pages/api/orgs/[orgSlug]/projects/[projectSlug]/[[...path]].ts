@@ -5,21 +5,21 @@ import {
   resolveLegacyTeamContextFromOrgProject,
 } from '@/lib/routing/org-project-compat';
 
-import teamHandler from '../../../../teams/[slug]';
-import teamApiKeysByIdHandler from '../../../../teams/[slug]/api-keys/[apiKeyId]';
-import teamApiKeysHandler from '../../../../teams/[slug]/api-keys';
-import teamDirectorySyncByIdHandler from '../../../../teams/[slug]/dsync/[directoryId]';
-import teamDirectorySyncHandler from '../../../../teams/[slug]/dsync';
-import teamInvitationsHandler from '../../../../teams/[slug]/invitations';
-import teamMembersHandler from '../../../../teams/[slug]/members';
-import teamPaymentsCreateCheckoutSessionHandler from '../../../../teams/[slug]/payments/create-checkout-session';
-import teamPaymentsCreatePortalLinkHandler from '../../../../teams/[slug]/payments/create-portal-link';
-import teamPaymentsProductsHandler from '../../../../teams/[slug]/payments/products';
-import teamPaymentsUpdateSubscriptionHandler from '../../../../teams/[slug]/payments/update-subscription';
-import teamPermissionsHandler from '../../../../teams/[slug]/permissions';
-import teamSsoHandler from '../../../../teams/[slug]/sso';
-import teamWebhooksByIdHandler from '../../../../teams/[slug]/webhooks/[endpointId]';
-import teamWebhooksHandler from '../../../../teams/[slug]/webhooks';
+import teamHandler from '@/modules/workspace/api/index';
+import teamApiKeysByIdHandler from '@/modules/workspace/api/api-keys/[apiKeyId]';
+import teamApiKeysHandler from '@/modules/workspace/api/api-keys';
+import teamDirectorySyncByIdHandler from '@/modules/workspace/api/dsync/[directoryId]';
+import teamDirectorySyncHandler from '@/modules/workspace/api/dsync';
+import teamInvitationsHandler from '@/modules/workspace/api/invitations';
+import teamMembersHandler from '@/modules/workspace/api/members';
+import teamPaymentsCreateCheckoutSessionHandler from '@/modules/workspace/api/payments/create-checkout-session';
+import teamPaymentsCreatePortalLinkHandler from '@/modules/workspace/api/payments/create-portal-link';
+import teamPaymentsProductsHandler from '@/modules/workspace/api/payments/products';
+import teamPaymentsUpdateSubscriptionHandler from '@/modules/workspace/api/payments/update-subscription';
+import teamPermissionsHandler from '@/modules/workspace/api/permissions';
+import teamSsoHandler from '@/modules/workspace/api/sso';
+import teamWebhooksByIdHandler from '@/modules/workspace/api/webhooks/[endpointId]';
+import teamWebhooksHandler from '@/modules/workspace/api/webhooks';
 
 type HandlerResolution = {
   handler: NextApiHandler;

@@ -29,6 +29,11 @@ const UpdateMemberRole = ({ team, member }: UpdateMemberRoleProps) => {
         suffix: 'members',
       }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'members' });
 
+    if (!membersUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(membersUrl, {
       method: 'PATCH',
       headers: defaultHeaders,

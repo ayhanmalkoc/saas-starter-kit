@@ -7,8 +7,8 @@ Use this checklist before cutting a release.
 - [ ] `npm run build` completes for release environment configuration.
 - [ ] Build output does **not** include the browser baseline warning (`outdated dataset currency`).
 - [ ] Build output does not contain new untriaged warnings compared to the previous release baseline.
-- [ ] Route migration mode is production-safe: `LEGACY_TEAM_ROUTE_MODE` is `redirect` or `disabled` (not `enabled`).
-- [ ] If emergency override is used, `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true` has a documented expiry and owner.
+- [ ] Canonical org/project routes are used in product navigation and integration docs.
+- [ ] No new environment-variable-based legacy route mode toggle was introduced.
 
 ## Dependency hygiene
 

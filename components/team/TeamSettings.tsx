@@ -49,6 +49,11 @@ const TeamSettings = ({ team }: { team: Team }) => {
           teamSlug: team.slug,
         }) ?? buildTeamWorkspaceApiPath({ team });
 
+      if (!updateTeamUrl) {
+        toast.error('Workspace API route could not be resolved.');
+        return;
+      }
+
       const response = await fetch(updateTeamUrl, {
         method: 'PUT',
         headers: defaultHeaders,
@@ -77,7 +82,7 @@ const TeamSettings = ({ team }: { team: Team }) => {
           suffix: 'settings',
         });
 
-      router.push(settingsPath);
+      router.push(settingsPath ?? '/teams');
     },
   });
 

@@ -48,10 +48,11 @@ const TeamDropdown = () => {
       items: (teams || []).map((team) => ({
         id: team.id,
         name: team.name,
-        href: buildTeamWorkspaceAppPath({
-          team,
-          suffix: 'settings',
-        }),
+        href:
+          buildTeamWorkspaceAppPath({
+            team,
+            suffix: 'settings',
+          }) ?? '/teams',
         icon: FolderIcon,
       })),
     },

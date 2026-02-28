@@ -41,6 +41,11 @@ const CreateWebhook = ({
         suffix: 'webhooks',
       }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'webhooks' });
 
+    if (!webhooksUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(webhooksUrl, {
       method: 'POST',
       headers: defaultHeaders,

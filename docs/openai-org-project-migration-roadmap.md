@@ -117,39 +117,211 @@ Current implementation status:
 - Workspace URL fallback generation now uses canonical-aware helpers:
   - Added API helper `buildTeamWorkspaceApiPath` in `lib/routing/workspace-routes.ts`.
   - Team UI/API clients now prefer helper-based fallback over hardcoded `/teams` or `/api/teams` path strings.
-- Legacy alias behavior is now environment-controlled:
-  - `LEGACY_TEAM_ROUTE_MODE=enabled` keeps legacy team-slug routes active.
-  - `LEGACY_TEAM_ROUTE_MODE=redirect` (default) redirects legacy team-slug routes to canonical org/project routes.
-  - `LEGACY_TEAM_ROUTE_MODE=disabled` blocks legacy team-slug routes (`404/410`) for hard cutover.
-- Production guardrail for deprecation mode:
-  - Production boot fails if `LEGACY_TEAM_ROUTE_MODE=enabled` unless explicit emergency override `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true` is set.
+- Legacy alias behavior was initially mode-controlled, then fixed to canonical redirect in PR-5A.
 - Added shared redirect helper:
   - `lib/routing/legacy-team-redirect.ts`
 - Added shared API redirect helper:
   - `lib/routing/legacy-team-api-redirect.ts`
 - Added canonical route resolution from team slug:
   - `models/team.ts` (`getTeamCanonicalRouteBySlug`)
+- Note: PR-4 compatibility behavior is superseded by PR-5B hard cutover for team-slug routes.
 
-## Completion Snapshot (as of February 28, 2026)
+## PR-5: Hard Cutover (Physical Removal of Legacy Team Alias)
+
+Status:
+
+- In progress.
+
+Decision context:
+
+- Repository is currently greenfield (no active external installations).
+- We can prefer clean architecture over backward-compatibility layer.
+
+Primary goal:
+
+- Remove legacy alias code paths so product is strictly org/project-native.
+
+Out of scope for PR-5:
+
+- Full database-level removal of `Team` domain entities.
+- Large semantic rename of all internal `team` variables/models.
+- This phase targets alias code removal, not full domain-model rewrite.
+
+### PR-5A: Cutover Baseline and Config Hardening
+
+Scope:
+
+- Remove `LEGACY_TEAM_ROUTE_MODE` operational toggles and emergency override behavior.
+- Make canonical org/project routing the only supported mode.
+- Remove docs that instruct `enabled/redirect/disabled` runtime switching.
+
+Tasks:
+
+- Remove env/config keys:
+  - `LEGACY_TEAM_ROUTE_MODE`
+  - `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION`
+- Remove route-mode guards/branching from `lib/env.ts` and related helpers.
+- Update docs:
+  - `README.md`
+  - `docs/environment-commands-playbook.md`
+  - `docs/production-readiness-guide.md`
+  - `docs/release-checklist.md`
+
+Acceptance criteria:
+
+- No runtime config path exists for legacy team-route modes.
+- Canonical org/project routes are documented as the only entrypoint.
+
+Status update:
+
+- Completed on `feat/org-project-architecture-phase1`.
+- `LEGACY_TEAM_ROUTE_MODE` and `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION` removed from runtime config.
+- Legacy team alias behavior is now fixed compatibility redirect (non-configurable).
+
+### PR-5B: UI/API Alias Route Removal
+
+Scope:
+
+- Remove legacy `pages/teams/*` and `pages/api/teams/*` alias surface.
+- Remove legacy redirect helpers used only for team alias compatibility.
+- Keep canonical routes:
+  - `pages/orgs/[orgSlug]/projects/[projectSlug]/*`
+  - `pages/api/orgs/[orgSlug]/projects/[projectSlug]/*`
+
+Tasks:
+
+- Delete legacy helper modules:
+  - `lib/routing/legacy-team-redirect.ts`
+  - `lib/routing/legacy-team-api-redirect.ts`
+- Remove team-route redirect calls from remaining pages/APIs.
+- Delete/retire legacy route trees:
+  - `pages/teams/[slug]/*`
+  - `pages/api/teams/[slug]/*`
+- Ensure all client-side URL builders use canonical workspace helpers only.
+
+Acceptance criteria:
+
+- Repository has no import/use of legacy team redirect helpers.
+- Build output contains no `/teams/[slug]/*` and `/api/teams/[slug]/*` route entries.
+- All navigation and mutations work through canonical org/project URLs.
+
+Status update:
+
+- Completed on `feat/org-project-architecture-phase1`.
+- Removed route trees:
+  - `pages/teams/[slug]/*`
+  - `pages/api/teams/[slug]/*`
+- Removed compatibility helper modules:
+  - `lib/routing/legacy-team-redirect.ts`
+  - `lib/routing/legacy-team-api-redirect.ts`
+- Canonical routes continue through:
+  - `pages/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].tsx`
+  - `pages/api/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].ts`
+
+### PR-5C: Service/Hook Canonicalization and Naming Cleanup
+
+Scope:
+
+- Remove compatibility-only logic that translates team slug to org/project path.
+- Keep internal business model stable while making API and route contracts canonical.
+
+Tasks:
+
+- Refactor hooks/services to use org/project route params directly.
+- Remove fallback URL builders that generate `/teams` or `/api/teams`.
+- Update UI components still coupled to team-slug route construction.
+- Keep data access compatibility where needed, but eliminate route-level aliasing.
+
+Acceptance criteria:
+
+- No frontend mutation/query uses team alias endpoints.
+- No SSR/API handler needs team-route compatibility redirect logic.
+
+Status update:
+
+- Completed on `feat/org-project-architecture-phase1`.
+- Removed remaining `/api/teams/:slug/*` fallback behavior from route builders and plan-change service.
+- Added null-safe canonical URL guards across team/invitation/billing/webhook UI actions.
+- Enriched team/invitation payload usage to carry org/project slug context where route context is absent (e.g., invitation accept, post-create redirect).
+
+### PR-5D: Validation, Test Matrix, and Release Gate
+
+Scope:
+
+- Validate that hard cutover is complete and safe to ship as breaking change.
+
+Tasks:
+
+- Mandatory checks:
+  - `npm run check-types`
+  - `npm run check-lint`
+  - `npm run build-ci`
+- Smoke matrix:
+  - Auth/login
+  - Org/project workspace navigation
+  - Billing checkout + webhook
+  - Team members/invitations flows via canonical org/project URLs
+- Regression checks:
+  - Ensure no accidental references to `/teams/` or `/api/teams/` remain.
+
+Acceptance criteria:
+
+- All checks pass.
+- Canonical flow works end-to-end without alias routes.
+- Breaking-change release note prepared.
+
+Status update:
+
+- Automated gate checks are passing:
+  - `npm run check-lint`
+  - `npm run check-types`
+  - `npm run build-ci`
+- Manual smoke coverage added with canonical Playwright scenario:
+  - `tests/e2e/smoke/org-project-cutover.spec.ts`
+  - command: `npx playwright test tests/e2e/smoke/org-project-cutover.spec.ts -x`
+- Breaking-change release note prepared:
+  - `docs/release-notes/org-project-hard-cutover.md`
+
+### Release and Versioning Plan for PR-5
+
+- Release as a breaking change (recommended major version bump).
+- Add migration note:
+  - Legacy team-slug URLs are removed.
+  - Consumers must use org/project canonical routes.
+- Update starter onboarding to org/project-first examples only.
+
+### Rollback Plan
+
+- If issues are found before merge: revert PR-5 branch.
+- If issues are found after merge:
+  - Fast rollback by reverting PR-5 commit set.
+  - No runtime `LEGACY_TEAM_ROUTE_MODE` fallback is expected after hard cutover.
+  - Keep rollback playbook documented in release notes.
+
+## Completion Snapshot (as of March 1, 2026)
 
 - PR-1: Complete
 - PR-2: Complete
 - PR-3: Complete
 - PR-4: Complete as compatibility/deprecation-control layer
+- PR-5A: Complete (config hardening)
+- PR-5B: Complete (physical removal of team-slug alias routes)
+- PR-5C: Complete (service/hook canonicalization)
+- PR-5D: Complete (validation, smoke matrix, release gate)
 
-Open items are operational, not architectural:
+Open items:
 
-- Monitor redirect traffic on legacy `/teams/*` and `/api/teams/*` routes.
-- Execute controlled hard-cutover by switching production route mode from `redirect` to `disabled` after release sign-off.
+- None in PR-1 through PR-5 scope.
 
-## Production Route-Mode Decision
+## Legacy Route Policy (Post PR-5A)
 
 Current production policy:
 
-- Default production mode is `LEGACY_TEAM_ROUTE_MODE=redirect`.
-- `LEGACY_TEAM_ROUTE_MODE=enabled` is prohibited in production except emergency rollback with
-  `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true`.
-- `LEGACY_TEAM_ROUTE_MODE=disabled` is a planned hard-cutover mode and should be enabled only in a controlled release window.
+- Legacy team-slug routes are removed:
+  - `/teams/:slug/*`
+  - `/api/teams/:slug/*`
+- Runtime mode switching via environment variables is removed.
+- Canonical org/project routes are the only supported workspace route contract.
 
 ## Operational Commands
 

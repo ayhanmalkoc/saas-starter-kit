@@ -45,6 +45,11 @@ const Teams = () => {
         suffix: 'members',
       }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'members' });
 
+    if (!membersUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(membersUrl, {
       method: 'PUT',
       headers: defaultHeaders,
@@ -94,10 +99,12 @@ const Teams = () => {
                         wrap: true,
                         element: (
                           <Link
-                            href={buildTeamWorkspaceAppPath({
-                              team,
-                              suffix: 'members',
-                            })}
+                            href={
+                              buildTeamWorkspaceAppPath({
+                                team,
+                                suffix: 'members',
+                              }) ?? '/teams'
+                            }
                           >
                             <div className="flex items-center justify-start space-x-2">
                               <LetterAvatar name={team.name} />

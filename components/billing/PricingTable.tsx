@@ -133,7 +133,9 @@ const PricingTable = ({
         buildWorkspaceApiPath({
           context: routeContext,
           teamSlug: team.slug,
-        }) ?? buildTeamWorkspaceApiPath({ team }),
+        }) ??
+        buildTeamWorkspaceApiPath({ team }) ??
+        undefined,
     });
 
     if (data?.data?.url) {

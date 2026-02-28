@@ -59,6 +59,11 @@ const EditWebhook = ({
         suffix: `webhooks/${endpoint.id}`,
       });
 
+    if (!webhookUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(webhookUrl, {
       method: 'PUT',
       headers: defaultHeaders,

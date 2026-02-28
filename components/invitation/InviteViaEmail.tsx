@@ -51,6 +51,11 @@ const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
     },
     validationSchema: FormValidationSchema,
     onSubmit: async (values) => {
+      if (!invitationsUrl) {
+        toast.error('Workspace API route could not be resolved.');
+        return;
+      }
+
       const response = await fetch(invitationsUrl, {
         method: 'POST',
         headers: defaultHeaders,

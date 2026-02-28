@@ -6,10 +6,10 @@ import { useTranslation } from 'next-i18next';
 import type { ApiResponse } from 'types';
 import { defaultHeaders } from '@/lib/common';
 import { buildTeamWorkspaceApiPath } from '@/lib/routing/workspace-routes';
-import { Invitation, Team } from '@prisma/client';
+import type { InvitationWithTeamContext } from '@/hooks/useInvitation';
 
 interface AcceptInvitationProps {
-  invitation: Invitation & { team: Team };
+  invitation: InvitationWithTeamContext;
 }
 
 const AcceptInvitation = ({ invitation }: AcceptInvitationProps) => {
@@ -21,6 +21,12 @@ const AcceptInvitation = ({ invitation }: AcceptInvitationProps) => {
       team: invitation.team,
       suffix: 'invitations',
     });
+
+    if (!invitationsUrl) {
+      toast.error('Workspace API route could not be resolved.');
+      return;
+    }
+
     const response = await fetch(invitationsUrl, {
       method: 'PUT',
       headers: defaultHeaders,

@@ -36,7 +36,9 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
       context: routeContext,
       teamSlug: team.slug,
       suffix,
-    }) ?? buildTeamWorkspaceAppPath({ team, suffix });
+    }) ??
+    buildTeamWorkspaceAppPath({ team, suffix }) ??
+    '/teams';
 
   const navigations = [
     {
@@ -141,7 +143,7 @@ const TeamTab = ({ activeTab, team, heading, teamFeatures }: TeamTabProps) => {
           return (
             <Link
               href={menu.href}
-              key={menu.href}
+              key={`${menu.name}-${menu.href}`}
               className={classNames(
                 'inline-flex items-center border-b-2 py-2 md-py-4 mr-5 text-sm font-medium',
                 menu.active

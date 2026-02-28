@@ -1,24 +1,32 @@
 import type {
   GetServerSideProps,
   GetServerSidePropsContext,
+  GetServerSidePropsResult,
   InferGetServerSidePropsType,
   NextPage,
 } from 'next';
+import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 
 import {
   normalizeOrgProjectRouteParams,
   resolveLegacyTeamContextFromOrgProject,
 } from '@/lib/routing/org-project-compat';
+import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import env from '@/lib/env';
+import { getViewerToken } from '@/lib/retraced';
+import { getSession } from '@/lib/session';
+import { getTeamMember } from 'models/team';
+import { throwIfNotAllowed } from 'models/user';
 
-import TeamApiKeysPage from '../../../../teams/[slug]/api-keys';
-import TeamAuditLogsPage from '../../../../teams/[slug]/audit-logs';
-import TeamBillingPage from '../../../../teams/[slug]/billing';
-import TeamDirectorySyncPage from '../../../../teams/[slug]/directory-sync';
-import TeamMembersPage from '../../../../teams/[slug]/members';
-import TeamProductsPage from '../../../../teams/[slug]/products';
-import TeamSettingsPage from '../../../../teams/[slug]/settings';
-import TeamSSOPage from '../../../../teams/[slug]/sso';
-import TeamWebhooksPage from '../../../../teams/[slug]/webhooks';
+import TeamApiKeysPage from '@/modules/workspace/pages/api-keys';
+import TeamAuditLogsPage from '@/modules/workspace/pages/audit-logs';
+import TeamBillingPage from '@/modules/workspace/pages/billing';
+import TeamDirectorySyncPage from '@/modules/workspace/pages/directory-sync';
+import TeamMembersPage from '@/modules/workspace/pages/members';
+import TeamProductsPage from '@/modules/workspace/pages/products';
+import TeamSettingsPage from '@/modules/workspace/pages/settings';
+import TeamSSOPage from '@/modules/workspace/pages/sso';
+import TeamWebhooksPage from '@/modules/workspace/pages/webhooks';
 
 type TeamPageKey =
   | 'settings'
@@ -68,44 +76,127 @@ const TEAM_PAGE_CONFIG_BY_KEY: Record<TeamPageKey, TeamPageConfig> = {
 const runTeamPageServerSideProps = async (
   pageKey: TeamPageKey,
   context: GetServerSidePropsContext
-) => {
+) : Promise<GetServerSidePropsResult<Record<string, unknown>>> => {
+  const { locale, req, res, query } = context;
+  const translations = locale
+    ? await serverSideTranslations(locale, ['common'])
+    : {};
+
   switch (pageKey) {
-    case 'settings': {
-      const pageModule = await import('../../../../teams/[slug]/settings');
-      return pageModule.getServerSideProps(context);
+    case 'api-keys':
+      if (!env.teamFeatures.apiKey) {
+        return { notFound: true };
+      }
+      return {
+        props: {
+          ...translations,
+          teamFeatures: env.teamFeatures,
+        },
+      };
+    case 'audit-logs':
+    {
+      if (!env.teamFeatures.auditLog) {
+        return { notFound: true };
+      }
+
+      const session = await getSession(req, res);
+      const teamMember = await getTeamMember(
+        session?.user.id as string,
+        query.slug as string
+      );
+
+      try {
+        throwIfNotAllowed(teamMember, 'team_audit_log', 'read');
+        await requireTeamEntitlement(teamMember.team.id, {
+          feature: 'team_audit_log',
+        });
+
+        const auditLogToken = await getViewerToken(
+          teamMember.team.id,
+          session?.user.id as string
+        );
+
+        return {
+          props: {
+            ...translations,
+            error: null,
+            auditLogToken: auditLogToken ?? '',
+            retracedHost: env.retraced.url ?? '',
+            teamFeatures: env.teamFeatures,
+          },
+        };
+      } catch (error: unknown) {
+        const { message } = error as { message: string };
+        return {
+          props: {
+            ...translations,
+            error: {
+              message,
+            },
+            auditLogToken: null,
+            retracedHost: null,
+            teamFeatures: env.teamFeatures,
+          },
+        };
+      }
     }
-    case 'members': {
-      const pageModule = await import('../../../../teams/[slug]/members');
-      return pageModule.getServerSideProps(context);
-    }
-    case 'sso': {
-      const pageModule = await import('../../../../teams/[slug]/sso');
-      return pageModule.getServerSideProps(context);
-    }
-    case 'directory-sync': {
-      const pageModule = await import('../../../../teams/[slug]/directory-sync');
-      return pageModule.getServerSideProps(context);
-    }
-    case 'audit-logs': {
-      const pageModule = await import('../../../../teams/[slug]/audit-logs');
-      return pageModule.getServerSideProps(context);
-    }
-    case 'billing': {
-      const pageModule = await import('../../../../teams/[slug]/billing');
-      return pageModule.getServerSideProps(context);
-    }
-    case 'webhooks': {
-      const pageModule = await import('../../../../teams/[slug]/webhooks');
-      return pageModule.getServerSideProps(context);
-    }
-    case 'api-keys': {
-      const pageModule = await import('../../../../teams/[slug]/api-keys');
-      return pageModule.getServerSideProps(context);
-    }
-    case 'products': {
-      const pageModule = await import('../../../../teams/[slug]/products');
-      return pageModule.getServerSideProps(context);
-    }
+    case 'billing':
+      if (!env.teamFeatures.payments) {
+        return { notFound: true };
+      }
+      return {
+        props: {
+          ...translations,
+          teamFeatures: env.teamFeatures,
+        },
+      };
+    case 'directory-sync':
+      if (!env.teamFeatures.dsync) {
+        return { notFound: true };
+      }
+      return {
+        props: {
+          ...translations,
+          teamFeatures: env.teamFeatures,
+        },
+      };
+    case 'members':
+    case 'settings':
+      return {
+        props: {
+          ...translations,
+          teamFeatures: env.teamFeatures,
+        },
+      };
+    case 'products':
+      return {
+        props: {
+          ...translations,
+        },
+      };
+    case 'sso':
+      if (!env.teamFeatures.sso) {
+        return { notFound: true };
+      }
+      return {
+        props: {
+          ...translations,
+          teamFeatures: env.teamFeatures,
+          SPConfigURL: env.jackson.selfHosted
+            ? '/api/oauth/saml'
+            : `${env.jackson.url}/api/v1/connections/${query.slug}/saml`,
+        },
+      };
+    case 'webhooks':
+      if (!env.teamFeatures.webhook) {
+        return { notFound: true };
+      }
+      return {
+        props: {
+          ...translations,
+          teamFeatures: env.teamFeatures,
+        },
+      };
   }
 };
 
@@ -166,13 +257,21 @@ export const getServerSideProps: GetServerSideProps<{
     },
   } as GetServerSidePropsContext;
 
-  const result = await runTeamPageServerSideProps(pageKey, delegatedContext);
+  const result = (await runTeamPageServerSideProps(
+    pageKey,
+    delegatedContext
+  )) as any;
 
-  if ('redirect' in result) {
-    return result;
+  if (result?.redirect?.destination) {
+    return {
+      redirect: {
+        destination: result.redirect.destination,
+        permanent: false,
+      },
+    };
   }
 
-  if ('notFound' in result) {
+  if (result?.notFound) {
     return { notFound: true };
   }
 
@@ -186,7 +285,7 @@ export const getServerSideProps: GetServerSideProps<{
     };
   }
 
-  return result;
+  return { notFound: true };
 };
 
 const OrgProjectCompatPage = ({

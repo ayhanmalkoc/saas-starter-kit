@@ -208,15 +208,17 @@ To get started you only need to configure the database by following the steps ab
 
 > **Note:** When `FEATURE_TEAM_PAYMENTS` is set to `false` (default for local development), all plan/entitlement checks are bypassed, giving you full access to features like API Keys, SSO, Webhooks, and Directory Sync without requiring a Stripe subscription.
 
-### Legacy Team Route Mode
+### Legacy Team Routes
 
-Use `LEGACY_TEAM_ROUTE_MODE` to control `/teams/:slug/*` and `/api/teams/:slug/*` compatibility during migration:
+Hard cutover is active for team-slug routes:
 
-- `enabled`: keep legacy team-slug routes active
-- `redirect` (default): redirect legacy routes to canonical `/orgs/:orgSlug/projects/:projectSlug/*`
-- `disabled`: hard cutover (UI returns `404`, API returns `410` for legacy team-slug routes)
+- `/teams/:slug/*` is removed.
+- `/api/teams/:slug/*` is removed.
 
-Production guardrail: `LEGACY_TEAM_ROUTE_MODE=enabled` is blocked by default in production. Use `ALLOW_LEGACY_TEAM_ROUTE_ENABLED_IN_PRODUCTION=true` only as a temporary emergency rollback override.
+Use canonical org/project routes only:
+
+- UI: `/orgs/:orgSlug/projects/:projectSlug/*`
+- API: `/api/orgs/:orgSlug/projects/:projectSlug/*`
 
 ### Email (SMTP)
 
