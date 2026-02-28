@@ -21,6 +21,16 @@ export type TeamWithMemberCount = Prisma.TeamGetPayload<{
     _count: {
       select: { members: true };
     };
+    project: {
+      select: {
+        slug: true;
+        organization: {
+          select: {
+            slug: true;
+          };
+        };
+      };
+    };
   };
 }>;
 

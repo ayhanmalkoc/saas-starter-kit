@@ -1,5 +1,10 @@
 import { LetterAvatar } from '@/components/shared';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildTeamWorkspaceAppPath,
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import { Team } from '@prisma/client';
 import useTeams from 'hooks/useTeams';
 import { useTranslation } from 'next-i18next';
@@ -23,6 +28,7 @@ const Teams = () => {
   const [createTeamVisible, setCreateTeamVisible] = useState(false);
 
   const { newTeam } = router.query as { newTeam: string };
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   useEffect(() => {
     if (newTeam) {
@@ -31,7 +37,14 @@ const Teams = () => {
   }, [newTeam]);
 
   const leaveTeam = async (team: Team) => {
-    const response = await fetch(`/api/teams/${team.slug}/members`, {
+    const membersUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'members',
+      }) ?? `/api/teams/${team.slug}/members`;
+
+    const response = await fetch(membersUrl, {
       method: 'PUT',
       headers: defaultHeaders,
     });
@@ -79,7 +92,12 @@ const Teams = () => {
                       {
                         wrap: true,
                         element: (
-                          <Link href={`/teams/${team.slug}/members`}>
+                          <Link
+                            href={buildTeamWorkspaceAppPath({
+                              team,
+                              suffix: 'members',
+                            })}
+                          >
                             <div className="flex items-center justify-start space-x-2">
                               <LetterAvatar name={team.name} />
                               <span className="underline">{team.name}</span>

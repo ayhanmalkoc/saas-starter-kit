@@ -7,6 +7,11 @@ import { useTranslation } from 'next-i18next';
 import { Card } from '@/components/shared';
 import { Team } from '@prisma/client';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
+import { useRouter } from 'next/router';
 import type { ApiResponse } from 'types';
 
 interface LinkToPortalProps {
@@ -14,20 +19,26 @@ interface LinkToPortalProps {
 }
 
 const LinkToPortal = ({ team }: LinkToPortalProps) => {
+  const router = useRouter();
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation('common');
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const openStripePortal = async () => {
     setLoading(true);
 
-    const response = await fetch(
-      `/api/teams/${team.slug}/payments/create-portal-link`,
-      {
-        method: 'POST',
-        headers: defaultHeaders,
-        credentials: 'same-origin',
-      }
-    );
+    const portalUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'payments/create-portal-link',
+      }) ?? `/api/teams/${team.slug}/payments/create-portal-link`;
+
+    const response = await fetch(portalUrl, {
+      method: 'POST',
+      headers: defaultHeaders,
+      credentials: 'same-origin',
+    });
 
     const result = (await response.json()) as ApiResponse<{ url: string }>;
 

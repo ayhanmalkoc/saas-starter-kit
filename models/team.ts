@@ -120,6 +120,16 @@ export const getTeams = async (userId: string) => {
       _count: {
         select: { members: true },
       },
+      project: {
+        select: {
+          slug: true,
+          organization: {
+            select: {
+              slug: true,
+            },
+          },
+        },
+      },
     },
   });
 };

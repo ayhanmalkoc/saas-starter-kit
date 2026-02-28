@@ -8,6 +8,10 @@ import toast from 'react-hot-toast';
 
 import ConfirmationDialog from '../shared/ConfirmationDialog';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import type { ApiResponse } from 'types';
 
 interface RemoveTeamProps {
@@ -20,11 +24,18 @@ const RemoveTeam = ({ team, allowDelete }: RemoveTeamProps) => {
   const { t } = useTranslation('common');
   const [loading, setLoading] = useState(false);
   const [askConfirmation, setAskConfirmation] = useState(false);
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const removeTeam = async () => {
     setLoading(true);
 
-    const response = await fetch(`/api/teams/${team.slug}`, {
+    const removeTeamUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+      }) ?? `/api/teams/${team.slug}`;
+
+    const response = await fetch(removeTeamUrl, {
       method: 'DELETE',
       headers: defaultHeaders,
     });

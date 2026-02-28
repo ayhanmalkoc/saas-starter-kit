@@ -8,21 +8,34 @@ import { useSWRConfig } from 'swr';
 import type { ApiResponse } from 'types';
 import Modal from '../shared/Modal';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import { useFormik } from 'formik';
 import { z } from 'zod';
 import { createApiKeySchema } from '@/lib/zod';
+import { useRouter } from 'next/router';
 
 const NewAPIKey = ({
   team,
   createModalVisible,
   setCreateModalVisible,
 }: NewAPIKeyProps) => {
+  const router = useRouter();
   const { mutate } = useSWRConfig();
   const [apiKey, setApiKey] = useState('');
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const apiKeysUrl =
+    buildWorkspaceApiPath({
+      context: routeContext,
+      teamSlug: team.slug,
+      suffix: 'api-keys',
+    }) ?? `/api/teams/${team.slug}/api-keys`;
 
   const onNewAPIKey = (apiKey: string) => {
     setApiKey(apiKey);
-    mutate(`/api/teams/${team.slug}/api-keys`);
+    mutate(apiKeysUrl);
   };
 
   const toggleVisible = () => {
@@ -34,7 +47,7 @@ const NewAPIKey = ({
     <Modal open={createModalVisible} close={toggleVisible}>
       {apiKey === '' ? (
         <CreateAPIKeyForm
-          team={team}
+          apiKeysUrl={apiKeysUrl}
           onNewAPIKey={onNewAPIKey}
           closeModal={toggleVisible}
         />
@@ -46,7 +59,7 @@ const NewAPIKey = ({
 };
 
 const CreateAPIKeyForm = ({
-  team,
+  apiKeysUrl,
   onNewAPIKey,
   closeModal,
 }: CreateAPIKeyFormProps) => {
@@ -65,7 +78,7 @@ const CreateAPIKeyForm = ({
       }
     },
     onSubmit: async (values) => {
-      const response = await fetch(`/api/teams/${team.slug}/api-keys`, {
+      const response = await fetch(apiKeysUrl, {
         method: 'POST',
         body: JSON.stringify(values),
         headers: defaultHeaders,
@@ -151,7 +164,7 @@ interface NewAPIKeyProps {
 }
 
 interface CreateAPIKeyFormProps {
-  team: Team;
+  apiKeysUrl: string;
   onNewAPIKey: (apiKey: string) => void;
   closeModal: () => void;
 }

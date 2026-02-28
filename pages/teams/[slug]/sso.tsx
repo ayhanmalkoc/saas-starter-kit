@@ -4,13 +4,19 @@ import { ConnectionsWrapper } from '@boxyhq/react-ui/sso';
 import useTeam from 'hooks/useTeam';
 import { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import env from '@/lib/env';
 import { BOXYHQ_UI_CSS } from '@/components/styles';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 
 const TeamSSO = ({ teamFeatures, SPConfigURL }) => {
   const { t } = useTranslation('common');
+  const router = useRouter();
 
   const { isLoading, isError, team } = useTeam();
 
@@ -26,16 +32,24 @@ const TeamSSO = ({ teamFeatures, SPConfigURL }) => {
     return <Error message={t('team-not-found')} />;
   }
 
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const ssoUrl =
+    buildWorkspaceApiPath({
+      context: routeContext,
+      teamSlug: team.slug,
+      suffix: 'sso',
+    }) ?? `/api/teams/${team.slug}/sso`;
+
   return (
     <>
       <TeamTab activeTab="sso" team={team} teamFeatures={teamFeatures} />
       <ConnectionsWrapper
         urls={{
           spMetadata: SPConfigURL,
-          get: `/api/teams/${team.slug}/sso`,
-          post: `/api/teams/${team.slug}/sso`,
-          patch: `/api/teams/${team.slug}/sso`,
-          delete: `/api/teams/${team.slug}/sso`,
+          get: ssoUrl,
+          post: ssoUrl,
+          patch: ssoUrl,
+          delete: ssoUrl,
         }}
         successCallback={({
           operation,

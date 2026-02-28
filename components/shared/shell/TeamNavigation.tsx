@@ -2,28 +2,56 @@ import { Cog6ToothIcon, CodeBracketIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'next-i18next';
 import NavigationItems from './NavigationItems';
 import { NavigationProps, MenuItem } from './NavigationItems';
+import {
+  buildWorkspaceAppPath,
+  WorkspaceRouteContext,
+} from '@/lib/routing/workspace-routes';
 
 interface NavigationItemsProps extends NavigationProps {
-  slug: string;
+  teamSlug: string | null;
+  routeContext: WorkspaceRouteContext;
 }
 
-const TeamNavigation = ({ slug, activePathname }: NavigationItemsProps) => {
+const TeamNavigation = ({
+  teamSlug,
+  routeContext,
+  activePathname,
+}: NavigationItemsProps) => {
   const { t } = useTranslation('common');
+  const workspacePrefix = buildWorkspaceAppPath({
+    context: routeContext,
+    teamSlug,
+  });
+  const productsHref =
+    buildWorkspaceAppPath({
+      context: routeContext,
+      teamSlug,
+      suffix: 'products',
+    }) ?? '/teams';
+  const settingsHref =
+    buildWorkspaceAppPath({
+      context: routeContext,
+      teamSlug,
+      suffix: 'settings',
+    }) ?? '/teams';
 
   const menus: MenuItem[] = [
     {
       name: t('all-products'),
-      href: `/teams/${slug}/products`,
+      href: productsHref,
       icon: CodeBracketIcon,
-      active: activePathname === `/teams/${slug}/products`,
+      active: activePathname === productsHref,
     },
     {
       name: t('settings'),
-      href: `/teams/${slug}/settings`,
+      href: settingsHref,
       icon: Cog6ToothIcon,
       active:
-        activePathname?.startsWith(`/teams/${slug}`) &&
-        !activePathname.includes('products'),
+        Boolean(
+          workspacePrefix &&
+            activePathname?.startsWith(workspacePrefix) &&
+            !activePathname.includes('/products')
+        ),
     },
   ];
 

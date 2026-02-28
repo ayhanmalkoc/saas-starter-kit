@@ -2,12 +2,18 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/router';
 import TeamNavigation from './TeamNavigation';
 import UserNavigation from './UserNavigation';
+import {
+  getWorkspaceRouteContextFromQuery,
+  hasOrgProjectRouteContext,
+} from '@/lib/routing/workspace-routes';
 
 const Navigation = () => {
   const { asPath, isReady, query } = useRouter();
   const [activePathname, setActivePathname] = useState<null | string>(null);
 
-  const { slug } = query as { slug: string };
+  const routeContext = getWorkspaceRouteContextFromQuery(query);
+  const hasWorkspaceContext =
+    Boolean(routeContext.teamSlug) || hasOrgProjectRouteContext(routeContext);
 
   useEffect(() => {
     if (isReady && asPath) {
@@ -17,8 +23,14 @@ const Navigation = () => {
   }, [asPath, isReady]);
 
   const Navigation = () => {
-    if (slug) {
-      return <TeamNavigation activePathname={activePathname} slug={slug} />;
+    if (hasWorkspaceContext) {
+      return (
+        <TeamNavigation
+          activePathname={activePathname}
+          teamSlug={routeContext.teamSlug}
+          routeContext={routeContext}
+        />
+      );
     } else {
       return <UserNavigation activePathname={activePathname} />;
     }

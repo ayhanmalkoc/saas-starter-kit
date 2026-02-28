@@ -10,11 +10,17 @@ import type { EndpointOut } from 'svix';
 
 import { CreateWebhook, EditWebhook } from '@/components/webhook';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import type { ApiResponse } from 'types';
 import ConfirmationDialog from '../shared/ConfirmationDialog';
 import { Table } from '@/components/shared/table/Table';
+import { useRouter } from 'next/router';
 
 const Webhooks = ({ team }: { team: Team }) => {
+  const router = useRouter();
   const { t } = useTranslation('common');
   const [createWebhookVisible, setCreateWebhookVisible] = useState(false);
   const [updateWebhookVisible, setUpdateWebhookVisible] = useState(false);
@@ -30,6 +36,7 @@ const Webhooks = ({ team }: { team: Team }) => {
   const { isLoading, isError, webhooks, mutateWebhooks } = useWebhooks(
     team.slug
   );
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const deleteWebhook = async (webhook: EndpointOut | null) => {
     if (!webhook) {
@@ -37,14 +44,17 @@ const Webhooks = ({ team }: { team: Team }) => {
     }
 
     const sp = new URLSearchParams({ webhookId: webhook.id });
+    const webhooksUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'webhooks',
+      }) ?? `/api/teams/${team.slug}/webhooks`;
 
-    const response = await fetch(
-      `/api/teams/${team.slug}/webhooks?${sp.toString()}`,
-      {
-        method: 'DELETE',
-        headers: defaultHeaders,
-      }
-    );
+    const response = await fetch(`${webhooksUrl}?${sp.toString()}`, {
+      method: 'DELETE',
+      headers: defaultHeaders,
+    });
 
     const json = (await response.json()) as ApiResponse;
 

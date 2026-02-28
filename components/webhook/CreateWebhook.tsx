@@ -9,6 +9,11 @@ import type { WebhookFormSchema } from 'types';
 
 import ModalForm from './Form';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
+import { useRouter } from 'next/router';
 
 const CreateWebhook = ({
   visible,
@@ -19,14 +24,23 @@ const CreateWebhook = ({
   setVisible: (visible: boolean) => void;
   team: Team;
 }) => {
+  const router = useRouter();
   const { mutateWebhooks } = useWebhooks(team.slug);
   const { t } = useTranslation('common');
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const onSubmit = async (
     values: WebhookFormSchema,
     formikHelpers: FormikHelpers<WebhookFormSchema>
   ) => {
-    const response = await fetch(`/api/teams/${team.slug}/webhooks`, {
+    const webhooksUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'webhooks',
+      }) ?? `/api/teams/${team.slug}/webhooks`;
+
+    const response = await fetch(webhooksUrl, {
       method: 'POST',
       headers: defaultHeaders,
       body: JSON.stringify(values),

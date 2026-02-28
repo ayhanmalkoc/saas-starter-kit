@@ -1,18 +1,31 @@
 import fetcher from '@/lib/fetcher';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
+import { useRouter } from 'next/router';
 import type { EndpointOut } from 'svix';
 import useSWR, { mutate } from 'swr';
 import type { ApiResponse } from 'types';
 
 const useWebhook = (slug: string, endpointId: string | null) => {
-  const url = `/api/teams/${slug}/webhooks/${endpointId}`;
+  const router = useRouter();
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const url = buildWorkspaceApiPath({
+    context: routeContext,
+    teamSlug: slug,
+    suffix: endpointId ? `webhooks/${endpointId}` : undefined,
+  });
 
   const { data, error, isLoading } = useSWR<ApiResponse<EndpointOut>>(
-    slug ? url : null,
+    slug && url ? url : null,
     fetcher
   );
 
   const mutateWebhook = async () => {
-    mutate(url);
+    if (url) {
+      mutate(url);
+    }
   };
 
   return {

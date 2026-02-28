@@ -3,13 +3,19 @@ import { TeamTab } from '@/components/team';
 import useTeam from 'hooks/useTeam';
 import { GetServerSidePropsContext } from 'next';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { toast } from 'react-hot-toast';
 import env from '@/lib/env';
 import { DirectoriesWrapper } from '@boxyhq/react-ui/dsync';
 import { BOXYHQ_UI_CSS } from '@/components/styles';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 
 const DirectorySync = ({ teamFeatures }) => {
+  const router = useRouter();
   const { isLoading, isError, team } = useTeam();
   const { t } = useTranslation('common');
 
@@ -24,6 +30,14 @@ const DirectorySync = ({ teamFeatures }) => {
   if (!team) {
     return <Error message={t('team-not-found')} />;
   }
+
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
+  const directorySyncUrl =
+    buildWorkspaceApiPath({
+      context: routeContext,
+      teamSlug: team.slug,
+      suffix: 'dsync',
+    }) ?? `/api/teams/${team.slug}/dsync`;
 
   return (
     <>
@@ -58,10 +72,10 @@ const DirectorySync = ({ teamFeatures }) => {
           },
         }}
         urls={{
-          get: `/api/teams/${team.slug}/dsync`,
-          post: `/api/teams/${team.slug}/dsync`,
-          patch: `/api/teams/${team.slug}/dsync`,
-          delete: `/api/teams/${team.slug}/dsync`,
+          get: directorySyncUrl,
+          post: directorySyncUrl,
+          patch: directorySyncUrl,
+          delete: directorySyncUrl,
         }}
         successCallback={({ operation }) => {
           if (operation === 'CREATE') {

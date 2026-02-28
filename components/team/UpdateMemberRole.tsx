@@ -1,6 +1,11 @@
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import { availableRoles } from '@/lib/permissions';
 import { Team, TeamMember } from '@prisma/client';
+import { useRouter } from 'next/router';
 import { useTranslation } from 'next-i18next';
 import toast from 'react-hot-toast';
 import type { ApiResponse } from 'types';
@@ -11,10 +16,19 @@ interface UpdateMemberRoleProps {
 }
 
 const UpdateMemberRole = ({ team, member }: UpdateMemberRoleProps) => {
+  const router = useRouter();
   const { t } = useTranslation('common');
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const updateRole = async (member: TeamMember, role: string) => {
-    const response = await fetch(`/api/teams/${team.slug}/members`, {
+    const membersUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'members',
+      }) ?? `/api/teams/${team.slug}/members`;
+
+    const response = await fetch(membersUrl, {
       method: 'PATCH',
       headers: defaultHeaders,
       body: JSON.stringify({

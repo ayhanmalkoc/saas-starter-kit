@@ -53,6 +53,13 @@ Current implementation status:
   - `pages/api/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].ts`
 - Added shared resolver:
   - `lib/routing/org-project-compat.ts`
+- Added workspace route URL builders:
+  - `lib/routing/workspace-routes.ts`
+- Updated hooks and team-facing UI to build workspace-aware app/API URLs:
+  - Team tabs/navigation/dropdown
+  - Team members/invitations/webhooks/API keys/billing portal calls
+  - Team SSO and Directory Sync settings pages
+- Teams listing now includes project/organization slug context for canonical links.
 
 ## PR-3: Billing Scope Cutover
 

@@ -1,8 +1,13 @@
 import { Error, LetterAvatar, Loading } from '@/components/shared';
 import { defaultHeaders } from '@/lib/common';
+import {
+  buildWorkspaceApiPath,
+  getWorkspaceRouteContextFromQuery,
+} from '@/lib/routing/workspace-routes';
 import { Team } from '@prisma/client';
 import useInvitations from 'hooks/useInvitations';
 import { useTranslation } from 'next-i18next';
+import { useRouter } from 'next/router';
 import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import type { ApiResponse } from 'types';
@@ -11,6 +16,7 @@ import { TeamInvitation } from 'models/invitation';
 import { Table } from '@/components/shared/table/Table';
 
 const PendingInvitations = ({ team }: { team: Team }) => {
+  const router = useRouter();
   const [selectedInvitation, setSelectedInvitation] =
     useState<TeamInvitation | null>(null);
 
@@ -21,6 +27,7 @@ const PendingInvitations = ({ team }: { team: Team }) => {
     slug: team.slug,
     sentViaEmail: true,
   });
+  const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const { t } = useTranslation('common');
 
@@ -38,14 +45,17 @@ const PendingInvitations = ({ team }: { team: Team }) => {
     }
 
     const sp = new URLSearchParams({ id: invitation.id });
+    const invitationsUrl =
+      buildWorkspaceApiPath({
+        context: routeContext,
+        teamSlug: team.slug,
+        suffix: 'invitations',
+      }) ?? `/api/teams/${team.slug}/invitations`;
 
-    const response = await fetch(
-      `/api/teams/${team.slug}/invitations?${sp.toString()}`,
-      {
-        method: 'DELETE',
-        headers: defaultHeaders,
-      }
-    );
+    const response = await fetch(`${invitationsUrl}?${sp.toString()}`, {
+      method: 'DELETE',
+      headers: defaultHeaders,
+    });
 
     const json = (await response.json()) as ApiResponse<unknown>;
 
