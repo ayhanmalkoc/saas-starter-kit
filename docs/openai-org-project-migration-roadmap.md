@@ -60,6 +60,10 @@ Current implementation status:
   - Team members/invitations/webhooks/API keys/billing portal calls
   - Team SSO and Directory Sync settings pages
 - Teams listing now includes project/organization slug context for canonical links.
+- Replaced org/project UI compatibility redirect with native page dispatch:
+  - `pages/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].tsx` now delegates to team page modules
+  - Existing team page `getServerSideProps` are reused with injected legacy `slug` during transition
+  - `/orgs/:orgSlug/projects/:projectSlug` now resolves to team settings page by default
 
 ## PR-3: Billing Scope Cutover
 
