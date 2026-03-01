@@ -336,3 +336,211 @@ Local billing reset/sync with new scope bootstrap:
 ```bash
 npm run setup:stripe
 ```
+
+## ORG-NATIVE V2 Hard Cutover Plan (Team-Free Internal Model)
+
+Goal:
+
+- Complete the migration to a fully org/project-native architecture.
+- Remove all remaining Team-based internal coupling and compatibility debt.
+- Keep only canonical org/project contracts in schema, services, routes, UI, tests, scripts, and docs.
+
+Scope policy:
+
+- This is a major breaking-change track.
+- No Team alias compatibility layer will remain after completion.
+- No runtime fallback mode will be kept.
+
+### Target End State
+
+- Route contract:
+  - App: `/orgs/:orgSlug/*`, `/orgs/:orgSlug/projects/:projectSlug/*`
+  - API: `/api/orgs/:orgSlug/*`, `/api/orgs/:orgSlug/projects/:projectSlug/*`
+- Domain model:
+  - Organization is authority for billing/governance.
+  - Project is authority for runtime/API scope.
+  - Team and TeamMember entities are removed from runtime model.
+- Billing model:
+  - Subscription and Invoice are organization-authoritative only.
+  - Stripe customer authority is organization-only.
+
+### PR-ORG-1: Schema V2 (Remove Team Core)
+
+Scope:
+
+- Remove `Team` and `TeamMember` models from Prisma schema.
+- Replace Team-linked foreign keys:
+  - `ApiKey.teamId` -> `projectId`
+  - `Invitation.teamId` -> `projectId` (and add org scope field if needed)
+  - `Subscription.teamId` removed; `organizationId` required
+  - `Invoice.teamId` removed; `organizationId` required
+- Remove `Project.legacyTeamId`.
+- Add/update required unique and composite indexes for org/project constraints.
+
+Data migration tasks:
+
+- Map existing Team rows to Organization + default Project.
+- Map TeamMember rows to OrganizationMember + ProjectMember.
+- Rewire ApiKey/Invitation/Subscription/Invoice references.
+- Execute destructive cleanup for Team-based columns/tables only after successful backfill validation.
+
+Acceptance criteria:
+
+- `prisma/schema.prisma` contains no `Team` or `TeamMember` model.
+- DB has no foreign key dependency to Team tables.
+- Migration script is idempotent where applicable and has rollback notes.
+
+### PR-ORG-2: Domain and Service Layer Rewrite
+
+Scope:
+
+- Delete Team-centric model services:
+  - `models/team.ts`
+  - `models/teamMember.ts`
+- Replace access guards:
+  - `throwIfNoTeamAccess` -> `throwIfNoOrganizationAccess` / `throwIfNoProjectAccess`
+- Refactor model/service methods to org/project identifiers only:
+  - invitations
+  - members
+  - api keys
+  - subscriptions
+  - invoices
+  - permissions
+
+Acceptance criteria:
+
+- Runtime code path has no dependency on Team slug/id for authorization.
+- No production service import from removed Team model files.
+
+### PR-ORG-3: Billing Core Org-Only Cutover
+
+Scope:
+
+- Remove Team-derived billing scope logic:
+  - retire/replace `lib/billing/scope.ts` Team resolver
+- Entitlements become organization-authoritative:
+  - `getOrganizationEntitlements`
+  - `requireOrganizationEntitlement`
+- Stripe provider and webhook mapping:
+  - customer authority by organization only
+  - subscription/invoice mapping by org/project metadata + org customer
+- Checkout/portal/update flows use org/project context directly (no team fallback).
+
+Acceptance criteria:
+
+- Billing code has zero runtime dependency on Team ids/slugs.
+- Duplicate-subscription guardrails continue to pass in org scope.
+
+### PR-ORG-4: Native API Surface (No Team Adapters)
+
+Scope:
+
+- Remove compatibility adapter behavior in canonical org/project API route.
+- Implement direct native handlers for:
+  - Organization: general, people, billing, limits, usage, security, data-control
+  - Project: api-keys, webhooks, people, limits, evaluations
+- Remove legacy route entrypoints still present:
+  - `pages/api/teams/index.ts`
+
+Acceptance criteria:
+
+- `/api/teams/*` no longer exists in build output.
+- Org/project API handlers do not mutate query with team slug compatibility.
+
+### PR-ORG-5: Native UI Surface and Navigation
+
+Scope:
+
+- Replace org/project compatibility page dispatch with native pages.
+- Remove remaining Team shell pages:
+  - `pages/teams/index.tsx`
+  - `pages/teams/switch.tsx`
+- Update dashboard redirection to org/project-only targets.
+- Split UI modules by domain:
+  - `organization/*`
+  - `project/*`
+  - remove `components/team/*` usage from runtime flows
+
+Acceptance criteria:
+
+- UI has no hardcoded `/teams/*` route generation.
+- Navigation, SSR, and client mutations are org/project-native.
+
+### PR-ORG-6: Hooks, Routing, and Module Canonicalization
+
+Scope:
+
+- Replace/remove Team-oriented hooks:
+  - `useTeam*` family -> `useOrganization*` / `useProject*`
+- Remove compatibility routing helpers:
+  - `lib/routing/org-project-compat.ts`
+- Simplify `lib/routing/workspace-routes.ts` to canonical-only builders.
+- Rename/refactor modules where needed to remove Team semantic leakage.
+
+Acceptance criteria:
+
+- Runtime hook and routing layers do not expose Team context abstractions.
+- No fallback URL builder emits `/teams` or `/api/teams`.
+
+### PR-ORG-7: Integration Layer Alignment
+
+Scope:
+
+- Align SSO/DSync tenancy contract to org/project model.
+- Align audit/webhook/API-key ownership to project and governance to organization.
+- Update NextAuth onboarding:
+  - new account bootstraps Organization and default Project (without Team entity).
+
+Acceptance criteria:
+
+- External integration metadata no longer depends on Team identifiers.
+- Join/invitation/auth flows complete without Team references.
+
+### PR-ORG-8: Test, Script, and Documentation Hardening
+
+Scope:
+
+- Rewrite tests to canonical org/project flows only:
+  - unit/integration/e2e
+- Remove/update Team-compat scripts and command references.
+- Update all docs to org/project-first hard cutover narrative:
+  - setup guides
+  - production readiness
+  - release checklist
+  - migration notes
+- Publish major-version release notes for breaking changes.
+
+Acceptance criteria:
+
+- `rg` search for Team route/guard patterns in runtime code returns zero critical matches.
+- CI gate fully green:
+  - `npm run check-format`
+  - `npm run check-lint`
+  - `npm run check-types`
+  - `npm run test`
+  - `npm run test:e2e`
+  - `npm run build-ci`
+
+### Validation and Release Gate
+
+Mandatory technical gate:
+
+- Code search checks:
+  - no `/teams/` or `/api/teams/` runtime route output
+  - no Team-centric guard/service usage in runtime paths
+- Data integrity checks:
+  - foreign key consistency
+  - orphan check on migrated entities
+  - billing scope consistency on subscriptions/invoices
+- End-to-end smoke:
+  - auth/login
+  - org + project navigation
+  - project API key/webhook flows
+  - org billing checkout + webhook reconciliation
+  - invitation/join and member management in org/project context
+
+### Implementation Sequencing Rule
+
+- Execute PR-ORG-1 through PR-ORG-8 in order.
+- Do not begin destructive schema removal before migration backfill validation is completed.
+- Do not begin implementation from this section without explicit user approval in this conversation.
