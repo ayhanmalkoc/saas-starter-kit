@@ -10,7 +10,7 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-  if (!env.teamFeatures.dsync) {
+  if (!env.workspaceFeatures.dsync) {
     return res.status(404).json({ error: { message: 'Not Found' } });
   }
 

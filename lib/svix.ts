@@ -5,7 +5,7 @@ import type { AppEvent } from 'types';
 
 const svixApiKey = env.svix.apiKey;
 const svix =
-  svixApiKey && env.teamFeatures.webhook
+  svixApiKey && env.workspaceFeatures.webhook
     ? new Svix(String(svixApiKey), {
         serverUrl: env.svix.url || undefined,
       })

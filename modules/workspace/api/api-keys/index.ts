@@ -1,32 +1,33 @@
 import { createApiKey, fetchApiKeys } from 'models/apiKey';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { createApiKeySchema, validateWithSchema } from '@/lib/zod';
-import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import { requireOrganizationEntitlement } from '@/lib/billing/entitlements';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   try {
-    if (!env.teamFeatures.apiKey) {
+    if (!env.workspaceFeatures.apiKey) {
       throw new ApiError(404, 'Not Found');
     }
 
-    const teamMember = await throwIfNoTeamAccess(req, res);
-    await requireTeamEntitlement(teamMember.team.id, { feature: 'api_keys' });
+    const projectMember = await throwIfNoProjectAccess(req, res);
+    await requireOrganizationEntitlement(projectMember.organizationId, {
+      feature: 'api_keys',
+    });
 
     switch (req.method) {
       case 'GET':
-        await handleGET(req, res, teamMember);
+        await handleGET(req, res, projectMember);
         break;
       case 'POST':
-        await handlePOST(req, res, teamMember);
+        await handlePOST(req, res, projectMember);
         break;
       default:
         res.setHeader('Allow', 'GET, POST');
@@ -46,11 +47,11 @@ export default async function handler(
 const handleGET = async (
   req: NextApiRequest,
   res: NextApiResponse,
-  teamMember: Awaited<ReturnType<typeof throwIfNoTeamAccess>>
+  projectMember: Awaited<ReturnType<typeof throwIfNoProjectAccess>>
 ) => {
-  throwIfNotAllowed(teamMember, 'team_api_key', 'read');
+  throwIfNotAllowed(projectMember, 'project_api_key', 'read');
 
-  const apiKeys = await fetchApiKeys(teamMember.team.id);
+  const apiKeys = await fetchApiKeys(projectMember.project.id);
 
   recordMetric('apikey.fetched');
 
@@ -61,19 +62,18 @@ const handleGET = async (
 const handlePOST = async (
   req: NextApiRequest,
   res: NextApiResponse,
-  teamMember: Awaited<ReturnType<typeof throwIfNoTeamAccess>>
+  projectMember: Awaited<ReturnType<typeof throwIfNoProjectAccess>>
 ) => {
-  throwIfNotAllowed(teamMember, 'team_api_key', 'create');
+  throwIfNotAllowed(projectMember, 'project_api_key', 'create');
 
   const { name } = validateWithSchema(createApiKeySchema, req.body);
 
   const apiKey = await createApiKey({
     name,
-    teamId: teamMember.team.id,
+    projectId: projectMember.project.id,
   });
 
   recordMetric('apikey.created');
 
   res.status(201).json({ data: { apiKey } });
 };
-

@@ -8,7 +8,11 @@ test.describe('Magic link login', () => {
       await route.fulfill({
         status: 200,
         contentType: 'application/json',
-        body: JSON.stringify({ ok: true, status: 200, url: null }),
+        body: JSON.stringify({
+          ok: true,
+          status: 200,
+          url: `${process.env.APP_URL}/auth/verify-request`,
+        }),
       });
     });
 
@@ -35,10 +39,19 @@ test.describe('Magic link login', () => {
   test('fail path: should validate email format before submitting', async ({
     page,
   }) => {
-    await page.goto('/auth/magic-link');
-    await page.getByPlaceholder('jackson@boxyhq.com').fill('invalid-email');
-    await page.getByRole('button', { name: 'Send Magic Link' }).click();
+    let signInRequestCount = 0;
+    page.on('request', (request) => {
+      if (request.url().includes('/api/auth/signin/email')) {
+        signInRequestCount += 1;
+      }
+    });
 
-    await expect(page.getByText('email must be a valid email')).toBeVisible();
+    await page.goto('/auth/magic-link');
+    const emailInput = page.getByPlaceholder('jackson@boxyhq.com');
+    await emailInput.fill('invalid-email');
+    await page.getByRole('button', { name: 'Send Magic Link' }).click();
+    await page.waitForTimeout(500);
+
+    expect(signInRequestCount).toBe(0);
   });
 });

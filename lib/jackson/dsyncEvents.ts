@@ -1,13 +1,18 @@
 import { DirectorySyncEvent } from '@boxyhq/saml-jackson';
 import { Role } from '@prisma/client';
-import { addTeamMember, removeTeamMember } from 'models/team';
+import {
+  addProjectMember,
+  countProjectMembers,
+  removeProjectMember,
+} from 'models/projectMember';
+import { addOrganizationMember } from 'models/organizationMember';
 import { deleteUser, getUser, updateUser, upsertUser } from 'models/user';
-import { countTeamMembers } from 'models/teamMember';
+import { getProjectById } from 'models/project';
 
-const removeMembershipIfExists = async (teamId: string, userId: string) => {
-  const membershipCount = await countTeamMembers({
+const removeMembershipIfExists = async (projectId: string, userId: string) => {
+  const membershipCount = await countProjectMembers({
     where: {
-      teamId,
+      projectId,
       userId,
     },
   });
@@ -16,14 +21,30 @@ const removeMembershipIfExists = async (teamId: string, userId: string) => {
     return false;
   }
 
-  await removeTeamMember(teamId, userId);
+  await removeProjectMember(projectId, userId);
 
   return true;
 };
 
+const addMemberships = async (
+  projectId: string,
+  userId: string,
+  role: Role
+) => {
+  const project = await getProjectById(projectId);
+  if (!project) {
+    throw new Error(
+      `Project not found for directory event tenant ${projectId}`
+    );
+  }
+
+  await addOrganizationMember(project.organizationId, userId, role);
+  await addProjectMember(projectId, userId, role);
+};
+
 // Handle SCIM events
 export const handleEvents = async (event: DirectorySyncEvent) => {
-  const { event: action, tenant: teamId, data } = event;
+  const { event: action, tenant: projectId, data } = event;
 
   if (
     action === 'group.created' ||
@@ -54,7 +75,7 @@ export const handleEvents = async (event: DirectorySyncEvent) => {
       },
     });
 
-    await addTeamMember(teamId, user.id, Role.MEMBER);
+    await addMemberships(projectId, user.id, Role.MEMBER);
 
     return;
   }
@@ -70,19 +91,22 @@ export const handleEvents = async (event: DirectorySyncEvent) => {
       return;
     }
 
-    const removedMembership = await removeMembershipIfExists(teamId, user.id);
+    const removedMembership = await removeMembershipIfExists(
+      projectId,
+      user.id
+    );
 
     if (!removedMembership) {
       return;
     }
 
-    const otherTeamsCount = await countTeamMembers({
+    const otherProjectsCount = await countProjectMembers({
       where: {
         userId: user.id,
       },
     });
 
-    if (otherTeamsCount === 0) {
+    if (otherProjectsCount === 0) {
       await deleteUser({ email: user.email });
     }
 
@@ -111,7 +135,7 @@ export const handleEvents = async (event: DirectorySyncEvent) => {
       },
     });
 
-    await addTeamMember(teamId, user.id, Role.MEMBER);
+    await addMemberships(projectId, user.id, Role.MEMBER);
   }
 
   // User has been updated
@@ -122,21 +146,24 @@ export const handleEvents = async (event: DirectorySyncEvent) => {
       return;
     }
 
-    // Deactivation of user by removing them from the team
+    // Deactivation of user by removing them from the project
     if (active === false) {
-      const removedMembership = await removeMembershipIfExists(teamId, user.id);
+      const removedMembership = await removeMembershipIfExists(
+        projectId,
+        user.id
+      );
 
       if (!removedMembership) {
         return;
       }
 
-      const otherTeamsCount = await countTeamMembers({
+      const otherProjectsCount = await countProjectMembers({
         where: {
           userId: user.id,
         },
       });
 
-      if (otherTeamsCount === 0) {
+      if (otherProjectsCount === 0) {
         await deleteUser({ email: user.email });
       }
 
@@ -152,8 +179,8 @@ export const handleEvents = async (event: DirectorySyncEvent) => {
       },
     });
 
-    // Reactivation of user by adding them back to the team
-    await addTeamMember(teamId, user.id, Role.MEMBER);
+    // Reactivation of user by adding them back to the project
+    await addMemberships(projectId, user.id, Role.MEMBER);
   }
 
   // User has been removed
@@ -164,19 +191,22 @@ export const handleEvents = async (event: DirectorySyncEvent) => {
       return;
     }
 
-    const removedMembership = await removeMembershipIfExists(teamId, user.id);
+    const removedMembership = await removeMembershipIfExists(
+      projectId,
+      user.id
+    );
 
     if (!removedMembership) {
       return;
     }
 
-    const otherTeamsCount = await countTeamMembers({
+    const otherProjectsCount = await countProjectMembers({
       where: {
         userId: user.id,
       },
     });
 
-    if (otherTeamsCount === 0) {
+    if (otherProjectsCount === 0) {
       await deleteUser({ email: user.email });
     }
   }

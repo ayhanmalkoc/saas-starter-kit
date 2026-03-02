@@ -1,12 +1,7 @@
 import APIKeysContainer from '@/components/apiKey/APIKeysContainer';
 
-const APIKeys = ({ teamFeatures }) => {
-  return <APIKeysContainer teamFeatures={teamFeatures} />;
+const APIKeys = ({ workspaceFeatures }) => {
+  return <APIKeysContainer workspaceFeatures={workspaceFeatures} />;
 };
 
-
 export default APIKeys;
-
-
-
-

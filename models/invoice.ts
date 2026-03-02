@@ -3,8 +3,7 @@ import type Stripe from 'stripe';
 
 export const upsertInvoiceFromStripe = async (
   invoice: Stripe.Invoice,
-  teamId: string,
-  organizationId?: string | null
+  organizationId: string
 ) => {
   const amount =
     invoice.amount_due ?? invoice.amount_paid ?? invoice.total ?? 0;
@@ -14,8 +13,7 @@ export const upsertInvoiceFromStripe = async (
     },
     create: {
       id: invoice.id,
-      teamId,
-      organizationId: organizationId ?? null,
+      organizationId,
       status: invoice.status ?? 'unknown',
       amount,
       currency: invoice.currency,
@@ -32,17 +30,6 @@ export const upsertInvoiceFromStripe = async (
   });
 };
 
-export const getByTeamId = async (teamId: string) => {
-  return await prisma.invoice.findMany({
-    where: {
-      teamId,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    },
-  });
-};
-
 export const getByOrganizationId = async (organizationId: string) => {
   return await prisma.invoice.findMany({
     where: {
@@ -55,15 +42,9 @@ export const getByOrganizationId = async (organizationId: string) => {
 };
 
 export const getByBillingScope = async ({
-  teamId,
   organizationId,
 }: {
-  teamId: string;
-  organizationId?: string | null;
+  organizationId: string;
 }) => {
-  if (organizationId) {
-    return await getByOrganizationId(organizationId);
-  }
-
-  return await getByTeamId(teamId);
+  return await getByOrganizationId(organizationId);
 };

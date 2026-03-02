@@ -10,7 +10,7 @@ export class BillingPage {
 
   constructor(
     public readonly page: Page,
-    private readonly teamSlug: string
+    private readonly projectSlug: string
   ) {
     this.manageSubscriptionTitle = this.page.getByText(
       'Manage your subscription'
@@ -34,10 +34,12 @@ export class BillingPage {
 
     await Promise.all([
       billingDataResponse,
-      this.page.goto(`/teams/${this.teamSlug}/billing`),
+      this.page.goto(`/orgs/${this.projectSlug}/projects/default/billing`),
     ]);
 
-    await this.page.waitForURL(`/teams/${this.teamSlug}/billing`);
+    await this.page.waitForURL(
+      `/orgs/${this.projectSlug}/projects/default/billing`
+    );
   }
 
   async waitForBillingDataLoad() {
@@ -45,7 +47,9 @@ export class BillingPage {
       (response) =>
         response
           .url()
-          .includes(`/api/teams/${this.teamSlug}/payments/products`) &&
+          .includes(
+            `/api/orgs/${this.projectSlug}/projects/default/payments/products`
+          ) &&
         response.request().method() === 'GET' &&
         response.ok()
     );
@@ -67,7 +71,7 @@ export class BillingPage {
         response
           .url()
           .includes(
-            `/api/teams/${this.teamSlug}/payments/create-portal-link`
+            `/api/orgs/${this.projectSlug}/projects/default/payments/create-portal-link`
           ) && response.request().method() === 'POST'
     );
 

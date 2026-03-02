@@ -1,6 +1,6 @@
 import { EmptyState, WithLoadingAndError } from '@/components/shared';
 import ConfirmationDialog from '@/components/shared/ConfirmationDialog';
-import type { ApiKey, Team } from '@prisma/client';
+import type { ApiKey, Project } from '@prisma/client';
 import { useTranslation } from 'next-i18next';
 import { useState } from 'react';
 import { Button } from 'react-daisyui';
@@ -11,19 +11,19 @@ import useAPIKeys from 'hooks/useAPIKeys';
 import { Table } from '@/components/shared/table/Table';
 import { useRouter } from 'next/router';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
 
 interface APIKeysProps {
-  team: Team;
+  project: Project;
 }
 
-const APIKeys = ({ team }: APIKeysProps) => {
+const APIKeys = ({ project }: APIKeysProps) => {
   const router = useRouter();
   const { t } = useTranslation('common');
-  const { data, isLoading, error, mutate } = useAPIKeys(team.slug);
+  const { data, isLoading, error, mutate } = useAPIKeys();
   const [selectedApiKey, setSelectedApiKey] = useState<ApiKey | null>(null);
   const [createModalVisible, setCreateModalVisible] = useState(false);
   const [confirmationDialogVisible, setConfirmationDialogVisible] =
@@ -39,11 +39,10 @@ const APIKeys = ({ team }: APIKeysProps) => {
     const apiKeyUrl =
       buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: `api-keys/${apiKey.id}`,
       }) ??
-      buildTeamWorkspaceApiPath({
-        team,
+      buildProjectWorkspaceApiPath({
+        project: project,
         suffix: `api-keys/${apiKey.id}`,
       });
 
@@ -144,7 +143,7 @@ const APIKeys = ({ team }: APIKeysProps) => {
           </>
         )}
         <NewAPIKey
-          team={team}
+          project={project}
           createModalVisible={createModalVisible}
           setCreateModalVisible={setCreateModalVisible}
         />

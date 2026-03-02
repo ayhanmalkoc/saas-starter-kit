@@ -1,12 +1,12 @@
 import { PendingInvitations } from '@/components/invitation';
 import { Error, Loading } from '@/components/shared';
-import { Members, TeamTab } from '@/components/team';
-import useTeam from 'hooks/useTeam';
+import { ProjectMembers, ProjectTab } from '@/components/project';
+import useProject from 'hooks/useProject';
 import { useTranslation } from 'next-i18next';
 
-const TeamMembers = ({ teamFeatures }) => {
+const TeamMembers = ({ workspaceFeatures }) => {
   const { t } = useTranslation('common');
-  const { isLoading, isError, team } = useTeam();
+  const { isLoading, isError, project } = useProject();
 
   if (isLoading) {
     return <Loading />;
@@ -16,24 +16,23 @@ const TeamMembers = ({ teamFeatures }) => {
     return <Error message={isError.message} />;
   }
 
-  if (!team) {
-    return <Error message={t('team-not-found')} />;
+  if (!project) {
+    return <Error message={t('project-not-found')} />;
   }
 
   return (
     <>
-      <TeamTab activeTab="members" team={team} teamFeatures={teamFeatures} />
+      <ProjectTab
+        activeTab="members"
+        project={project}
+        workspaceFeatures={workspaceFeatures}
+      />
       <div className="space-y-6">
-        <Members team={team} />
-        <PendingInvitations team={team} />
+        <ProjectMembers project={project} />
+        <PendingInvitations project={project} />
       </div>
     </>
   );
 };
 
-
 export default TeamMembers;
-
-
-
-

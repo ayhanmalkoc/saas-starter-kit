@@ -21,13 +21,16 @@ describe('usePermissions', () => {
   });
 
   it('returns loading state until permissions are fetched', () => {
-    useRouter.mockReturnValue({ query: { slug: 'alpha-team' } });
+    useRouter.mockReturnValue({
+      isReady: true,
+      query: { orgSlug: 'acme-org', projectSlug: 'alpha-project' },
+    });
     useSWR.mockReturnValue({ data: undefined, error: null, isLoading: true });
 
     const { result } = renderHook(() => usePermissions());
 
     expect(useSWR).toHaveBeenCalledWith(
-      '/api/teams/alpha-team/permissions',
+      '/api/orgs/acme-org/projects/alpha-project/permissions',
       expect.any(Function)
     );
     expect(result.current.isLoading).toBe(true);
@@ -35,12 +38,15 @@ describe('usePermissions', () => {
   });
 
   it('returns permissions from SWR response (role/permission variation)', () => {
-    useRouter.mockReturnValue({ query: { slug: 'alpha-team' } });
+    useRouter.mockReturnValue({
+      isReady: true,
+      query: { orgSlug: 'acme-org', projectSlug: 'alpha-project' },
+    });
     useSWR.mockReturnValue({
       data: {
         data: [
-          { resource: 'team_member', actions: ['read'] },
-          { resource: 'team', actions: '*' },
+          { resource: 'project_member', actions: ['read'] },
+          { resource: 'project', actions: '*' },
         ],
       },
       error: null,
@@ -50,14 +56,14 @@ describe('usePermissions', () => {
     const { result } = renderHook(() => usePermissions());
 
     expect(result.current.permissions).toEqual([
-      { resource: 'team_member', actions: ['read'] },
-      { resource: 'team', actions: '*' },
+      { resource: 'project_member', actions: ['read'] },
+      { resource: 'project', actions: '*' },
     ]);
     expect(result.current.isError).toBeNull();
   });
 
   it('does not fetch when slug is missing', () => {
-    useRouter.mockReturnValue({ query: {} });
+    useRouter.mockReturnValue({ isReady: true, query: {} });
     useSWR.mockReturnValue({ data: undefined, error: null, isLoading: false });
 
     renderHook(() => usePermissions());

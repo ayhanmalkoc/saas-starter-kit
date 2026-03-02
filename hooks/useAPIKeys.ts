@@ -8,17 +8,16 @@ import { useRouter } from 'next/router';
 import useSWR, { mutate } from 'swr';
 import type { ApiResponse } from 'types';
 
-const useAPIKeys = (slug: string | undefined) => {
+const useAPIKeys = () => {
   const router = useRouter();
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
   const url = buildWorkspaceApiPath({
     context: routeContext,
-    teamSlug: slug,
     suffix: 'api-keys',
   });
 
   const { data, error, isLoading } = useSWR<ApiResponse<ApiKey[]>>(() => {
-    return slug && url ? url : null;
+    return url;
   }, fetcher);
 
   const mutateAPIKeys = async () => {

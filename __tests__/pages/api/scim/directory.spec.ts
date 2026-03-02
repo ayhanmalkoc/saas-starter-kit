@@ -5,7 +5,7 @@ const mockScimHandle = jest.fn();
 jest.mock('@/lib/env', () => ({
   __esModule: true,
   default: {
-    teamFeatures: {
+    workspaceFeatures: {
       dsync: true,
     },
   },
@@ -53,7 +53,7 @@ const createRes = () => {
 describe('/api/scim/v2.0/[...directory]', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (env as any).teamFeatures.dsync = true;
+    (env as any).workspaceFeatures.dsync = true;
 
     mockScimHandle.mockImplementation(async (request) => {
       if (!request.apiSecret) {
@@ -77,7 +77,7 @@ describe('/api/scim/v2.0/[...directory]', () => {
   });
 
   it('returns 404 and skips jackson when DSync feature is disabled', async () => {
-    (env as any).teamFeatures.dsync = false;
+    (env as any).workspaceFeatures.dsync = false;
 
     const req = {
       method: 'GET',

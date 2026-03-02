@@ -1,7 +1,8 @@
 import { z } from 'zod';
 import { slugify } from '../server-common';
 import {
-  teamName,
+  projectName,
+  organizationName,
   apiKeyId,
   slug,
   domain,
@@ -36,18 +37,18 @@ export const deleteApiKeySchema = z.object({
   apiKeyId,
 });
 
-export const teamSlugSchema = z.object({
+export const projectSlugSchema = z.object({
   slug,
 });
 
-export const updateTeamSchema = z.object({
-  name: teamName,
+export const updateProjectSchema = z.object({
+  name: projectName,
   slug: slug.transform((slug) => slugify(slug)),
   domain,
 });
 
-export const createTeamSchema = z.object({
-  name: teamName,
+export const createProjectSchema = z.object({
+  name: projectName,
 });
 
 export const updateAccountSchema = z.union([
@@ -69,7 +70,7 @@ export const updatePasswordSchema = z.object({
 
 export const userJoinSchema = z.union([
   z.object({
-    team: teamName,
+    organizationName,
     slug,
   }),
   z.object({
@@ -175,8 +176,8 @@ export const deleteMemberSchema = z.object({
 export const ssoVerifySchema = z
   .object({
     email: email.optional().or(z.literal('')),
-    slug: slug.optional().or(z.literal('')),
+    projectSlug: slug.optional().or(z.literal('')),
   })
-  .refine((data) => data.email || data.slug, {
-    message: 'At least one of email or slug is required',
+  .refine((data) => data.email || data.projectSlug, {
+    message: 'At least one of email or projectSlug is required',
   });

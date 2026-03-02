@@ -2,31 +2,33 @@ import { Role } from '@prisma/client';
 
 import { ApiError } from '@/lib/errors';
 import { validateMembershipOperation } from '@/lib/rbac';
-import { getTeamMember } from 'models/team';
+import { getProjectMemberByProjectId } from 'models/projectMember';
 
-jest.mock('models/team', () => ({
-  getTeamMember: jest.fn(),
+jest.mock('models/projectMember', () => ({
+  getProjectMemberByProjectId: jest.fn(),
 }));
 
-const mockedGetTeamMember = jest.mocked(getTeamMember);
+const mockedGetProjectMemberByProjectId = jest.mocked(
+  getProjectMemberByProjectId
+);
 
-const createTeamMember = (role: Role) => ({
+const createProjectMember = (role: Role) => ({
   role,
-  team: {
-    slug: 'acme',
-  },
+  projectId: 'project_123',
 });
 
 describe('lib/rbac validateMembershipOperation', () => {
   beforeEach(() => {
-    mockedGetTeamMember.mockReset();
+    mockedGetProjectMemberByProjectId.mockReset();
   });
 
   it('blocks member/admin from changing owner role', async () => {
-    mockedGetTeamMember.mockResolvedValue({ role: Role.OWNER });
+    mockedGetProjectMemberByProjectId.mockResolvedValue({
+      role: Role.OWNER,
+    } as any);
 
     await expect(
-      validateMembershipOperation('member-1', createTeamMember(Role.ADMIN))
+      validateMembershipOperation('member-1', createProjectMember(Role.ADMIN))
     ).rejects.toEqual(
       expect.objectContaining<ApiError>({
         status: 403,
@@ -37,10 +39,12 @@ describe('lib/rbac validateMembershipOperation', () => {
   });
 
   it('blocks admin from assigning owner role', async () => {
-    mockedGetTeamMember.mockResolvedValue({ role: Role.MEMBER });
+    mockedGetProjectMemberByProjectId.mockResolvedValue({
+      role: Role.MEMBER,
+    } as any);
 
     await expect(
-      validateMembershipOperation('member-2', createTeamMember(Role.ADMIN), {
+      validateMembershipOperation('member-2', createProjectMember(Role.ADMIN), {
         role: Role.OWNER,
       })
     ).rejects.toEqual(
@@ -53,12 +57,18 @@ describe('lib/rbac validateMembershipOperation', () => {
   });
 
   it('blocks member from assigning admin role', async () => {
-    mockedGetTeamMember.mockResolvedValue({ role: Role.MEMBER });
+    mockedGetProjectMemberByProjectId.mockResolvedValue({
+      role: Role.MEMBER,
+    } as any);
 
     await expect(
-      validateMembershipOperation('member-3', createTeamMember(Role.MEMBER), {
-        role: Role.ADMIN,
-      })
+      validateMembershipOperation(
+        'member-3',
+        createProjectMember(Role.MEMBER),
+        {
+          role: Role.ADMIN,
+        }
+      )
     ).rejects.toEqual(
       expect.objectContaining<ApiError>({
         status: 403,
@@ -69,10 +79,12 @@ describe('lib/rbac validateMembershipOperation', () => {
   });
 
   it('allows owner to update member role', async () => {
-    mockedGetTeamMember.mockResolvedValue({ role: Role.ADMIN });
+    mockedGetProjectMemberByProjectId.mockResolvedValue({
+      role: Role.ADMIN,
+    } as any);
 
     await expect(
-      validateMembershipOperation('member-4', createTeamMember(Role.OWNER), {
+      validateMembershipOperation('member-4', createProjectMember(Role.OWNER), {
         role: Role.MEMBER,
       })
     ).resolves.toBeUndefined();

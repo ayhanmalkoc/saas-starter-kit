@@ -1,31 +1,31 @@
 import { ApiError } from '@/lib/errors';
 import {
-  createTeamSchema,
+  createProjectSchema,
   ssoVerifySchema,
-  updateTeamSchema,
+  updateProjectSchema,
   validateWithSchema,
   webhookEndpointSchema,
 } from '@/lib/zod';
 
 describe('lib/zod schema validation', () => {
-  it('validates payload and transforms slug for updateTeamSchema', () => {
+  it('validates payload and transforms slug for updateProjectSchema', () => {
     const payload = {
-      name: 'Acme Team',
-      slug: 'Acme Team 42',
+      name: 'Acme Project',
+      slug: 'Acme Project 42',
       domain: 'example.com',
     };
 
-    const parsed = validateWithSchema(updateTeamSchema, payload);
+    const parsed = validateWithSchema(updateProjectSchema, payload);
 
     expect(parsed).toEqual({
-      name: 'Acme Team',
-      slug: 'acme-team-42',
+      name: 'Acme Project',
+      slug: 'acme-project-42',
       domain: 'example.com',
     });
   });
 
-  it('captures invalid createTeam payload as snapshot', () => {
-    const result = createTeamSchema.safeParse({ name: '' });
+  it('captures invalid createProject payload as snapshot', () => {
+    const result = createProjectSchema.safeParse({ name: '' });
 
     expect(result.success).toBe(false);
 
@@ -37,15 +37,15 @@ describe('lib/zod schema validation', () => {
   it('captures valid ssoVerify payload as snapshot', () => {
     const result = ssoVerifySchema.safeParse({
       email: 'owner@example.com',
-      slug: '',
+      projectSlug: '',
     });
 
     expect(result).toMatchSnapshot();
   });
 
   it('maps zod errors to ApiError with 422 status', () => {
-    expect(() => validateWithSchema(createTeamSchema, { name: '' })).toThrow(
-      new ApiError(422, 'Validation Error: Team Name is required')
+    expect(() => validateWithSchema(createProjectSchema, { name: '' })).toThrow(
+      new ApiError(422, 'Validation Error: Project Name is required')
     );
   });
 

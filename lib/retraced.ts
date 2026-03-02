@@ -1,4 +1,3 @@
-import type { Team } from '@prisma/client';
 import { Client } from '@retracedhq/retraced';
 import type { CRUD, Event } from '@retracedhq/retraced';
 import type { User } from 'next-auth';
@@ -18,14 +17,19 @@ type EventType =
   | 'webhook.create'
   | 'webhook.delete'
   | 'webhook.update'
-  | 'team.create'
-  | 'team.update'
-  | 'team.delete';
+  | 'project.create'
+  | 'project.update'
+  | 'project.delete';
+
+type AuditGroup = {
+  id: string;
+  name: string;
+};
 
 type Request = {
   action: EventType;
   user: User;
-  team: Team;
+  project: AuditGroup;
   crud: CRUD;
   // target: Target;
 };
@@ -55,15 +59,15 @@ export const sendAudit = async (request: Request) => {
     return;
   }
 
-  const { action, user, team, crud } = request;
+  const { action, user, project, crud } = request;
   const actorName = user.name ?? user.email ?? user.id;
 
   const event: Event = {
     action,
     crud,
     group: {
-      id: team.id,
-      name: team.name,
+      id: project.id,
+      name: project.name,
     },
     actor: {
       id: user.id,

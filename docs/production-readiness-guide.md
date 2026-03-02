@@ -26,7 +26,7 @@ Set and verify these before production release:
   - `NEXTAUTH_DEBUG=false`
 - Route usage is canonical:
   - Integrations and internal links use `/orgs/:orgSlug/projects/:projectSlug/*` routes.
-  - Legacy team-slug routes are compatibility redirects and not runtime-configurable.
+  - Legacy `/teams/*` and `/api/teams/*` routes are removed.
 
 ## 2) Build and Migration Gate
 
@@ -47,7 +47,7 @@ Rules:
 
 After deployment, verify:
 
-1. Login/register and team creation flows.
+1. Login/register and organization/project creation flows.
 2. Billing page loads and expected plans are visible.
 3. Stripe webhook endpoint receives and verifies events.
 4. Key feature gates (SSO, webhooks, audit logs, API keys) behave per plan entitlements.

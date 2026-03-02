@@ -1,6 +1,6 @@
 import { test as base } from '@playwright/test';
 import { LoginPage, WebhooksPage } from '../support/fixtures';
-import { team, user } from '../support/helper';
+import { project, user } from '../support/helper';
 
 type WebhookFixture = {
   loginPage: LoginPage;
@@ -12,14 +12,14 @@ const test = base.extend<WebhookFixture>({
     await runFixture(new LoginPage(page));
   },
   webhooksPage: async ({ page }, runFixture) => {
-    await runFixture(new WebhooksPage(page, team.slug));
+    await runFixture(new WebhooksPage(page, project.slug));
   },
 });
 
 test.beforeEach(async ({ page, loginPage }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
-  await loginPage.loggedInCheck(team.slug);
+  await loginPage.loggedInCheck(project.slug);
 
   const webhooks: Array<{
     id: string;
@@ -28,57 +28,60 @@ test.beforeEach(async ({ page, loginPage }) => {
     createdAt: string;
   }> = [];
 
-  await page.route(`**/api/teams/${team.slug}/webhooks`, async (route) => {
-    const method = route.request().method();
+  await page.route(
+    `**/api/orgs/${project.slug}/projects/default/webhooks*`,
+    async (route) => {
+      const method = route.request().method();
 
-    if (method === 'GET') {
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: webhooks }),
-      });
-      return;
-    }
-
-    if (method === 'POST') {
-      const payload = route.request().postDataJSON() as {
-        name: string;
-        url: string;
-      };
-
-      const createdWebhook = {
-        id: `wh_${webhooks.length + 1}`,
-        description: payload.name,
-        url: payload.url,
-        createdAt: new Date().toISOString(),
-      };
-
-      webhooks.push(createdWebhook);
-
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: createdWebhook }),
-      });
-      return;
-    }
-
-    if (method === 'DELETE') {
-      const requestUrl = new URL(route.request().url());
-      const webhookId = requestUrl.searchParams.get('webhookId');
-      const index = webhooks.findIndex((webhook) => webhook.id === webhookId);
-
-      if (index > -1) {
-        webhooks.splice(index, 1);
+      if (method === 'GET') {
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: webhooks }),
+        });
+        return;
       }
 
-      await route.fulfill({
-        status: 200,
-        contentType: 'application/json',
-        body: JSON.stringify({ data: null }),
-      });
+      if (method === 'POST') {
+        const payload = route.request().postDataJSON() as {
+          name: string;
+          url: string;
+        };
+
+        const createdWebhook = {
+          id: `wh_${webhooks.length + 1}`,
+          description: payload.name,
+          url: payload.url,
+          createdAt: new Date().toISOString(),
+        };
+
+        webhooks.push(createdWebhook);
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: createdWebhook }),
+        });
+        return;
+      }
+
+      if (method === 'DELETE') {
+        const requestUrl = new URL(route.request().url());
+        const webhookId = requestUrl.searchParams.get('webhookId');
+        const index = webhooks.findIndex((webhook) => webhook.id === webhookId);
+
+        if (index > -1) {
+          webhooks.splice(index, 1);
+        }
+
+        await route.fulfill({
+          status: 200,
+          contentType: 'application/json',
+          body: JSON.stringify({ data: null }),
+        });
+      }
     }
-  });
+  );
 });
 
 test('happy path: should create and delete a webhook', async ({

@@ -36,7 +36,12 @@ const toast = jest.requireMock('react-hot-toast').default as {
 describe('AcceptInvitation', () => {
   const invitation = {
     token: 'invite-token',
-    team: { slug: 'alpha-team' },
+    project: {
+      slug: 'alpha-project',
+      organization: {
+        slug: 'acme-org',
+      },
+    },
   } as any;
 
   beforeEach(() => {
@@ -64,7 +69,7 @@ describe('AcceptInvitation', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/teams/alpha-team/invitations',
+        '/api/orgs/acme-org/projects/alpha-project/invitations',
         expect.objectContaining({ method: 'PUT' })
       );
       expect(push).toHaveBeenCalledWith('/dashboard');
@@ -97,7 +102,7 @@ describe('AcceptInvitation', () => {
     });
 
     render(
-      <AccessControl resource="team_invitation" actions={['create']}>
+      <AccessControl resource="project_invitation" actions={['create']}>
         <AcceptInvitation invitation={invitation} />
       </AccessControl>
     );

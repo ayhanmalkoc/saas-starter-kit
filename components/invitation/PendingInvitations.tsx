@@ -1,11 +1,11 @@
 import { Error, LetterAvatar, Loading } from '@/components/shared';
 import { defaultHeaders } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
-import { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 import useInvitations from 'hooks/useInvitations';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
@@ -13,19 +13,18 @@ import React, { useState } from 'react';
 import toast from 'react-hot-toast';
 import type { ApiResponse } from 'types';
 import ConfirmationDialog from '../shared/ConfirmationDialog';
-import { TeamInvitation } from 'models/invitation';
+import type { ProjectInvitation } from 'models/invitation';
 import { Table } from '@/components/shared/table/Table';
 
-const PendingInvitations = ({ team }: { team: Team }) => {
+const PendingInvitations = ({ project }: { project: Project }) => {
   const router = useRouter();
   const [selectedInvitation, setSelectedInvitation] =
-    useState<TeamInvitation | null>(null);
+    useState<ProjectInvitation | null>(null);
 
   const [confirmationDialogVisible, setConfirmationDialogVisible] =
     useState(false);
 
   const { isLoading, isError, invitations, mutateInvitation } = useInvitations({
-    slug: team.slug,
     sentViaEmail: true,
   });
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
@@ -40,7 +39,7 @@ const PendingInvitations = ({ team }: { team: Team }) => {
     return <Error message={isError.message} />;
   }
 
-  const deleteInvitation = async (invitation: TeamInvitation | null) => {
+  const deleteInvitation = async (invitation: ProjectInvitation | null) => {
     if (!invitation) {
       return;
     }
@@ -49,9 +48,8 @@ const PendingInvitations = ({ team }: { team: Team }) => {
     const invitationsUrl =
       buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: 'invitations',
-      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
+      }) ?? buildProjectWorkspaceApiPath({ project, suffix: 'invitations' });
 
     const response = await fetch(`${invitationsUrl}?${sp.toString()}`, {
       method: 'DELETE',

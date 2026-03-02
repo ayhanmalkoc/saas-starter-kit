@@ -1,12 +1,12 @@
 import { Error, Loading } from '@/components/shared';
-import { TeamTab } from '@/components/team';
+import { ProjectTab } from '@/components/project';
 import { Webhooks } from '@/components/webhook';
-import useTeam from 'hooks/useTeam';
+import useProject from 'hooks/useProject';
 import { useTranslation } from 'next-i18next';
 
-const WebhookList = ({ teamFeatures }) => {
+const WebhookList = ({ workspaceFeatures }) => {
   const { t } = useTranslation('common');
-  const { isLoading, isError, team } = useTeam();
+  const { isLoading, isError, project } = useProject();
 
   if (isLoading) {
     return <Loading />;
@@ -16,21 +16,20 @@ const WebhookList = ({ teamFeatures }) => {
     return <Error message={isError.message} />;
   }
 
-  if (!team) {
-    return <Error message={t('team-not-found')} />;
+  if (!project) {
+    return <Error message={t('project-not-found')} />;
   }
 
   return (
     <>
-      <TeamTab activeTab="webhooks" team={team} teamFeatures={teamFeatures} />
-      <Webhooks team={team} />
+      <ProjectTab
+        activeTab="webhooks"
+        project={project}
+        workspaceFeatures={workspaceFeatures}
+      />
+      <Webhooks project={project} />
     </>
   );
 };
 
-
 export default WebhookList;
-
-
-
-

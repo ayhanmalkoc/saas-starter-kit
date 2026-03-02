@@ -1,5 +1,5 @@
 import { test as base } from '@playwright/test';
-import { user, team } from '../support/helper';
+import { user, project } from '../support/helper';
 import { ApiKeysPage, LoginPage } from '../support/fixtures';
 
 const apiKeyName = 'New Api Key';
@@ -16,7 +16,7 @@ const test = base.extend<ApiKeyFixture>({
     await use(loginPage);
   },
   apiKeyPage: async ({ page }, use) => {
-    const apiKeysPage = new ApiKeysPage(page, team.slug);
+    const apiKeysPage = new ApiKeysPage(page, project.slug);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(apiKeysPage);
   },
@@ -25,7 +25,7 @@ const test = base.extend<ApiKeyFixture>({
 test.beforeEach(async ({ loginPage }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
-  await loginPage.loggedInCheck(team.slug);
+  await loginPage.loggedInCheck(project.slug);
 });
 
 test('Should be able to create new API Key', async ({ apiKeyPage }) => {

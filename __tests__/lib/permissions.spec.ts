@@ -11,21 +11,21 @@ describe('lib/permissions', () => {
     ]);
   });
 
-  it('grants owner all team resources', () => {
+  it('grants owner all project resources', () => {
     const ownerResources = permissions.OWNER.map(
       (permission) => permission.resource
     );
 
     expect(ownerResources).toEqual([
-      'team',
-      'team_member',
-      'team_invitation',
-      'team_sso',
-      'team_dsync',
-      'team_audit_log',
-      'team_payments',
-      'team_webhook',
-      'team_api_key',
+      'project',
+      'project_member',
+      'project_invitation',
+      'project_sso',
+      'project_dsync',
+      'project_audit_log',
+      'project_payments',
+      'project_webhook',
+      'project_api_key',
     ]);
 
     expect(
@@ -33,10 +33,10 @@ describe('lib/permissions', () => {
     ).toBe(true);
   });
 
-  it('restricts members to read and leave team actions', () => {
+  it('restricts members to read and leave project actions', () => {
     expect(permissions.MEMBER).toEqual([
       {
-        resource: 'team',
+        resource: 'project',
         actions: ['read', 'leave'],
       },
     ]);

@@ -16,19 +16,18 @@ export type ApiResponse<T = unknown> =
       error: ApiError;
     };
 
-export type TeamWithMemberCount = Prisma.TeamGetPayload<{
+export type ProjectWithMemberCount = Prisma.ProjectGetPayload<{
   include: {
     _count: {
       select: { members: true };
     };
-    project: {
+    organization: {
       select: {
+        id: true;
+        name: true;
         slug: true;
-        organization: {
-          select: {
-            slug: true;
-          };
-        };
+        billingId: true;
+        billingProvider: true;
       };
     };
   };
@@ -55,10 +54,14 @@ export type AppEvent =
   | 'user.updated'
   | 'user.signup'
   | 'user.password.reset'
-  | 'team.fetched'
-  | 'team.created'
-  | 'team.updated'
-  | 'team.removed'
+  | 'project.fetched'
+  | 'project.created'
+  | 'project.updated'
+  | 'project.removed'
+  | 'project.fetched'
+  | 'project.created'
+  | 'project.updated'
+  | 'project.removed'
   | 'apikey.created'
   | 'apikey.removed'
   | 'apikey.fetched'
@@ -76,12 +79,12 @@ export type AUTH_PROVIDER =
   | 'credentials'
   | 'idp-initiated';
 
-export interface TeamFeature {
+export interface WorkspaceFeature {
   sso: boolean;
   dsync: boolean;
   auditLog: boolean;
   webhook: boolean;
   apiKey: boolean;
   payments: boolean;
-  deleteTeam: boolean;
+  deleteProject: boolean;
 }

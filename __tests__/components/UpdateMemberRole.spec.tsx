@@ -3,7 +3,16 @@ import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 
 import { AccessControl } from '@/components/shared/AccessControl';
-import UpdateMemberRole from '@/components/team/UpdateMemberRole';
+import UpdateMemberRole from '@/components/project/UpdateMemberRole';
+
+jest.mock('next/router', () => ({
+  useRouter: () => ({
+    query: {
+      orgSlug: 'acme-org',
+      projectSlug: 'alpha-project',
+    },
+  }),
+}));
 
 jest.mock('next-i18next', () => ({
   useTranslation: () => ({ t: (k: string) => k }),
@@ -30,7 +39,12 @@ const toast = jest.requireMock('react-hot-toast').default as {
 };
 
 describe('UpdateMemberRole', () => {
-  const team = { slug: 'alpha-team' } as any;
+  const project = {
+    slug: 'alpha-project',
+    organization: {
+      slug: 'acme-org',
+    },
+  } as any;
   const member = { userId: 'user-1', role: 'MEMBER' } as any;
 
   beforeEach(() => {
@@ -49,7 +63,7 @@ describe('UpdateMemberRole', () => {
       json: async () => ({ data: {} }),
     });
 
-    render(<UpdateMemberRole team={team} member={member} />);
+    render(<UpdateMemberRole project={project} member={member} />);
 
     const select = screen.getByRole('combobox');
     expect(select).toBeInTheDocument();
@@ -58,7 +72,7 @@ describe('UpdateMemberRole', () => {
 
     await waitFor(() => {
       expect(global.fetch).toHaveBeenCalledWith(
-        '/api/teams/alpha-team/members',
+        '/api/orgs/acme-org/projects/alpha-project/members',
         expect.objectContaining({ method: 'PATCH' })
       );
       expect(toast.success).toHaveBeenCalledWith('member-role-updated');
@@ -71,7 +85,7 @@ describe('UpdateMemberRole', () => {
       json: async () => ({ error: { message: 'not allowed to update role' } }),
     });
 
-    render(<UpdateMemberRole team={team} member={member} />);
+    render(<UpdateMemberRole project={project} member={member} />);
 
     await userEvent.selectOptions(screen.getByRole('combobox'), 'OWNER');
 
@@ -88,8 +102,8 @@ describe('UpdateMemberRole', () => {
     });
 
     render(
-      <AccessControl resource="team_member" actions={['update']}>
-        <UpdateMemberRole team={team} member={member} />
+      <AccessControl resource="project_member" actions={['update']}>
+        <UpdateMemberRole project={project} member={member} />
       </AccessControl>
     );
 

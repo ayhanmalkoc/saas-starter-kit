@@ -2,16 +2,16 @@ import useSWR from 'swr';
 import { useTranslation } from 'next-i18next';
 import { Button } from 'react-daisyui';
 
-import useTeam from 'hooks/useTeam';
+import useProject from 'hooks/useProject';
 import fetcher from '@/lib/fetcher';
 import useCanAccess from 'hooks/useCanAccess';
-import { TeamTab } from '@/components/team';
+import { ProjectTab } from '@/components/project';
 import Help from '@/components/billing/Help';
 import { Error, Loading } from '@/components/shared';
 import LinkToPortal from '@/components/billing/LinkToPortal';
 import Subscriptions from '@/components/billing/Subscriptions';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -31,20 +31,19 @@ const LinkToPricing = () => {
   );
 };
 
-const Payments = ({ teamFeatures }) => {
+const Payments = ({ workspaceFeatures }) => {
   const router = useRouter();
   const { t } = useTranslation('common');
   const { canAccess } = useCanAccess();
-  const { isLoading, isError, team } = useTeam();
+  const { isLoading, isError, project } = useProject();
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
-  const billingProductsUrl = team?.slug
+  const billingProductsUrl = project?.slug
     ? (buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: 'payments/products',
       }) ??
-      buildTeamWorkspaceApiPath({
-        team,
+      buildProjectWorkspaceApiPath({
+        project,
         suffix: 'payments/products',
       }))
     : null;
@@ -62,8 +61,8 @@ const Payments = ({ teamFeatures }) => {
     return <Error message={isError.message} />;
   }
 
-  if (!team) {
-    return <Error message={t('team-not-found')} />;
+  if (!project) {
+    return <Error message={t('project-not-found')} />;
   }
 
   const isBillingDataLoading = isBillingLoading || data === undefined;
@@ -106,16 +105,16 @@ const Payments = ({ teamFeatures }) => {
 
   return (
     <>
-      {canAccess('team_payments', ['read']) && (
+      {canAccess('project_payments', ['read']) && (
         <>
-          <TeamTab
+          <ProjectTab
             activeTab="payments"
-            team={team}
-            teamFeatures={teamFeatures}
+            project={project}
+            workspaceFeatures={workspaceFeatures}
           />
 
           <div className="flex gap-6 flex-col md:flex-row">
-            <LinkToPortal team={team} />
+            <LinkToPortal project={project} />
             <Help />
           </div>
 
@@ -226,9 +225,4 @@ const Payments = ({ teamFeatures }) => {
   );
 };
 
-
 export default Payments;
-
-
-
-

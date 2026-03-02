@@ -3,15 +3,15 @@ import { Role } from '@prisma/client';
 type RoleType = (typeof Role)[keyof typeof Role];
 export type Action = 'create' | 'update' | 'read' | 'delete' | 'leave';
 export type Resource =
-  | 'team'
-  | 'team_member'
-  | 'team_invitation'
-  | 'team_sso'
-  | 'team_dsync'
-  | 'team_audit_log'
-  | 'team_webhook'
-  | 'team_payments'
-  | 'team_api_key';
+  | 'project'
+  | 'project_member'
+  | 'project_invitation'
+  | 'project_sso'
+  | 'project_dsync'
+  | 'project_audit_log'
+  | 'project_webhook'
+  | 'project_payments'
+  | 'project_api_key';
 
 type RolePermissions = {
   [role in RoleType]: Permission[];
@@ -40,79 +40,79 @@ export const availableRoles = [
 export const permissions: RolePermissions = {
   OWNER: [
     {
-      resource: 'team',
+      resource: 'project',
       actions: '*',
     },
     {
-      resource: 'team_member',
+      resource: 'project_member',
       actions: '*',
     },
     {
-      resource: 'team_invitation',
+      resource: 'project_invitation',
       actions: '*',
     },
     {
-      resource: 'team_sso',
+      resource: 'project_sso',
       actions: '*',
     },
     {
-      resource: 'team_dsync',
+      resource: 'project_dsync',
       actions: '*',
     },
     {
-      resource: 'team_audit_log',
+      resource: 'project_audit_log',
       actions: '*',
     },
     {
-      resource: 'team_payments',
+      resource: 'project_payments',
       actions: '*',
     },
     {
-      resource: 'team_webhook',
+      resource: 'project_webhook',
       actions: '*',
     },
     {
-      resource: 'team_api_key',
+      resource: 'project_api_key',
       actions: '*',
     },
   ],
   ADMIN: [
     {
-      resource: 'team',
+      resource: 'project',
       actions: '*',
     },
     {
-      resource: 'team_member',
+      resource: 'project_member',
       actions: '*',
     },
     {
-      resource: 'team_invitation',
+      resource: 'project_invitation',
       actions: '*',
     },
     {
-      resource: 'team_sso',
+      resource: 'project_sso',
       actions: '*',
     },
     {
-      resource: 'team_dsync',
+      resource: 'project_dsync',
       actions: '*',
     },
     {
-      resource: 'team_audit_log',
+      resource: 'project_audit_log',
       actions: '*',
     },
     {
-      resource: 'team_webhook',
+      resource: 'project_webhook',
       actions: '*',
     },
     {
-      resource: 'team_api_key',
+      resource: 'project_api_key',
       actions: '*',
     },
   ],
   MEMBER: [
     {
-      resource: 'team',
+      resource: 'project',
       actions: ['read', 'leave'],
     },
   ],

@@ -1,8 +1,8 @@
 import env from '@/lib/env';
 import { ssoManager } from '@/lib/jackson/sso';
 import { ssoVerifySchema, validateWithSchema } from '@/lib/zod';
-import { Team } from '@prisma/client';
-import { getTeam, getTeams } from 'models/team';
+import { Project } from '@prisma/client';
+import { getProjectBySlug, getProjectsByUserId } from 'models/project';
 import { getUser } from 'models/user';
 import { NextApiRequest, NextApiResponse } from 'next';
 
@@ -33,56 +33,57 @@ export default async function handler(
 }
 
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  const { slug, email } = validateWithSchema(
+  const { projectSlug, email } = validateWithSchema(
     ssoVerifySchema,
-    JSON.parse(req.body) as { slug: string }
+    JSON.parse(req.body) as { projectSlug: string }
   );
 
-  if (!slug && !email) {
+  if (!projectSlug && !email) {
     return res.status(400).json({ error: 'Invalid request.' });
   }
 
-  // If slug is provided, verify SSO connections for the team
-  if (slug) {
-    const team = await getTeam({ slug });
+  // If project slug is provided, verify SSO connections for the project.
+  if (projectSlug) {
+    const project = await getProjectBySlug(projectSlug);
 
-    if (!team) {
-      throw new Error('Team not found.');
+    if (!project) {
+      throw new Error('Project not found.');
     }
 
-    const data = await handleTeamSSOVerification(team.id);
+    const data = await handleProjectSSOVerification(project.id);
     return res.json({ data });
   }
 
   // If email is provided, verify SSO connections for the user
   if (email) {
-    const teams = await getTeamsFromEmail(email);
+    const projects = await getProjectsFromEmail(email);
 
-    if (teams.length === 1) {
-      const data = await handleTeamSSOVerification(teams[0].id);
+    if (projects.length === 1) {
+      const data = await handleProjectSSOVerification(projects[0].id);
       return res.json({ data });
     }
 
-    const { teamId, useSlug } = await processTeamsForSSOVerification(teams);
+    const { projectId, useProjectSlug } =
+      await processProjectsForSSOVerification(projects);
 
-    // Multiple teams with SSO connections found
-    // Ask user to provide team slug
-    if (useSlug) {
+    // Multiple projects with SSO connections found
+    // Ask user to provide project slug.
+    if (useProjectSlug) {
       return res.json({
         data: {
-          useSlug,
+          useProjectSlug,
         },
       });
     }
 
-    // No teams with SSO connections found
-    if (!teamId) {
-      throw new Error('No SSO connections found for any team.');
+    // No projects with SSO connections found
+    if (!projectId) {
+      throw new Error('No SSO connections found for any project.');
     } else {
-      // Only one team with SSO connections found
+      // Only one project with SSO connections found
       return res.json({
         data: {
-          teamId,
+          projectId,
         },
       });
     }
@@ -90,39 +91,39 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 /**
- * Handle SSO verification for given team id
+ * Handle SSO verification for given project id
  */
-async function handleTeamSSOVerification(teamId: string) {
-  const exists = await teamSSOExists(teamId);
+async function handleProjectSSOVerification(projectId: string) {
+  const exists = await projectSSOExists(projectId);
 
   if (!exists) {
-    throw new Error('No SSO connections found for this team.');
+    throw new Error('No SSO connections found for this project.');
   }
 
-  return { teamId };
+  return { projectId };
 }
 
 /**
- * Get list of teams for a user from email
+ * Get list of projects for a user from email
  */
-async function getTeamsFromEmail(email: string): Promise<Team[]> {
+async function getProjectsFromEmail(email: string): Promise<Project[]> {
   const user = await getUser({ email });
   if (!user) {
     throw new Error('User not found.');
   }
-  const teams = await getTeams(user.id);
-  if (!teams.length) {
-    throw new Error('User does not belong to any team.');
+  const projects = await getProjectsByUserId(user.id);
+  if (!projects.length) {
+    throw new Error('User does not belong to any project.');
   }
-  return teams;
+  return projects;
 }
 
 /**
- * Check if SSO connections exist for a team
+ * Check if SSO connections exist for a project
  */
-async function teamSSOExists(teamId: string): Promise<boolean> {
+async function projectSSOExists(projectId: string): Promise<boolean> {
   const connections = await sso.getConnections({
-    tenant: teamId,
+    tenant: projectId,
     product: env.jackson.productId,
   });
 
@@ -134,34 +135,34 @@ async function teamSSOExists(teamId: string): Promise<boolean> {
 }
 
 /**
- * Process teams to find the team with SSO connections
- * If multiple teams with SSO connections are found, return useSlug as true
- * If no teams with SSO connections are found, return teamId as empty string
- * If only one team with SSO connections is found, return teamId
+ * Process projects to find the project with SSO connections
+ * If multiple projects with SSO connections are found, return useProjectSlug as true
+ * If no projects with SSO connections are found, return projectId as empty string
+ * If only one project with SSO connections is found, return projectId
  */
-async function processTeamsForSSOVerification(teams: Team[]): Promise<{
-  teamId: string;
-  useSlug: boolean;
+async function processProjectsForSSOVerification(projects: Project[]): Promise<{
+  projectId: string;
+  useProjectSlug: boolean;
 }> {
-  let teamId = '';
-  for (const team of teams) {
-    const exists = await teamSSOExists(team.id);
+  let projectId = '';
+  for (const project of projects) {
+    const exists = await projectSSOExists(project.id);
 
     if (exists) {
-      if (teamId) {
-        // Multiple teams with SSO connections found
+      if (projectId) {
+        // Multiple projects with SSO connections found
         return {
-          teamId: '',
-          useSlug: true,
+          projectId: '',
+          useProjectSlug: true,
         };
       } else {
-        // First team with SSO connections found
-        teamId = team.id;
+        // First project with SSO connections found
+        projectId = project.id;
       }
     }
   }
   return {
-    teamId,
-    useSlug: false,
+    projectId,
+    useProjectSlug: false,
   };
 }

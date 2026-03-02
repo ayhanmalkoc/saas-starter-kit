@@ -4,16 +4,19 @@ import { prisma } from '@/lib/prisma';
 import { Invitation } from '@prisma/client';
 import { randomUUID } from 'crypto';
 
-export type TeamInvitation = Pick<
+export type ProjectInvitation = Pick<
   Invitation,
   'id' | 'email' | 'role' | 'expires' | 'allowedDomains' | 'token'
 > & { url: string };
 
 // Keep this query index-friendly; monitor performance as invitation volume grows.
-export const getInvitations = async (teamId: string, sentViaEmail: boolean) => {
+export const getInvitations = async (
+  projectId: string,
+  sentViaEmail: boolean
+) => {
   const invitations = await prisma.invitation.findMany({
     where: {
-      teamId,
+      projectId,
       sentViaEmail,
     },
     select: {
@@ -38,19 +41,17 @@ export const getInvitation = async (
   const invitation = await prisma.invitation.findUnique({
     where: key,
     include: {
-      team: {
+      project: {
         select: {
           id: true,
           name: true,
           slug: true,
-          project: {
+          organizationId: true,
+          organization: {
             select: {
+              id: true,
+              name: true,
               slug: true,
-              organization: {
-                select: {
-                  slug: true,
-                },
-              },
             },
           },
         },

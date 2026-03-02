@@ -21,7 +21,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 ### E2E test
 
 - **Amaç:** Kullanıcı perspektifinden kritik senaryoları uçtan uca doğrulamak.
-- **Kapsam:** Kayıt/giriş, takım yönetimi, oturum yönetimi, ödeme veya SSO gibi kritik yolculuklar.
+- **Kapsam:** Kayıt/giriş, organization/project yönetimi, oturum yönetimi, ödeme veya SSO gibi kritik yolculuklar.
 - **Araç:** Playwright (`npm run test:e2e`).
 - **Hız hedefi:** Sayıca sınırlı, yüksek değerli senaryolar; smoke + kritik iş akışları.
 
@@ -42,7 +42,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 - `pages/api/oauth/userinfo.ts`
 - `pages/api/sessions/index.ts`
 - `pages/api/sessions/[id].ts`
-- `pages/api/teams/index.ts`
+- `pages/api/orgs/index.ts`
 - `pages/api/webhooks/stripe.ts`
 
 #### Modüller (`lib/**`)
@@ -54,9 +54,9 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 - `lib/permissions.ts`
 - `lib/rbac.ts`
 - `lib/stripe.ts`
-- `lib/guards/team-api-key.ts`
-- `lib/guards/team-sso.ts`
-- `lib/guards/team-dsync.ts`
+- `lib/guards/project-api-key.ts`
+- `lib/guards/project-sso.ts`
+- `lib/guards/project-dsync.ts`
 
 ### P1 (yüksek iş değeri / entegrasyon kritik)
 
@@ -83,7 +83,7 @@ Bu doküman, proje için test kapsamı, önceliklendirme ve CI doğrulama kurall
 - `lib/svix.ts`
 - `lib/billing/entitlements.ts`
 - `lib/email/sendPasswordResetEmail.ts`
-- `lib/email/sendTeamInviteEmail.ts`
+- `lib/email/sendProjectInviteEmail.ts`
 
 ### P2 (destekleyici / regresyon önleyici)
 
@@ -181,7 +181,7 @@ PR ve `main`/`release` branch’leri için aşağıdaki sıra önerilir:
 
 - Test verisi üretimi için factory yaklaşımı kullanılır (varsayılan geçerli obje + senaryoya özel override).
 - Rastgele veri (`faker`) kullanıldığında deterministik tohum (seed) belirlenir.
-- Fixture isimleri domain odaklı olur (`teamFactory`, `sessionFactory`, `tokenFactory`).
+- Fixture isimleri domain odaklı olur (`projectFactory`, `sessionFactory`, `tokenFactory`).
 - Tarih/saat ve UUID gibi değerlerde sabitlenmiş kaynaklar (fake timers / deterministic generators) tercih edilir.
 
 ---

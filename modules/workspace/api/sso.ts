@@ -3,14 +3,14 @@ import type { NextApiRequest, NextApiResponse } from 'next';
 import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { sendAudit } from '@/lib/retraced';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import { throwIfNotAllowed } from 'models/user';
 import { ssoManager } from '@/lib/jackson/sso/index';
-import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import { requireOrganizationEntitlement } from '@/lib/billing/entitlements';
 import {
   extractClientId,
   throwIfNoAccessToConnection,
-} from '@/lib/guards/team-sso';
+} from '@/lib/guards/project-sso';
 
 const sso = ssoManager();
 
@@ -18,11 +18,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   const { method } = req;
 
   try {
-    if (!env.teamFeatures.sso) {
+    if (!env.workspaceFeatures.sso) {
       throw new ApiError(404, 'Not Found');
     }
 
@@ -55,16 +54,18 @@ export default async function handler(
   }
 }
 
-// Get the SSO connection for the team.
+// Get the SSO connection for the project.
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
+    feature: 'sso',
+  });
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'read');
+  throwIfNotAllowed(projectMember, 'project_sso', 'read');
 
   if ('clientID' in req.query) {
     await throwIfNoAccessToConnection({
-      teamId: teamMember.teamId,
+      projectId: projectMember.projectId,
       clientId: extractClientId(req),
     });
   }
@@ -72,73 +73,79 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const params =
     'clientID' in req.query
       ? { clientID: req.query.clientID as string }
-      : { tenant: teamMember.teamId, product: env.jackson.productId };
+      : { tenant: projectMember.projectId, product: env.jackson.productId };
 
   const connections = await sso.getConnections(params);
 
   res.json(connections);
 };
 
-// Create a SSO connection for the team
+// Create a SSO connection for the project.
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
+    feature: 'sso',
+  });
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'create');
+  throwIfNotAllowed(projectMember, 'project_sso', 'create');
 
   const connection = await sso.createConnection({
     ...req.body,
     defaultRedirectUrl: env.jackson.sso.callback + env.jackson.sso.idpLoginPath,
     redirectUrl: env.jackson.sso.callback,
     product: env.jackson.productId,
-    tenant: teamMember.teamId,
+    tenant: projectMember.projectId,
   });
 
   sendAudit({
     action: 'sso.connection.create',
     crud: 'c',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   res.status(201).json(connection);
 };
 
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
+    feature: 'sso',
+  });
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'create');
+  throwIfNotAllowed(projectMember, 'project_sso', 'create');
 
   await throwIfNoAccessToConnection({
-    teamId: teamMember.teamId,
+    projectId: projectMember.projectId,
     clientId: extractClientId(req),
   });
 
   await sso.updateConnection({
     ...req.body,
-    tenant: teamMember.teamId,
+    tenant: projectMember.projectId,
     product: env.jackson.productId,
   });
 
   sendAudit({
     action: 'sso.connection.patch',
     crud: 'u',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   res.status(204).end();
 };
 
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, { feature: 'sso' });
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
+    feature: 'sso',
+  });
 
-  throwIfNotAllowed(teamMember, 'team_sso', 'delete');
+  throwIfNotAllowed(projectMember, 'project_sso', 'delete');
 
   await throwIfNoAccessToConnection({
-    teamId: teamMember.teamId,
+    projectId: projectMember.projectId,
     clientId: extractClientId(req),
   });
 
@@ -147,10 +154,9 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   sendAudit({
     action: 'sso.connection.delete',
     crud: 'c',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   res.status(204).end();
 };
-

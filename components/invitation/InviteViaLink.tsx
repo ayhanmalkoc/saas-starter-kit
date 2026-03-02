@@ -10,10 +10,10 @@ import { useRouter } from 'next/router';
 import type { ApiResponse } from 'types';
 import useInvitations from 'hooks/useInvitations';
 import { availableRoles } from '@/lib/permissions';
-import type { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 import { defaultHeaders, isValidDomain, maxLengthPolicies } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -21,10 +21,10 @@ import { InputWithCopyButton } from '../shared';
 import ConfirmationDialog from '../shared/ConfirmationDialog';
 
 interface InviteViaLinkProps {
-  team: Team;
+  project: Project;
 }
 
-const InviteViaLink = ({ team }: InviteViaLinkProps) => {
+const InviteViaLink = ({ project }: InviteViaLinkProps) => {
   const router = useRouter();
   const [showDelDialog, setShowDelDialog] = useState(false);
   const { t } = useTranslation('common');
@@ -32,11 +32,9 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
   const invitationsUrl =
     buildWorkspaceApiPath({
       context: routeContext,
-      teamSlug: team.slug,
       suffix: 'invitations',
-    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
+    }) ?? buildProjectWorkspaceApiPath({ project, suffix: 'invitations' });
   const { invitations } = useInvitations({
-    slug: team.slug,
     sentViaEmail: false,
   });
 
@@ -127,8 +125,8 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
         />
         <p className="text-sm text-slate-500 my-2">
           {invitation.allowedDomains.length > 0
-            ? `Anyone with an email address ending with ${invitation.allowedDomains} can use this link to join your team.`
-            : 'Anyone can use this link to join your team.'}
+            ? `Anyone with an email address ending with ${invitation.allowedDomains} can use this link to join your project.`
+            : 'Anyone can use this link to join your project.'}
           <Button
             className="btn btn-xs btn-link link-error"
             onClick={() => setShowDelDialog(true)}
@@ -184,8 +182,8 @@ const InviteViaLink = ({ team }: InviteViaLinkProps) => {
       </div>
       <p className="text-sm text-slate-500 my-2">
         {formik.values.domains && !formik.errors.domains
-          ? `Anyone with an email address ending with ${formik.values.domains} can use this link to join your team.`
-          : 'Anyone can use this link to join your team.'}
+          ? `Anyone with an email address ending with ${formik.values.domains} can use this link to join your project.`
+          : 'Anyone can use this link to join your project.'}
       </p>
     </form>
   );

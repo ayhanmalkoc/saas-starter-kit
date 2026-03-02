@@ -1,8 +1,17 @@
 import { Role } from '@prisma/client';
 
-jest.mock('models/team', () => ({
-  addTeamMember: jest.fn(),
-  removeTeamMember: jest.fn(),
+jest.mock('models/projectMember', () => ({
+  addProjectMember: jest.fn(),
+  removeProjectMember: jest.fn(),
+  countProjectMembers: jest.fn(),
+}));
+
+jest.mock('models/organizationMember', () => ({
+  addOrganizationMember: jest.fn(),
+}));
+
+jest.mock('models/project', () => ({
+  getProjectById: jest.fn(),
 }));
 
 jest.mock('models/user', () => ({
@@ -12,22 +21,23 @@ jest.mock('models/user', () => ({
   deleteUser: jest.fn(),
 }));
 
-jest.mock('models/teamMember', () => ({
-  countTeamMembers: jest.fn(),
-}));
-
 import { handleEvents } from '@/lib/jackson/dsyncEvents';
-import { addTeamMember, removeTeamMember } from 'models/team';
+import {
+  addProjectMember,
+  removeProjectMember,
+  countProjectMembers,
+} from 'models/projectMember';
+import { addOrganizationMember } from 'models/organizationMember';
+import { getProjectById } from 'models/project';
 import { deleteUser, getUser, upsertUser } from 'models/user';
-import { countTeamMembers } from 'models/teamMember';
 
 const groupUserAddedPayload = {
   event: 'group.user_added',
-  tenant: 'team_123',
+  tenant: 'project_123',
   data: {
     id: 'user_1',
     email: 'member@example.com',
-    first_name: 'Team',
+    first_name: 'Project',
     last_name: 'Member',
     active: true,
     group: {
@@ -39,11 +49,11 @@ const groupUserAddedPayload = {
 
 const groupUserRemovedPayload = {
   event: 'group.user_removed',
-  tenant: 'team_123',
+  tenant: 'project_123',
   data: {
     id: 'user_1',
     email: 'member@example.com',
-    first_name: 'Team',
+    first_name: 'Project',
     last_name: 'Member',
     active: true,
     group: {
@@ -56,6 +66,10 @@ const groupUserRemovedPayload = {
 describe('handleEvents group events', () => {
   beforeEach(() => {
     jest.resetAllMocks();
+    (getProjectById as jest.Mock).mockResolvedValue({
+      id: 'project_123',
+      organizationId: 'org_123',
+    });
   });
 
   it('adds membership idempotently for group.user_added events', async () => {
@@ -68,16 +82,17 @@ describe('handleEvents group events', () => {
     await handleEvents(groupUserAddedPayload);
 
     expect(upsertUser).toHaveBeenCalledTimes(2);
-    expect(addTeamMember).toHaveBeenCalledTimes(2);
-    expect(addTeamMember).toHaveBeenNthCalledWith(
+    expect(addOrganizationMember).toHaveBeenCalledTimes(2);
+    expect(addProjectMember).toHaveBeenCalledTimes(2);
+    expect(addProjectMember).toHaveBeenNthCalledWith(
       1,
-      'team_123',
+      'project_123',
       'user_db_1',
       Role.MEMBER
     );
-    expect(addTeamMember).toHaveBeenNthCalledWith(
+    expect(addProjectMember).toHaveBeenNthCalledWith(
       2,
-      'team_123',
+      'project_123',
       'user_db_1',
       Role.MEMBER
     );
@@ -89,7 +104,7 @@ describe('handleEvents group events', () => {
       email: 'member@example.com',
     });
 
-    (countTeamMembers as jest.Mock)
+    (countProjectMembers as jest.Mock)
       .mockResolvedValueOnce(1)
       .mockResolvedValueOnce(0)
       .mockResolvedValueOnce(0);
@@ -97,8 +112,11 @@ describe('handleEvents group events', () => {
     await handleEvents(groupUserRemovedPayload);
     await handleEvents(groupUserRemovedPayload);
 
-    expect(removeTeamMember).toHaveBeenCalledTimes(1);
-    expect(removeTeamMember).toHaveBeenCalledWith('team_123', 'user_db_1');
+    expect(removeProjectMember).toHaveBeenCalledTimes(1);
+    expect(removeProjectMember).toHaveBeenCalledWith(
+      'project_123',
+      'user_db_1'
+    );
     expect(deleteUser).toHaveBeenCalledTimes(1);
     expect(deleteUser).toHaveBeenCalledWith({ email: 'member@example.com' });
   });
@@ -109,29 +127,29 @@ describe('handleEvents group events', () => {
       email: 'member@example.com',
     });
 
-    (countTeamMembers as jest.Mock).mockResolvedValueOnce(0);
+    (countProjectMembers as jest.Mock).mockResolvedValueOnce(0);
 
     await handleEvents({
       event: 'user.updated',
-      tenant: 'team_123',
+      tenant: 'project_123',
       data: {
         id: 'user_1',
         email: 'member@example.com',
-        first_name: 'Team',
+        first_name: 'Project',
         last_name: 'Member',
         active: false,
       },
     } as any);
 
-    expect(removeTeamMember).not.toHaveBeenCalled();
+    expect(removeProjectMember).not.toHaveBeenCalled();
     expect(deleteUser).not.toHaveBeenCalled();
-    expect(countTeamMembers).toHaveBeenCalledTimes(1);
+    expect(countProjectMembers).toHaveBeenCalledTimes(1);
   });
 
   it('is a safe no-op for unknown or unsupported group events', async () => {
     await handleEvents({
       event: 'group.unknown',
-      tenant: 'team_123',
+      tenant: 'project_123',
       data: {
         id: 'group_1',
         name: 'Engineering',
@@ -140,7 +158,7 @@ describe('handleEvents group events', () => {
 
     await handleEvents({
       event: 'group.created',
-      tenant: 'team_123',
+      tenant: 'project_123',
       data: {
         id: 'group_1',
         name: 'Engineering',
@@ -148,9 +166,10 @@ describe('handleEvents group events', () => {
     } as any);
 
     expect(upsertUser).not.toHaveBeenCalled();
-    expect(addTeamMember).not.toHaveBeenCalled();
+    expect(addOrganizationMember).not.toHaveBeenCalled();
+    expect(addProjectMember).not.toHaveBeenCalled();
     expect(getUser).not.toHaveBeenCalled();
-    expect(removeTeamMember).not.toHaveBeenCalled();
+    expect(removeProjectMember).not.toHaveBeenCalled();
     expect(deleteUser).not.toHaveBeenCalled();
   });
 });

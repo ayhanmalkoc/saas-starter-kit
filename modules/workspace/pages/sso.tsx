@@ -1,22 +1,22 @@
 import { Error, Loading } from '@/components/shared';
-import { TeamTab } from '@/components/team';
+import { ProjectTab } from '@/components/project';
 import { ConnectionsWrapper } from '@boxyhq/react-ui/sso';
-import useTeam from 'hooks/useTeam';
+import useProject from 'hooks/useProject';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import toast from 'react-hot-toast';
 import { BOXYHQ_UI_CSS } from '@/components/styles';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
 
-const TeamSSO = ({ teamFeatures, SPConfigURL }) => {
+const TeamSSO = ({ workspaceFeatures, SPConfigURL }) => {
   const { t } = useTranslation('common');
   const router = useRouter();
 
-  const { isLoading, isError, team } = useTeam();
+  const { isLoading, isError, project } = useProject();
 
   if (isLoading) {
     return <Loading />;
@@ -26,25 +26,28 @@ const TeamSSO = ({ teamFeatures, SPConfigURL }) => {
     return <Error message={isError.message} />;
   }
 
-  if (!team) {
-    return <Error message={t('team-not-found')} />;
+  if (!project) {
+    return <Error message={t('project-not-found')} />;
   }
 
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
   const ssoUrl =
     buildWorkspaceApiPath({
       context: routeContext,
-      teamSlug: team.slug,
       suffix: 'sso',
-    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'sso' });
+    }) ?? buildProjectWorkspaceApiPath({ project, suffix: 'sso' });
 
   if (!ssoUrl) {
-    return <Error message={t('team-not-found')} />;
+    return <Error message={t('project-not-found')} />;
   }
 
   return (
     <>
-      <TeamTab activeTab="sso" team={team} teamFeatures={teamFeatures} />
+      <ProjectTab
+        activeTab="sso"
+        project={project}
+        workspaceFeatures={workspaceFeatures}
+      />
       <ConnectionsWrapper
         urls={{
           spMetadata: SPConfigURL,
@@ -87,9 +90,4 @@ const TeamSSO = ({ teamFeatures, SPConfigURL }) => {
   );
 };
 
-
 export default TeamSSO;
-
-
-
-

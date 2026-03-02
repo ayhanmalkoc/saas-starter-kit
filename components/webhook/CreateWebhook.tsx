@@ -1,4 +1,4 @@
-import type { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 import type { FormikHelpers } from 'formik';
 import useWebhooks from 'hooks/useWebhooks';
 import { useTranslation } from 'next-i18next';
@@ -10,7 +10,7 @@ import type { WebhookFormSchema } from 'types';
 import ModalForm from './Form';
 import { defaultHeaders } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -19,14 +19,14 @@ import { useRouter } from 'next/router';
 const CreateWebhook = ({
   visible,
   setVisible,
-  team,
+  project,
 }: {
   visible: boolean;
   setVisible: (visible: boolean) => void;
-  team: Team;
+  project: Project;
 }) => {
   const router = useRouter();
-  const { mutateWebhooks } = useWebhooks(team.slug);
+  const { mutateWebhooks } = useWebhooks();
   const { t } = useTranslation('common');
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
@@ -37,9 +37,9 @@ const CreateWebhook = ({
     const webhooksUrl =
       buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: 'webhooks',
-      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'webhooks' });
+      }) ??
+      buildProjectWorkspaceApiPath({ project: project, suffix: 'webhooks' });
 
     if (!webhooksUrl) {
       toast.error('Workspace API route could not be resolved.');
@@ -52,7 +52,7 @@ const CreateWebhook = ({
       body: JSON.stringify(values),
     });
 
-    const json = (await response.json()) as ApiResponse<Team>;
+    const json = (await response.json()) as ApiResponse<Project>;
 
     if (!response.ok) {
       toast.error(json.error.message);

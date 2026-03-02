@@ -1,13 +1,21 @@
 import { Error, Loading } from '@/components/shared';
 import { AccessControl } from '@/components/shared/AccessControl';
-import { RemoveTeam, TeamSettings, TeamTab } from '@/components/team';
-import useTeam from 'hooks/useTeam';
+import {
+  ProjectSettings,
+  ProjectTab,
+  RemoveProject,
+} from '@/components/project';
+import useProject from 'hooks/useProject';
 import { useTranslation } from 'next-i18next';
-import type { TeamFeature } from 'types';
+import type { WorkspaceFeature } from 'types';
 
-const Settings = ({ teamFeatures }: { teamFeatures: TeamFeature }) => {
+const Settings = ({
+  workspaceFeatures,
+}: {
+  workspaceFeatures: WorkspaceFeature;
+}) => {
   const { t } = useTranslation('common');
-  const { isLoading, isError, team } = useTeam();
+  const { isLoading, isError, project } = useProject();
 
   if (isLoading) {
     return <Loading />;
@@ -17,26 +25,28 @@ const Settings = ({ teamFeatures }: { teamFeatures: TeamFeature }) => {
     return <Error message={isError.message} />;
   }
 
-  if (!team) {
-    return <Error message={t('team-not-found')} />;
+  if (!project) {
+    return <Error message={t('project-not-found')} />;
   }
 
   return (
     <>
-      <TeamTab activeTab="settings" team={team} teamFeatures={teamFeatures} />
+      <ProjectTab
+        activeTab="settings"
+        project={project}
+        workspaceFeatures={workspaceFeatures}
+      />
       <div className="space-y-6">
-        <TeamSettings team={team} />
-        <AccessControl resource="team" actions={['delete']}>
-          <RemoveTeam team={team} allowDelete={teamFeatures.deleteTeam} />
+        <ProjectSettings project={project} />
+        <AccessControl resource="project" actions={['delete']}>
+          <RemoveProject
+            project={project}
+            allowDelete={workspaceFeatures.deleteProject}
+          />
         </AccessControl>
       </div>
     </>
   );
 };
 
-
 export default Settings;
-
-
-
-

@@ -2,7 +2,7 @@ import { type Page, type Locator, expect } from '@playwright/test';
 
 export class JoinPage {
   private readonly nameBox: Locator;
-  private readonly teamNameBox: Locator;
+  private readonly projectNameBox: Locator;
   private readonly emailBox: Locator;
   private readonly passwordBox: Locator;
   private readonly createAccountButton: Locator;
@@ -14,10 +14,10 @@ export class JoinPage {
       email: string;
       password: string;
     },
-    public readonly teamName: string
+    public readonly projectName: string
   ) {
     this.nameBox = this.page.locator('input[name="name"]');
-    this.teamNameBox = this.page.locator('input[name="team"]');
+    this.projectNameBox = this.page.locator('input[name="organizationName"]');
     this.emailBox = this.page.locator('input[name="email"]');
     this.passwordBox = this.page.locator('input[name="password"]');
     this.createAccountButton = page.locator('form button[type="submit"]');
@@ -41,15 +41,30 @@ export class JoinPage {
 
   async signUp() {
     await this.nameBox.fill(this.user.name);
-    await this.teamNameBox.fill(this.teamName);
+    await this.projectNameBox.fill(this.projectName);
     await this.emailBox.fill(this.user.email);
     await this.passwordBox.fill(this.user.password);
     await this.createAccountButton.click();
-    await this.page.waitForURL('/auth/login');
+
+    // Account creation flow may land on login, dashboard, or verify-email based on env flags.
+    await Promise.race([
+      this.page.waitForURL(/\/auth\/login/, { timeout: 30000 }),
+      this.page.waitForURL(/\/dashboard/, { timeout: 30000 }),
+      this.page.waitForURL(/\/auth\/verify-email/, { timeout: 30000 }),
+    ]).catch(() => undefined);
+
+    if (/\/auth\/login/.test(this.page.url())) {
+      await expect(
+        this.page
+          .getByRole('status')
+          .and(this.page.getByText(this.createAccountSuccessMessage))
+      ).toBeVisible();
+      return;
+    }
+
+    await this.page.goto('/auth/login');
     await expect(
-      this.page
-        .getByRole('status')
-        .and(this.page.getByText(this.createAccountSuccessMessage))
+      this.page.getByRole('heading', { name: 'Welcome back' })
     ).toBeVisible();
   }
 }

@@ -23,7 +23,7 @@ describe('AccessControl', () => {
     });
 
     render(
-      <AccessControl resource="team_member" actions={['read']}>
+      <AccessControl resource="project_member" actions={['read']}>
         <button>{visibleLabel}</button>
       </AccessControl>
     );
@@ -41,7 +41,7 @@ describe('AccessControl', () => {
     });
 
     render(
-      <AccessControl resource="team_member" actions={['update']}>
+      <AccessControl resource="project_member" actions={['update']}>
         <button>{hiddenLabel}</button>
       </AccessControl>
     );

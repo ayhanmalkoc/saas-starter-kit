@@ -65,13 +65,13 @@ const envSchema = z.object({
 
   NEXT_PUBLIC_DARK_MODE: z.string().optional(),
 
-  FEATURE_TEAM_SSO: z.string().optional(),
-  FEATURE_TEAM_DSYNC: z.string().optional(),
-  FEATURE_TEAM_WEBHOOK: z.string().optional(),
-  FEATURE_TEAM_API_KEY: z.string().optional(),
-  FEATURE_TEAM_AUDIT_LOG: z.string().optional(),
-  FEATURE_TEAM_PAYMENTS: z.string().optional(),
-  FEATURE_TEAM_DELETION: z.string().optional(),
+  FEATURE_PROJECT_SSO: z.string().optional(),
+  FEATURE_PROJECT_DSYNC: z.string().optional(),
+  FEATURE_PROJECT_WEBHOOK: z.string().optional(),
+  FEATURE_PROJECT_API_KEY: z.string().optional(),
+  FEATURE_PROJECT_AUDIT_LOG: z.string().optional(),
+  FEATURE_PROJECT_PAYMENTS: z.string().optional(),
+  FEATURE_PROJECT_DELETION: z.string().optional(),
 
   RECAPTCHA_SITE_KEY: z.string().optional(),
   RECAPTCHA_SECRET_KEY: z.string().optional(),
@@ -208,17 +208,17 @@ const env = {
 
   darkModeEnabled: rawEnv.NEXT_PUBLIC_DARK_MODE !== 'false',
 
-  teamFeatures: {
-    sso: rawEnv.FEATURE_TEAM_SSO !== 'false',
-    dsync: rawEnv.FEATURE_TEAM_DSYNC !== 'false',
-    webhook: rawEnv.FEATURE_TEAM_WEBHOOK !== 'false',
-    apiKey: rawEnv.FEATURE_TEAM_API_KEY !== 'false',
-    auditLog: rawEnv.FEATURE_TEAM_AUDIT_LOG !== 'false',
+  workspaceFeatures: {
+    sso: rawEnv.FEATURE_PROJECT_SSO !== 'false',
+    dsync: rawEnv.FEATURE_PROJECT_DSYNC !== 'false',
+    webhook: rawEnv.FEATURE_PROJECT_WEBHOOK !== 'false',
+    apiKey: rawEnv.FEATURE_PROJECT_API_KEY !== 'false',
+    auditLog: rawEnv.FEATURE_PROJECT_AUDIT_LOG !== 'false',
     payments:
-      rawEnv.FEATURE_TEAM_PAYMENTS === 'false'
+      rawEnv.FEATURE_PROJECT_PAYMENTS === 'false'
         ? false
         : Boolean(rawEnv.STRIPE_SECRET_KEY && rawEnv.STRIPE_WEBHOOK_SECRET),
-    deleteTeam: rawEnv.FEATURE_TEAM_DELETION !== 'false',
+    deleteProject: rawEnv.FEATURE_PROJECT_DELETION !== 'false',
   },
 
   recaptcha: {

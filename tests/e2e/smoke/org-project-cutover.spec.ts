@@ -33,7 +33,7 @@ test('PR-5D smoke: login + canonical workspace + members + billing', async ({
     timeout: 30000,
   });
   await expect(
-    page.getByRole('heading', { name: 'Team Settings' })
+    page.getByRole('heading', { name: 'Project Settings' })
   ).toBeVisible();
 
   const { orgSlug, projectSlug } = getCanonicalContextFromUrl(page.url());
@@ -41,9 +41,11 @@ test('PR-5D smoke: login + canonical workspace + members + billing', async ({
   // Workspace navigation smoke: members page via canonical app route.
   await page.goto(`/orgs/${orgSlug}/projects/${projectSlug}/members`);
   await expect(page.getByRole('heading', { name: 'Members' })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Invite Member' })).toBeVisible();
+  await expect(
+    page.getByRole('button', { name: 'Invite Member' })
+  ).toBeVisible();
 
-  // Team members + invitations smoke via canonical API route.
+  // Project members + invitations smoke via canonical API route.
   const invitationListResponse = await page.request.get(
     `/api/orgs/${orgSlug}/projects/${projectSlug}/invitations?sentViaEmail=true`
   );

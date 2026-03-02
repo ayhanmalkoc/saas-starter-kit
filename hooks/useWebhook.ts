@@ -8,17 +8,16 @@ import type { EndpointOut } from 'svix';
 import useSWR, { mutate } from 'swr';
 import type { ApiResponse } from 'types';
 
-const useWebhook = (slug: string, endpointId: string | null) => {
+const useWebhook = (endpointId: string | null) => {
   const router = useRouter();
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
   const url = buildWorkspaceApiPath({
     context: routeContext,
-    teamSlug: slug,
     suffix: endpointId ? `webhooks/${endpointId}` : undefined,
   });
 
   const { data, error, isLoading } = useSWR<ApiResponse<EndpointOut>>(
-    slug && url ? url : null,
+    url,
     fetcher
   );
 

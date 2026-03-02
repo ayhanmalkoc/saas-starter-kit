@@ -1,6 +1,6 @@
 /**
- * This script clears all users and teams from the database,
- * effectively resetting user data while keeping Stripe products/prices.
+ * This script clears all users and org/project membership data from the database,
+ * effectively resetting tenant data while keeping Stripe products/prices.
  */
 import { prisma } from '../lib/prisma';
 import readline from 'node:readline';
@@ -23,7 +23,7 @@ async function main() {
 
   const answer = await new Promise((resolve) => {
     rl.question(
-      'WARNING: This will delete ALL users and teams. Are you sure? (y/N) ',
+      'WARNING: This will delete ALL users, organizations, projects, and memberships. Are you sure? (y/N) ',
       resolve
     );
   });
@@ -33,25 +33,37 @@ async function main() {
     process.exit(0);
   }
 
-  console.log('Clearing all users and teams...');
+  console.log('Clearing all users, organizations, and projects...');
 
   try {
-    // Delete all users. Cascade should handle TeamMembers, Invitations, etc.
-    // However, Teams might need explicit deletion if not cascaded from users (Teams have owners).
-    // Let's delete Teams first? No, Users are owners.
-    // Let's delete everything in order.
-
     // Delete Invitations
     await prisma.invitation.deleteMany({});
     console.log('Deleted invitations.');
 
-    // Delete TeamMembers
-    await prisma.teamMember.deleteMany({});
-    console.log('Deleted team members.');
+    // Delete API keys
+    await prisma.apiKey.deleteMany({});
+    console.log('Deleted API keys.');
 
-    // Delete Teams
-    await prisma.team.deleteMany({});
-    console.log('Deleted teams.');
+    // Delete project and organization memberships
+    await prisma.projectMember.deleteMany({});
+    console.log('Deleted project members.');
+
+    await prisma.organizationMember.deleteMany({});
+    console.log('Deleted organization members.');
+
+    // Delete billing records scoped to organizations/projects
+    await prisma.subscription.deleteMany({});
+    console.log('Deleted subscriptions.');
+
+    await prisma.invoice.deleteMany({});
+    console.log('Deleted invoices.');
+
+    // Delete projects and organizations
+    await prisma.project.deleteMany({});
+    console.log('Deleted projects.');
+
+    await prisma.organization.deleteMany({});
+    console.log('Deleted organizations.');
 
     // Delete Users
     await prisma.user.deleteMany({});

@@ -32,7 +32,6 @@
     "stripe:sync-subscriptions": "node --env-file .env scripts/sync-stripe-subscriptions.js && npm run billing:backfill-org-scope",
     "billing:backfill-org-scope": "node --env-file .env scripts/backfill-org-billing-scope.js",
     "setup:stripe": "npm run check-plans && npm run org:bootstrap && npm run stripe:setup-products && npm run stripe:sync-db && npm run stripe:sync-subscriptions",
-    "delete-team": "node --env-file .env delete-team.js",
     "migrate:deploy": "prisma migrate deploy",
     "db:setup-svix": "docker-compose exec -T db /bin/bash /docker-entrypoint-initdb.d/init-svix-db.sh",
     "db:setup-retraced": "docker-compose exec -T db /bin/bash /docker-entrypoint-initdb.d/init-retraced-db.sh && docker-compose exec -T retraced sh -c \"cat /app/build/migrations/pg/*.do.*.sql\" | docker-compose exec -T db psql -U postgres -d retraced",

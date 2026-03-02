@@ -1,9 +1,8 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { isBusinessService } from '@/lib/billing/catalog';
-import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { getSession } from '@/lib/session';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import { getAllServices } from 'models/service';
 import { getAllPrices } from 'models/price';
 import { getByBillingScope as getSubscriptionsByBillingScope } from 'models/subscription';
@@ -13,7 +12,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   try {
     switch (req.method) {
       case 'GET':
@@ -35,23 +33,19 @@ export default async function handler(
 
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   const session = await getSession(req, res);
-  const teamMember = await throwIfNoTeamAccess(req, res);
+  const projectMember = await throwIfNoProjectAccess(req, res);
   if (!session?.user?.id) {
     throw Error('Could not get user');
   }
 
-  const billingScope = await resolveBillingScopeFromTeamId(teamMember.teamId);
-
   const [subscriptions, products, prices, invoices] = await Promise.all([
     getSubscriptionsByBillingScope({
-      teamId: teamMember.teamId,
-      organizationId: billingScope.organizationId,
+      organizationId: projectMember.organizationId,
     }),
     getAllServices(),
     getAllPrices(),
     getInvoicesByBillingScope({
-      teamId: teamMember.teamId,
-      organizationId: billingScope.organizationId,
+      organizationId: projectMember.organizationId,
     }),
   ]);
 
@@ -94,4 +88,3 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     },
   });
 };
-

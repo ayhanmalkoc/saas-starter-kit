@@ -24,13 +24,13 @@ const normalizeKey = (value) =>
 
 const featureAliasMap = {
   webhook: 'webhooks',
-  team_webhook: 'webhooks',
+  project_webhook: 'webhooks',
   dsync: 'directory_sync',
-  team_dsync: 'directory_sync',
-  audit_logs: 'team_audit_log',
-  team_audit_logs: 'team_audit_log',
+  project_dsync: 'directory_sync',
+  audit_logs: 'project_audit_log',
+  project_audit_logs: 'project_audit_log',
   api_key: 'api_keys',
-  team_api_key: 'api_keys',
+  project_api_key: 'api_keys',
 };
 
 const normalizeFeatureKey = (value) => {

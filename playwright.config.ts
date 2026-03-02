@@ -1,5 +1,24 @@
 import { PlaywrightTestConfig, devices } from '@playwright/test';
 
+const normalizeAuthProviders = () => {
+  const configuredRaw = (process.env.AUTH_PROVIDERS || '')
+    .split(',')
+    .map((provider) => provider.trim())
+    .filter(Boolean);
+
+  const configured =
+    configuredRaw.length > 0
+      ? configuredRaw
+      : ['github', 'google', 'credentials'];
+
+  const merged = new Set(configured);
+  merged.add('email');
+  merged.add('saml');
+  merged.add('idp-initiated');
+
+  return Array.from(merged).join(',');
+};
+
 const config: PlaywrightTestConfig = {
   workers: 1,
   globalSetup: require.resolve('./tests/e2e/support/globalSetup.ts'),
@@ -30,6 +49,12 @@ const config: PlaywrightTestConfig = {
     command: 'npm run start -- --hostname localhost',
     url: 'http://localhost:4002',
     reuseExistingServer: !process.env.CI,
+    env: {
+      ...process.env,
+      AUTH_PROVIDERS: normalizeAuthProviders(),
+      NEXTAUTH_SESSION_STRATEGY: 'database',
+      CONFIRM_EMAIL: 'false',
+    },
   },
   retries: 1,
   use: {

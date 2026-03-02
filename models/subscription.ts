@@ -11,8 +11,7 @@ export const BLOCKING_SUBSCRIPTION_STATUSES = new Set([
 
 type StripeSubscriptionInput = {
   id: string;
-  teamId: string;
-  organizationId?: string | null;
+  organizationId: string;
   projectId?: string | null;
   customerId: string;
   status: string;
@@ -28,7 +27,6 @@ type StripeSubscriptionInput = {
 };
 
 const buildStripeSubscriptionData = ({
-  teamId,
   organizationId,
   projectId,
   customerId,
@@ -44,8 +42,7 @@ const buildStripeSubscriptionData = ({
   productId,
 }: Omit<StripeSubscriptionInput, 'id'>) => {
   return {
-    teamId,
-    organizationId: organizationId ?? null,
+    organizationId,
     projectId: projectId ?? null,
     customerId,
     status,
@@ -109,14 +106,6 @@ export const updateStripeSubscription = async (
   });
 };
 
-export const getByTeamId = async (teamId: string) => {
-  return await prisma.subscription.findMany({
-    where: {
-      teamId,
-    },
-  });
-};
-
 export const getByOrganizationId = async (organizationId: string) => {
   return await prisma.subscription.findMany({
     where: {
@@ -126,17 +115,11 @@ export const getByOrganizationId = async (organizationId: string) => {
 };
 
 export const getByBillingScope = async ({
-  teamId,
   organizationId,
 }: {
-  teamId: string;
-  organizationId?: string | null;
+  organizationId: string;
 }) => {
-  if (organizationId) {
-    return await getByOrganizationId(organizationId);
-  }
-
-  return await getByTeamId(teamId);
+  return await getByOrganizationId(organizationId);
 };
 
 const sortByMostRecent = (a: Subscription, b: Subscription) => {
@@ -151,14 +134,11 @@ const sortByMostRecent = (a: Subscription, b: Subscription) => {
 };
 
 export const getBlockingByBillingScope = async ({
-  teamId,
   organizationId,
 }: {
-  teamId: string;
-  organizationId?: string | null;
+  organizationId: string;
 }) => {
   const subscriptions = await getByBillingScope({
-    teamId,
     organizationId,
   });
 

@@ -7,25 +7,23 @@ import {
 } from '@/lib/routing/workspace-routes';
 import { useRouter } from 'next/router';
 import type { ApiResponse } from 'types';
-import { TeamInvitation } from 'models/invitation';
+import type { ProjectInvitation } from 'models/invitation';
 
 interface Props {
-  slug: string;
   sentViaEmail: boolean;
 }
 
-const useInvitations = ({ slug, sentViaEmail }: Props) => {
+const useInvitations = ({ sentViaEmail }: Props) => {
   const router = useRouter();
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
   const baseUrl = buildWorkspaceApiPath({
     context: routeContext,
-    teamSlug: slug,
     suffix: 'invitations',
   });
   const url =
     baseUrl === null ? null : `${baseUrl}?sentViaEmail=${sentViaEmail}`;
 
-  const { data, error, isLoading } = useSWR<ApiResponse<TeamInvitation[]>>(
+  const { data, error, isLoading } = useSWR<ApiResponse<ProjectInvitation[]>>(
     url,
     fetcher
   );

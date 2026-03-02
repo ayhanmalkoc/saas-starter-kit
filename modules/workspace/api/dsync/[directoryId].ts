@@ -1,12 +1,12 @@
 import env from '@/lib/env';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { ApiError } from '@/lib/errors';
 import { dsyncManager } from '@/lib/jackson/dsync';
 import { sendAudit } from '@/lib/retraced';
-import { throwIfNoAccessToDirectory } from '@/lib/guards/team-dsync';
-import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import { throwIfNoAccessToDirectory } from '@/lib/guards/project-dsync';
+import { requireOrganizationEntitlement } from '@/lib/billing/entitlements';
 
 const dsync = dsyncManager();
 
@@ -14,11 +14,10 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   const { method } = req;
 
   try {
-    if (!env.teamFeatures.dsync) {
+    if (!env.workspaceFeatures.dsync) {
       throw new ApiError(404, 'Not Found');
     }
 
@@ -49,17 +48,17 @@ export default async function handler(
 }
 
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, {
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
     feature: 'directory_sync',
   });
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'read');
+  throwIfNotAllowed(projectMember, 'project_dsync', 'read');
 
   const directoryId = req.query.directoryId as string;
 
   await throwIfNoAccessToDirectory({
-    teamId: teamMember.team.id,
+    projectId: projectMember.project.id,
     directoryId,
   });
 
@@ -69,15 +68,15 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, {
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
     feature: 'directory_sync',
   });
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'read');
+  throwIfNotAllowed(projectMember, 'project_dsync', 'read');
 
   await throwIfNoAccessToDirectory({
-    teamId: teamMember.team.id,
+    projectId: projectMember.project.id,
     directoryId: req.query.directoryId as string,
   });
 
@@ -89,15 +88,15 @@ const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
 };
 
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, {
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
     feature: 'directory_sync',
   });
 
-  throwIfNotAllowed(teamMember, 'team_dsync', 'delete');
+  throwIfNotAllowed(projectMember, 'project_dsync', 'delete');
 
   await throwIfNoAccessToDirectory({
-    teamId: teamMember.team.id,
+    projectId: projectMember.project.id,
     directoryId: req.query.directoryId as string,
   });
 
@@ -106,10 +105,9 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   sendAudit({
     action: 'dsync.connection.delete',
     crud: 'd',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   res.status(200).json(data);
 };
-

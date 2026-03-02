@@ -9,7 +9,7 @@ export class WebhooksPage {
 
   constructor(
     public readonly page: Page,
-    private readonly teamSlug: string
+    private readonly projectSlug: string
   ) {
     this.addWebhookButton = this.page.getByRole('button', {
       name: 'Add Webhook',
@@ -26,14 +26,20 @@ export class WebhooksPage {
   }
 
   async goto() {
-    await this.page.goto(`/teams/${this.teamSlug}/webhooks`);
-    await this.page.waitForURL(`/teams/${this.teamSlug}/webhooks`);
+    await this.page.goto(`/orgs/${this.projectSlug}/projects/default/webhooks`);
+    await this.page.waitForURL(
+      `/orgs/${this.projectSlug}/projects/default/webhooks`
+    );
   }
 
   async waitForListLoaded() {
     await this.page.waitForResponse(
       (response) =>
-        response.url().includes(`/api/teams/${this.teamSlug}/webhooks`) &&
+        response
+          .url()
+          .includes(
+            `/api/orgs/${this.projectSlug}/projects/default/webhooks`
+          ) &&
         response.request().method() === 'GET' &&
         response.ok()
     );
@@ -47,8 +53,13 @@ export class WebhooksPage {
   async createWebhook(description: string, endpoint: string) {
     const createResponse = this.page.waitForResponse(
       (response) =>
-        response.url().includes(`/api/teams/${this.teamSlug}/webhooks`) &&
-        response.request().method() === 'POST'
+        response
+          .url()
+          .includes(
+            `/api/orgs/${this.projectSlug}/projects/default/webhooks`
+          ) &&
+        response.request().method() === 'POST' &&
+        response.ok()
     );
 
     await this.descriptionInput.fill(description);
@@ -76,8 +87,13 @@ export class WebhooksPage {
 
     const deleteResponse = this.page.waitForResponse(
       (response) =>
-        response.url().includes(`/api/teams/${this.teamSlug}/webhooks?`) &&
-        response.request().method() === 'DELETE'
+        response
+          .url()
+          .includes(
+            `/api/orgs/${this.projectSlug}/projects/default/webhooks`
+          ) &&
+        response.request().method() === 'DELETE' &&
+        response.ok()
     );
 
     await row.getByRole('button', { name: 'Remove' }).click();

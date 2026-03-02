@@ -24,10 +24,10 @@ export default async function handler(
       name: 'Debug User',
       email: 'debug@example.com',
     };
-    const team = {
-      id: 'debug-team-1',
-      name: 'Debug Team',
-      slug: 'debug-team',
+    const project = {
+      id: 'debug-project-1',
+      name: 'Debug Project',
+      slug: 'debug-project',
       domain: null,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -36,10 +36,10 @@ export default async function handler(
     // Valid call
     try {
       await sendAudit({
-        action: 'team.update',
+        action: 'project.update',
         crud: 'u',
         user: validUser as any,
-        team: team as any,
+        project: project as any,
       });
       console.log('✅ Valid User: Sent successfully');
     } catch (error) {
@@ -57,10 +57,10 @@ export default async function handler(
     // Null name call
     try {
       await sendAudit({
-        action: 'team.update',
+        action: 'project.update',
         crud: 'u',
         user: nullNameUser as any,
-        team: team as any,
+        project: project as any,
       });
       console.log('✅ Null Name User: Sent successfully');
     } catch (error) {

@@ -11,9 +11,4 @@ const Products: NextPageWithLayout = () => {
   );
 };
 
-
 export default Products;
-
-
-
-

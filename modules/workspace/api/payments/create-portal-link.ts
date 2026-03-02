@@ -2,15 +2,14 @@ import { NextApiRequest, NextApiResponse } from 'next';
 
 import { getSession } from '@/lib/session';
 import { getOrganizationById } from 'models/organization';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import { getBillingProvider } from '@/lib/billing/provider';
 import type {
   BillingSession,
-  BillingTeamMember,
+  BillingProjectMember,
 } from '@/lib/billing/provider/types';
 import env from '@/lib/env';
 import {
-  buildTeamWorkspaceAppPath,
   buildWorkspaceAppPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -19,7 +18,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   try {
     switch (req.method) {
       case 'POST':
@@ -40,25 +38,27 @@ export default async function handler(
 }
 
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
+  const projectMember = await throwIfNoProjectAccess(req, res);
   const session = await getSession(req, res);
-  const billingOrganization = teamMember.team.organizationId
-    ? await getOrganizationById(teamMember.team.organizationId)
-    : null;
+  const billingOrganization = await getOrganizationById(
+    projectMember.organizationId
+  );
   const billingProvider = getBillingProvider(
-    billingOrganization?.billingProvider ?? teamMember.team.billingProvider
+    billingOrganization?.billingProvider ?? 'stripe'
   );
   const customerId = await billingProvider.getCustomerId(
-    teamMember as BillingTeamMember,
+    projectMember as BillingProjectMember,
     session as BillingSession
   );
   const routeContext = getWorkspaceRouteContextFromQuery(req.query);
-  const billingPath =
-    buildWorkspaceAppPath({
-      context: routeContext,
-      teamSlug: teamMember.team.slug,
-      suffix: 'billing',
-    }) ?? buildTeamWorkspaceAppPath({ team: teamMember.team, suffix: 'billing' });
+  const billingPath = buildWorkspaceAppPath({
+    context: routeContext,
+    suffix: 'billing',
+  });
+
+  if (!billingPath) {
+    throw new Error('Workspace app route could not be resolved.');
+  }
 
   const { url } = await billingProvider.createPortalSession({
     customerId,
@@ -67,4 +67,3 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 
   res.json({ data: { url } });
 };
-

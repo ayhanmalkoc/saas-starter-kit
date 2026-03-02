@@ -1,6 +1,6 @@
 import { WithLoadingAndError } from '@/components/shared';
 import { EmptyState } from '@/components/shared';
-import { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 import useWebhooks from 'hooks/useWebhooks';
 import { useTranslation } from 'next-i18next';
 import React, { useState } from 'react';
@@ -11,7 +11,7 @@ import type { EndpointOut } from 'svix';
 import { CreateWebhook, EditWebhook } from '@/components/webhook';
 import { defaultHeaders } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -20,7 +20,7 @@ import ConfirmationDialog from '../shared/ConfirmationDialog';
 import { Table } from '@/components/shared/table/Table';
 import { useRouter } from 'next/router';
 
-const Webhooks = ({ team }: { team: Team }) => {
+const Webhooks = ({ project }: { project: Project }) => {
   const router = useRouter();
   const { t } = useTranslation('common');
   const [createWebhookVisible, setCreateWebhookVisible] = useState(false);
@@ -34,9 +34,7 @@ const Webhooks = ({ team }: { team: Team }) => {
     null
   );
 
-  const { isLoading, isError, webhooks, mutateWebhooks } = useWebhooks(
-    team.slug
-  );
+  const { isLoading, isError, webhooks, mutateWebhooks } = useWebhooks();
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   const deleteWebhook = async (webhook: EndpointOut | null) => {
@@ -48,9 +46,9 @@ const Webhooks = ({ team }: { team: Team }) => {
     const webhooksUrl =
       buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: 'webhooks',
-      }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'webhooks' });
+      }) ??
+      buildProjectWorkspaceApiPath({ project: project, suffix: 'webhooks' });
 
     const response = await fetch(`${webhooksUrl}?${sp.toString()}`, {
       method: 'DELETE',
@@ -145,7 +143,7 @@ const Webhooks = ({ team }: { team: Team }) => {
           <EditWebhook
             visible={updateWebhookVisible}
             setVisible={setUpdateWebhookVisible}
-            team={team}
+            project={project}
             endpoint={endpoint}
           />
         )}
@@ -161,7 +159,7 @@ const Webhooks = ({ team }: { team: Team }) => {
       <CreateWebhook
         visible={createWebhookVisible}
         setVisible={setCreateWebhookVisible}
-        team={team}
+        project={project}
       />
     </WithLoadingAndError>
   );

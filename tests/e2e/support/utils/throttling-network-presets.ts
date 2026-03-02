@@ -1,7 +1,7 @@
 // THROTTLING NETWORK for a test case
 // 1. Import the NETWORK_PRESETS const
 // 2. Add below code for throttling the network passing the preferred n/w condition object
-// test('Should be able to update team slug', async ({
+// test('Should be able to update project slug', async ({
 //     loginPage,
 //     settingsPage,
 //     context,

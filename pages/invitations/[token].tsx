@@ -15,7 +15,7 @@ import AcceptInvitation from '@/components/invitation/AcceptInvitation';
 import NotAuthenticated from '@/components/invitation/NotAuthenticated';
 import EmailDomainMismatch from '@/components/invitation/EmailDomainMismatch';
 
-const AcceptTeamInvitation: NextPageWithLayout = () => {
+const AcceptProjectInvitation: NextPageWithLayout = () => {
   const { status, data } = useSession();
   const { t } = useTranslation('common');
   const { isLoading, error, invitation } = useInvitation();
@@ -47,12 +47,12 @@ const AcceptTeamInvitation: NextPageWithLayout = () => {
   return (
     <>
       <Head>
-        <title>{`${t('invitation-title')} ${invitation.team.name}`}</title>
+        <title>{`${t('invitation-title')} ${invitation.project.name}`}</title>
       </Head>
       <div className="rounded p-6 border">
         <div className="flex flex-col items-center space-y-6">
           <h2 className="font-bold">
-            {`${invitation.team.name} ${t('team-invite')}`}
+            {`${invitation.project.name} ${t('project-invite')}`}
           </h2>
 
           {/* User not authenticated */}
@@ -87,7 +87,7 @@ const AcceptTeamInvitation: NextPageWithLayout = () => {
   );
 };
 
-AcceptTeamInvitation.getLayout = function getLayout(page: ReactElement) {
+AcceptProjectInvitation.getLayout = function getLayout(page: ReactElement) {
   return <AuthLayout>{page}</AuthLayout>;
 };
 
@@ -103,4 +103,4 @@ export const getServerSideProps = async (
   };
 };
 
-export default AcceptTeamInvitation;
+export default AcceptProjectInvitation;

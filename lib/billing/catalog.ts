@@ -57,7 +57,7 @@ export const assertBusinessTierPrice = async (priceId: string) => {
   if (!isBusinessService(price.service.metadata)) {
     throw new ApiError(
       422,
-      'Team billing endpoints only support business tier plans.'
+      'Organization billing endpoints only support business tier plans.'
     );
   }
 

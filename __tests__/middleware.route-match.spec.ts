@@ -45,7 +45,7 @@ describe('middleware route matching helpers', () => {
     ['/.well-known/saml-configuration', true],
     ['/.well-known/a/b', false],
     ['/dashboard', false],
-    ['/api/teams/acme/members', false],
+    ['/api/orgs/acme/projects/default/members', false],
   ])(
     'table-driven bypass case: pathname=%s -> bypass=%s',
     (pathname, expectedBypass) => {

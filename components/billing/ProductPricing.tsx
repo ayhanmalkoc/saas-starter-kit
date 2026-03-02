@@ -3,7 +3,7 @@ import toast from 'react-hot-toast';
 import { Button } from 'react-daisyui';
 import { useTranslation } from 'next-i18next';
 
-import useTeam from 'hooks/useTeam';
+import useProject from 'hooks/useProject';
 import { Price, Prisma, Service, Subscription } from '@prisma/client';
 import PaymentButton from './PaymentButton';
 import { handlePlanChange } from './planService';
@@ -14,7 +14,7 @@ interface ProductPricingProps {
 }
 
 const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
-  const { team } = useTeam();
+  const { project } = useProject();
   const { t } = useTranslation('common');
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>(
     'month'
@@ -26,13 +26,12 @@ const ProductPricing = ({ plans, subscriptions }: ProductPricingProps) => {
     quantity?: number,
     subscriptionId?: string | null
   ) => {
-    if (!team?.slug) {
+    if (!project?.slug) {
       toast.error(t('stripe-checkout-fallback-error'));
       return;
     }
 
     const data = await handlePlanChange({
-      teamSlug: team.slug,
       priceId,
       quantity,
       subscriptionId,

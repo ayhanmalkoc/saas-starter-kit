@@ -29,7 +29,7 @@ export class DirectorySyncPage {
 
   constructor(
     public readonly page: Page,
-    public readonly teamSlug: string
+    public readonly projectSlug: string
   ) {
     this.pageHeader = this.page.getByRole('heading', {
       name: 'Manage DSync Connections',
@@ -85,7 +85,7 @@ export class DirectorySyncPage {
   async goto(productId?: string) {
     const url = productId
       ? `/products/${productId}/dsync`
-      : `/teams/${this.teamSlug}/directory-sync`;
+      : `/orgs/${this.projectSlug}/projects/default/directory-sync`;
 
     await this.page.goto(url);
     await this.page.waitForURL(url);

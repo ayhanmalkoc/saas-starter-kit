@@ -1,12 +1,11 @@
 import { NextApiRequest, NextApiResponse } from 'next';
 
 import { assertBusinessTierPrice } from '@/lib/billing/catalog';
-import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { ApiError } from '@/lib/errors';
 import { getSession } from '@/lib/session';
 import { stripe } from '@/lib/stripe';
 import { getOrganizationById } from 'models/organization';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import {
   BLOCKING_SUBSCRIPTION_STATUSES,
   getBlockingByBillingScope,
@@ -14,12 +13,11 @@ import {
 import { getBillingProvider } from '@/lib/billing/provider';
 import type {
   BillingSession,
-  BillingTeamMember,
+  BillingProjectMember,
 } from '@/lib/billing/provider/types';
 import env from '@/lib/env';
 import { checkoutSessionSchema, validateWithSchema } from '@/lib/zod';
 import {
-  buildTeamWorkspaceAppPath,
   buildWorkspaceAppPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -52,12 +50,10 @@ const getBlockingStripeSubscriptions = async (customerId: string) => {
 };
 
 const getExistingScopeSubscriptionState = async ({
-  teamId,
   organizationId,
   customerId,
 }: {
-  teamId: string;
-  organizationId?: string | null;
+  organizationId: string;
   customerId: string;
 }) => {
   const stripeBlockingSubscriptions =
@@ -73,7 +69,6 @@ const getExistingScopeSubscriptionState = async ({
   }
 
   const scopeBlockingSubscriptions = await getBlockingByBillingScope({
-    teamId,
     organizationId,
   });
 
@@ -120,7 +115,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   try {
     switch (req.method) {
       case 'POST':
@@ -146,32 +140,32 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     req.body
   );
 
-  const teamMember = await throwIfNoTeamAccess(req, res);
+  const projectMember = await throwIfNoProjectAccess(req, res);
   await assertBusinessTierPrice(price);
   const session = await getSession(req, res);
-  const billingScope = await resolveBillingScopeFromTeamId(teamMember.teamId);
-  const billingOrganization = billingScope.organizationId
-    ? await getOrganizationById(billingScope.organizationId)
-    : null;
+  const billingOrganization = await getOrganizationById(
+    projectMember.organizationId
+  );
   const billingProvider = getBillingProvider(
-    billingOrganization?.billingProvider ?? teamMember.team.billingProvider
+    billingOrganization?.billingProvider ?? 'stripe'
   );
   const customerId = await billingProvider.getCustomerId(
-    teamMember as BillingTeamMember,
+    projectMember as BillingProjectMember,
     session as BillingSession
   );
   const routeContext = getWorkspaceRouteContextFromQuery(req.query);
 
-  const billingPath =
-    buildWorkspaceAppPath({
-      context: routeContext,
-      teamSlug: teamMember.team.slug,
-      suffix: 'billing',
-    }) ?? buildTeamWorkspaceAppPath({ team: teamMember.team, suffix: 'billing' });
+  const billingPath = buildWorkspaceAppPath({
+    context: routeContext,
+    suffix: 'billing',
+  });
+
+  if (!billingPath) {
+    throw new ApiError(400, 'Workspace app route could not be resolved.');
+  }
 
   const existingSubscriptionState = await getExistingScopeSubscriptionState({
-    teamId: teamMember.teamId,
-    organizationId: billingScope.organizationId,
+    organizationId: projectMember.organizationId,
     customerId,
   });
 
@@ -207,11 +201,8 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     price,
     quantity,
     metadata: {
-      teamId: teamMember.teamId,
-      ...(billingScope.organizationId
-        ? { organizationId: billingScope.organizationId }
-        : {}),
-      ...(billingScope.projectId ? { projectId: billingScope.projectId } : {}),
+      organizationId: projectMember.organizationId,
+      projectId: projectMember.projectId,
     },
     successUrl: `${env.appUrl}${billingPath}`,
     cancelUrl: `${env.appUrl}${billingPath}`,
@@ -219,4 +210,3 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 
   res.json({ data: checkoutSession });
 };
-

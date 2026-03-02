@@ -1,15 +1,21 @@
-export interface BillingTeam {
+export interface BillingOrganization {
   id: string;
   slug: string;
-  organizationId?: string | null;
-  projectId?: string | null;
   billingId: string | null;
   billingProvider: string | null;
 }
 
-export interface BillingTeamMember {
-  teamId: string;
-  team: BillingTeam;
+export interface BillingProject {
+  id: string;
+  slug: string;
+  organizationId: string;
+  organization: BillingOrganization;
+}
+
+export interface BillingProjectMember {
+  projectId: string;
+  organizationId: string;
+  project: BillingProject;
 }
 
 export interface BillingSession {
@@ -26,7 +32,7 @@ export interface CheckoutSessionResult {
 
 export interface BillingProvider {
   getCustomerId(
-    teamMember: BillingTeamMember,
+    projectMember: BillingProjectMember,
     session?: BillingSession
   ): Promise<string>;
   createCheckoutSession(params: {

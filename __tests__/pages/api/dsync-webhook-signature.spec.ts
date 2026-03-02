@@ -338,11 +338,11 @@ describe('dsync webhook handler', () => {
       .mockImplementation(() => undefined);
     const rawBody = JSON.stringify({
       event: 'group.user_added',
-      tenant: 'team_123',
+      tenant: 'project_123',
       data: {
         id: 'user_1',
         email: 'member@example.com',
-        first_name: 'Team',
+        first_name: 'Project',
         last_name: 'Member',
         active: true,
         group: {

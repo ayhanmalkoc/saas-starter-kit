@@ -1,5 +1,5 @@
 import { InputWithCopyButton, InputWithLabel } from '@/components/shared';
-import type { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 import { useTranslation } from 'next-i18next';
 import { useState } from 'react';
 import { Button } from 'react-daisyui';
@@ -9,7 +9,7 @@ import type { ApiResponse } from 'types';
 import Modal from '../shared/Modal';
 import { defaultHeaders } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -19,7 +19,7 @@ import { createApiKeySchema } from '@/lib/zod';
 import { useRouter } from 'next/router';
 
 const NewAPIKey = ({
-  team,
+  project,
   createModalVisible,
   setCreateModalVisible,
 }: NewAPIKeyProps) => {
@@ -30,9 +30,9 @@ const NewAPIKey = ({
   const apiKeysUrl =
     buildWorkspaceApiPath({
       context: routeContext,
-      teamSlug: team.slug,
       suffix: 'api-keys',
-    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'api-keys' });
+    }) ??
+    buildProjectWorkspaceApiPath({ project: project, suffix: 'api-keys' });
 
   const onNewAPIKey = (apiKey: string) => {
     setApiKey(apiKey);
@@ -166,7 +166,7 @@ const DisplayAPIKey = ({ apiKey, closeModal }: DisplayAPIKeyProps) => {
 };
 
 interface NewAPIKeyProps {
-  team: Team;
+  project: Project;
   createModalVisible: boolean;
   setCreateModalVisible: (visible: boolean) => void;
 }

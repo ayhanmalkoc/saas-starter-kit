@@ -47,7 +47,7 @@ const products = [
       plan_level: '0',
       is_default: 'true',
       recommended: 'false',
-      limit_team_members: '1',
+      limit_project_members: '1',
     },
     prices: [
       { unit_amount: 0, currency: 'usd', recurring: { interval: 'month' } },
@@ -86,14 +86,14 @@ const products = [
 
   // --- BUSINESS (tier: business) ---
   {
-    name: 'Team',
-    description: 'Collaborate with your team.',
+    name: 'Project',
+    description: 'Collaborate across your project workspace.',
     metadata: {
       tier: 'business',
-      features: 'team_collaboration,api_keys,webhooks,team_audit_log',
+      features: 'project_collaboration,api_keys,webhooks,project_audit_log',
       plan_level: '10',
       recommended: 'true',
-      limit_team_members: '10',
+      limit_project_members: '10',
     },
     prices: [
       { unit_amount: 4900, currency: 'usd', recurring: { interval: 'month' } },
@@ -107,9 +107,9 @@ const products = [
       tier: 'business',
       features: 'sso,directory_sync,priority_support',
       plan_level: '20',
-      inherits: 'Team',
+      inherits: 'Project',
       recommended: 'false',
-      limit_team_members: '1000',
+      limit_project_members: '1000',
       custom: 'true',
     },
     prices: [

@@ -3,7 +3,7 @@ import type { NextApiResponse } from 'next';
 jest.mock('@/lib/env', () => ({
   __esModule: true,
   default: {
-    teamFeatures: {
+    workspaceFeatures: {
       sso: false,
       dsync: false,
     },

@@ -5,10 +5,10 @@ import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline';
 import { useTranslation } from 'next-i18next';
 
 import { Card } from '@/components/shared';
-import { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 import { defaultHeaders } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -16,10 +16,10 @@ import { useRouter } from 'next/router';
 import type { ApiResponse } from 'types';
 
 interface LinkToPortalProps {
-  team: Team;
+  project: Project;
 }
 
-const LinkToPortal = ({ team }: LinkToPortalProps) => {
+const LinkToPortal = ({ project }: LinkToPortalProps) => {
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const { t } = useTranslation('common');
@@ -31,11 +31,10 @@ const LinkToPortal = ({ team }: LinkToPortalProps) => {
     const portalUrl =
       buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: 'payments/create-portal-link',
       }) ??
-      buildTeamWorkspaceApiPath({
-        team,
+      buildProjectWorkspaceApiPath({
+        project: project,
         suffix: 'payments/create-portal-link',
       });
 

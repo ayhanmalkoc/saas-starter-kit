@@ -1,20 +1,20 @@
 import { Error, Loading } from '@/components/shared';
-import { TeamTab } from '@/components/team';
-import useTeam from 'hooks/useTeam';
+import { ProjectTab } from '@/components/project';
+import useProject from 'hooks/useProject';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
 import { toast } from 'react-hot-toast';
 import { DirectoriesWrapper } from '@boxyhq/react-ui/dsync';
 import { BOXYHQ_UI_CSS } from '@/components/styles';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
 
-const DirectorySync = ({ teamFeatures }) => {
+const DirectorySync = ({ workspaceFeatures }) => {
   const router = useRouter();
-  const { isLoading, isError, team } = useTeam();
+  const { isLoading, isError, project } = useProject();
   const { t } = useTranslation('common');
 
   if (isLoading) {
@@ -25,28 +25,27 @@ const DirectorySync = ({ teamFeatures }) => {
     return <Error message={isError.message} />;
   }
 
-  if (!team) {
-    return <Error message={t('team-not-found')} />;
+  if (!project) {
+    return <Error message={t('project-not-found')} />;
   }
 
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
   const directorySyncUrl =
     buildWorkspaceApiPath({
       context: routeContext,
-      teamSlug: team.slug,
       suffix: 'dsync',
-    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'dsync' });
+    }) ?? buildProjectWorkspaceApiPath({ project, suffix: 'dsync' });
 
   if (!directorySyncUrl) {
-    return <Error message={t('team-not-found')} />;
+    return <Error message={t('project-not-found')} />;
   }
 
   return (
     <>
-      <TeamTab
+      <ProjectTab
         activeTab="directory-sync"
-        team={team}
-        teamFeatures={teamFeatures}
+        project={project}
+        workspaceFeatures={workspaceFeatures}
       />
       <DirectoriesWrapper
         classNames={BOXYHQ_UI_CSS}
@@ -96,9 +95,4 @@ const DirectorySync = ({ teamFeatures }) => {
   );
 };
 
-
 export default DirectorySync;
-
-
-
-

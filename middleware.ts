@@ -96,6 +96,7 @@ const applySecurityHeaders = (
 
 export default async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
+  const isApiRoute = pathname.startsWith('/api/');
 
   // Keep middleware matcher static for Next.js; apply test-audit bypass at runtime.
   if (isDevelopment && pathname === '/api/test-audit') {
@@ -144,18 +145,33 @@ export default async function middleware(req: NextRequest) {
 
   // Database strategy
   else if (env.nextAuth.sessionStrategy === 'database') {
-    const url = new URL('/api/auth/session', req.url);
+    try {
+      const url = new URL('/api/auth/session', req.url);
 
-    const response = await fetch(url, {
-      headers: {
-        'Content-Type': 'application/json',
-        cookie: req.headers.get('cookie') || '',
-      },
-    });
+      const response = await fetch(url, {
+        headers: {
+          'Content-Type': 'application/json',
+          cookie: req.headers.get('cookie') || '',
+        },
+      });
 
-    const session = await response.json();
+      const session = await response.json();
 
-    if (!session.user) {
+      if (!session.user) {
+        const redirectResponse = NextResponse.redirect(redirectUrl);
+        applySecurityHeaders(redirectResponse, csp, reportTo);
+        return redirectResponse;
+      }
+    } catch {
+      // On transient session-check transport errors, let API handlers enforce auth.
+      if (isApiRoute) {
+        const fallbackResponse = NextResponse.next({
+          request: { headers: requestHeaders },
+        });
+        applySecurityHeaders(fallbackResponse, csp, reportTo);
+        return fallbackResponse;
+      }
+
       const redirectResponse = NextResponse.redirect(redirectUrl);
       applySecurityHeaders(redirectResponse, csp, reportTo);
       return redirectResponse;

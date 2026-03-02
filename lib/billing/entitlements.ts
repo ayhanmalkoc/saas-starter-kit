@@ -3,7 +3,6 @@ import type { Subscription } from '@prisma/client';
 
 import { ApiError } from '@/lib/errors';
 import env from '@/lib/env';
-import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { prisma } from '@/lib/prisma';
 import { stripe } from '@/lib/stripe';
 import { getByBillingScope } from 'models/subscription';
@@ -19,7 +18,7 @@ type EntitlementValues = {
   limits: Record<string, number>;
 };
 
-export type TeamEntitlements = EntitlementValues & {
+export type OrganizationEntitlements = EntitlementValues & {
   planIds: string[];
   sources: string[];
 };
@@ -40,13 +39,13 @@ const normalizeKey = (value: string) =>
 
 const featureAliasMap: Record<string, string> = {
   webhook: 'webhooks',
-  team_webhook: 'webhooks',
+  project_webhook: 'webhooks',
   dsync: 'directory_sync',
-  team_dsync: 'directory_sync',
-  audit_logs: 'team_audit_log',
-  team_audit_logs: 'team_audit_log',
+  project_dsync: 'directory_sync',
+  audit_logs: 'project_audit_log',
+  project_audit_logs: 'project_audit_log',
   api_key: 'api_keys',
-  team_api_key: 'api_keys',
+  project_api_key: 'api_keys',
 };
 
 const normalizeFeatureKey = (value: string) => {
@@ -54,7 +53,7 @@ const normalizeFeatureKey = (value: string) => {
   return featureAliasMap[normalized] || normalized;
 };
 
-const emptyEntitlements = (): TeamEntitlements => ({
+const emptyEntitlements = (): OrganizationEntitlements => ({
   features: {},
   limits: {},
   planIds: [],
@@ -66,7 +65,7 @@ const emptyEntitlementValues = (): EntitlementValues => ({
   limits: {},
 });
 
-const TEAM_MEMBER_LIMIT_KEY = normalizeKey('team_members');
+const TEAM_MEMBER_LIMIT_KEY = normalizeKey('project_members');
 
 type ServiceMetadata = {
   featureFlags: Record<string, boolean>;
@@ -259,7 +258,7 @@ const parseServiceEntitlements = (
 };
 
 const mergeEntitlements = (
-  base: TeamEntitlements,
+  base: OrganizationEntitlements,
   incoming: EntitlementValues,
   planId: string | null,
   source: string
@@ -518,9 +517,9 @@ const pickAuthoritativeSubscription = (
   })[0];
 };
 
-export const getTeamEntitlements = async (
-  teamId: string
-): Promise<TeamEntitlements> => {
+export const getOrganizationEntitlements = async (
+  organizationId: string
+): Promise<OrganizationEntitlements> => {
   const entitlements = emptyEntitlements();
 
   const services: BillingService[] = await prisma.service.findMany({
@@ -532,10 +531,8 @@ export const getTeamEntitlements = async (
   const serviceByName = buildServiceNameMap(services);
   const cache = new Map<string, EntitlementValues>();
 
-  const billingScope = await resolveBillingScopeFromTeamId(teamId);
   const subscriptions = await getByBillingScope({
-    teamId,
-    organizationId: billingScope.organizationId,
+    organizationId,
   });
   const activeSubscriptions = subscriptions.filter((subscription) =>
     ACTIVE_SUBSCRIPTION_STATUSES.has(subscription.status)
@@ -569,7 +566,7 @@ export const getTeamEntitlements = async (
 
   if (activeSubscriptions.length > 1) {
     console.warn(
-      `Multiple active subscriptions found for billing scope (teamId=${teamId}, organizationId=${billingScope.organizationId}). Using authoritative subscription ${subscriptionsToEvaluate[0].id}.`,
+      `Multiple active subscriptions found for billing scope (organizationId=${organizationId}). Using authoritative subscription ${subscriptionsToEvaluate[0].id}.`,
       {
         subscriptionIds: activeSubscriptions.map(
           (subscription) => subscription.id
@@ -618,16 +615,16 @@ export const getTeamEntitlements = async (
   return entitlements;
 };
 
-export const requireTeamEntitlement = async (
-  teamId: string,
+export const requireOrganizationEntitlement = async (
+  organizationId: string,
   requirement: EntitlementRequirement
 ) => {
   // When payments/billing is disabled, grant all entitlements
-  if (!env.teamFeatures.payments) {
+  if (!env.workspaceFeatures.payments) {
     return emptyEntitlements();
   }
 
-  const entitlements = await getTeamEntitlements(teamId);
+  const entitlements = await getOrganizationEntitlements(organizationId);
 
   if (requirement.feature) {
     const featureKey = normalizeFeatureKey(requirement.feature);
@@ -656,16 +653,16 @@ export const requireTeamEntitlement = async (
   return entitlements;
 };
 
-export const hasTeamEntitlement = async (
-  teamId: string,
+export const hasOrganizationEntitlement = async (
+  organizationId: string,
   requirement: EntitlementRequirement
 ) => {
-  if (!env.teamFeatures.payments) {
+  if (!env.workspaceFeatures.payments) {
     return true;
   }
 
   try {
-    await requireTeamEntitlement(teamId, requirement);
+    await requireOrganizationEntitlement(organizationId, requirement);
     return true;
   } catch (error) {
     if (error instanceof ApiError && error.status === 403) {

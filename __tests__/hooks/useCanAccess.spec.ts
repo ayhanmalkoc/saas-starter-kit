@@ -18,28 +18,28 @@ describe('useCanAccess', () => {
 
   it('allows access when matching action exists', () => {
     mockedUsePermissions.mockReturnValue({
-      permissions: [{ resource: 'team_member', actions: ['update'] }],
+      permissions: [{ resource: 'project_member', actions: ['update'] }],
       isError: null,
       isLoading: false,
     });
 
     const { result } = renderHook(() => useCanAccess());
 
-    expect(result.current.canAccess('team_member', ['update'])).toBe(true);
-    expect(result.current.canAccess('team_member', ['delete'])).toBe(false);
+    expect(result.current.canAccess('project_member', ['update'])).toBe(true);
+    expect(result.current.canAccess('project_member', ['delete'])).toBe(false);
   });
 
   it('allows access when action wildcard exists', () => {
     mockedUsePermissions.mockReturnValue({
-      permissions: [{ resource: 'team', actions: '*' }],
+      permissions: [{ resource: 'project', actions: '*' }],
       isError: null,
       isLoading: false,
     });
 
     const { result } = renderHook(() => useCanAccess());
 
-    expect(result.current.canAccess('team', ['delete'])).toBe(true);
-    expect(result.current.canAccess('team_member', ['read'])).toBe(false);
+    expect(result.current.canAccess('project', ['delete'])).toBe(true);
+    expect(result.current.canAccess('project_member', ['read'])).toBe(false);
   });
 
   it('returns false when permissions are missing (no-authority case)', () => {
@@ -51,6 +51,8 @@ describe('useCanAccess', () => {
 
     const { result } = renderHook(() => useCanAccess());
 
-    expect(result.current.canAccess('team_invitation', ['create'])).toBe(false);
+    expect(result.current.canAccess('project_invitation', ['create'])).toBe(
+      false
+    );
   });
 });

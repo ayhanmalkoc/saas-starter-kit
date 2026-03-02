@@ -1,10 +1,10 @@
-import { sendTeamInviteEmail } from '@/lib/email/sendTeamInviteEmail';
+import { sendProjectInviteEmail } from '@/lib/email/sendProjectInviteEmail';
 import { ApiError } from '@/lib/errors';
 import { prisma } from '@/lib/prisma';
 import { sendAudit } from '@/lib/retraced';
 import { getSession } from '@/lib/session';
 import { sendEvent } from '@/lib/svix';
-import { getTeamEntitlements } from '@/lib/billing/entitlements';
+import { getOrganizationEntitlements } from '@/lib/billing/entitlements';
 import { getUser, throwIfNotAllowed } from 'models/user';
 import {
   deleteInvitation,
@@ -13,13 +13,13 @@ import {
   getInvitations,
   isInvitationExpired,
 } from 'models/invitation';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import { extractEmailDomain, isEmailAllowed } from '@/lib/email/utils';
 import { Invitation, Prisma, Role } from '@prisma/client';
 import { randomUUID } from 'crypto';
-import { countTeamMembers } from 'models/teamMember';
+import { countProjectMembers } from 'models/projectMember';
 import {
   acceptInvitationSchema,
   deleteInvitationSchema,
@@ -31,7 +31,7 @@ import {
 const INVITATION_EXPIRY_MS = 7 * 24 * 60 * 60 * 1000;
 const MAX_INVITATION_RETRIES = 3;
 
-const enforceTeamMemberLimitValue = (
+const enforceProjectMemberLimitValue = (
   memberLimit: number | undefined,
   requestedMemberCount: number
 ) => {
@@ -42,13 +42,14 @@ const enforceTeamMemberLimitValue = (
   if (requestedMemberCount > memberLimit) {
     throw new ApiError(
       403,
-      `Team member limit exceeded (${memberLimit}). Increase seat capacity from billing before inviting more members.`
+      `Project member limit exceeded (${memberLimit}). Increase seat capacity from billing before inviting more members.`
     );
   }
 };
 
-const createInvitationWithTeamLimit = async ({
-  teamId,
+const createInvitationWithProjectLimit = async ({
+  organizationId,
+  projectId,
   invitedBy,
   role,
   sentViaEmail,
@@ -56,7 +57,8 @@ const createInvitationWithTeamLimit = async ({
   allowedDomains,
   memberLimit,
 }: {
-  teamId: string;
+  organizationId: string;
+  projectId: string;
   invitedBy: string;
   role: Role;
   sentViaEmail: boolean;
@@ -70,12 +72,12 @@ const createInvitationWithTeamLimit = async ({
         async (tx) => {
           const [currentMemberCount, pendingInvitationCount] =
             await Promise.all([
-              tx.teamMember.count({
-                where: { teamId },
+              tx.projectMember.count({
+                where: { projectId },
               }),
               tx.invitation.count({
                 where: {
-                  teamId,
+                  projectId,
                   expires: {
                     gt: new Date(),
                   },
@@ -83,14 +85,15 @@ const createInvitationWithTeamLimit = async ({
               }),
             ]);
 
-          enforceTeamMemberLimitValue(
+          enforceProjectMemberLimitValue(
             memberLimit,
             currentMemberCount + pendingInvitationCount + 1
           );
 
           return await tx.invitation.create({
             data: {
-              teamId,
+              organizationId,
+              projectId,
               invitedBy,
               role,
               email,
@@ -133,13 +136,15 @@ const createInvitationWithTeamLimit = async ({
   );
 };
 
-const addTeamMemberWithTeamLimit = async ({
-  teamId,
+const addProjectAndOrganizationMemberWithProjectLimit = async ({
+  organizationId,
+  projectId,
   userId,
   role,
   memberLimit,
 }: {
-  teamId: string;
+  organizationId: string;
+  projectId: string;
   userId: string;
   role: Role;
   memberLimit: number | undefined;
@@ -148,30 +153,47 @@ const addTeamMemberWithTeamLimit = async ({
     try {
       return await prisma.$transaction(
         async (tx) => {
-          const existingMember = await tx.teamMember.findUnique({
+          const existingMember = await tx.projectMember.findUnique({
             where: {
-              teamId_userId: {
-                teamId,
+              projectId_userId: {
+                projectId,
                 userId,
               },
             },
             select: {
-              teamId: true,
+              projectId: true,
             },
           });
 
           if (!existingMember) {
-            const currentMemberCount = await tx.teamMember.count({
+            const currentMemberCount = await tx.projectMember.count({
               where: {
-                teamId,
+                projectId,
               },
             });
-            enforceTeamMemberLimitValue(memberLimit, currentMemberCount + 1);
+            enforceProjectMemberLimitValue(memberLimit, currentMemberCount + 1);
           }
 
-          return await tx.teamMember.upsert({
+          await tx.organizationMember.upsert({
+            where: {
+              organizationId_userId: {
+                organizationId,
+                userId,
+              },
+            },
             create: {
-              teamId,
+              organizationId,
+              userId,
+              role,
+            },
+            update: {
+              role,
+            },
+          });
+
+          return await tx.projectMember.upsert({
+            create: {
+              projectId,
               userId,
               role,
             },
@@ -179,8 +201,8 @@ const addTeamMemberWithTeamLimit = async ({
               role,
             },
             where: {
-              teamId_userId: {
-                teamId,
+              projectId_userId: {
+                projectId,
                 userId,
               },
             },
@@ -213,7 +235,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   const { method } = req;
 
   try {
@@ -244,10 +265,10 @@ export default async function handler(
   }
 }
 
-// Invite a user to a team
+// Invite a user to a project
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_invitation', 'create');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  throwIfNotAllowed(projectMember, 'project_invitation', 'create');
 
   const { email, role, sentViaEmail, domains } = validateWithSchema(
     inviteViaEmailSchema,
@@ -274,10 +295,10 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       );
     }
 
-    // Keep member-existence checks index-friendly; monitor performance on large teams.
-    const memberExists = await countTeamMembers({
+    // Keep member-existence checks index-friendly; monitor performance on large projects.
+    const memberExists = await countProjectMembers({
       where: {
-        teamId: teamMember.teamId,
+        projectId: projectMember.projectId,
         user: {
           email,
         },
@@ -285,13 +306,13 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     });
 
     if (memberExists) {
-      throw new ApiError(400, 'This user is already a member of the team.');
+      throw new ApiError(400, 'This user is already a member of the project.');
     }
 
     const invitationExists = await getInvitationCount({
       where: {
         email,
-        teamId: teamMember.teamId,
+        projectId: projectMember.projectId,
       },
     });
 
@@ -299,13 +320,16 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       throw new ApiError(400, 'An invitation already exists for this email.');
     }
   }
-  const entitlements = await getTeamEntitlements(teamMember.teamId);
-  const memberLimit = entitlements.limits.team_members;
+  const entitlements = await getOrganizationEntitlements(
+    projectMember.organizationId
+  );
+  const memberLimit = entitlements.limits.project_members;
 
   if (sentViaEmail) {
-    invitation = await createInvitationWithTeamLimit({
-      teamId: teamMember.teamId,
-      invitedBy: teamMember.userId,
+    invitation = await createInvitationWithProjectLimit({
+      organizationId: projectMember.organizationId,
+      projectId: projectMember.projectId,
+      invitedBy: projectMember.userId,
       email: email!,
       role,
       sentViaEmail: true,
@@ -313,9 +337,10 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
       memberLimit,
     });
   } else {
-    invitation = await createInvitationWithTeamLimit({
-      teamId: teamMember.teamId,
-      invitedBy: teamMember.userId,
+    invitation = await createInvitationWithProjectLimit({
+      organizationId: projectMember.organizationId,
+      projectId: projectMember.projectId,
+      invitedBy: projectMember.userId,
       role,
       email: null,
       sentViaEmail: false,
@@ -331,16 +356,16 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   }
 
   if (invitation.sentViaEmail) {
-    await sendTeamInviteEmail(teamMember.team, invitation);
+    await sendProjectInviteEmail(projectMember.project, invitation);
   }
 
-  await sendEvent(teamMember.teamId, 'invitation.created', invitation);
+  await sendEvent(projectMember.projectId, 'invitation.created', invitation);
 
   sendAudit({
     action: 'member.invitation.create',
     crud: 'c',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   recordMetric('invitation.created');
@@ -348,10 +373,10 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   res.status(204).end();
 };
 
-// Get all invitations for a team
+// Get all invitations for a project
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_invitation', 'read');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  throwIfNotAllowed(projectMember, 'project_invitation', 'read');
 
   const { sentViaEmail } = validateWithSchema(
     getInvitationsSchema,
@@ -359,7 +384,7 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
   );
 
   const invitations = await getInvitations(
-    teamMember.teamId,
+    projectMember.projectId,
     sentViaEmail === 'true'
   );
 
@@ -370,8 +395,8 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
 // Delete an invitation
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_invitation', 'delete');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  throwIfNotAllowed(projectMember, 'project_invitation', 'delete');
 
   const { id } = validateWithSchema(
     deleteInvitationSchema,
@@ -381,8 +406,8 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   const invitation = await getInvitation({ id });
 
   if (
-    invitation.invitedBy != teamMember.user.id ||
-    invitation.team.id != teamMember.teamId
+    invitation.invitedBy != projectMember.user.id ||
+    invitation.project.id != projectMember.projectId
   ) {
     throw new ApiError(
       400,
@@ -395,18 +420,18 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   sendAudit({
     action: 'member.invitation.delete',
     crud: 'd',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
-  await sendEvent(teamMember.teamId, 'invitation.removed', invitation);
+  await sendEvent(projectMember.projectId, 'invitation.removed', invitation);
 
   recordMetric('invitation.removed');
 
   res.status(200).json({ data: {} });
 };
 
-// Accept an invitation to an organization
+// Accept an invitation to a project
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   const { inviteToken } = validateWithSchema(
     acceptInvitationSchema,
@@ -458,13 +483,16 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
 
-  const entitlements = await getTeamEntitlements(invitation.team.id);
-  const memberLimit = entitlements.limits.team_members;
+  const entitlements = await getOrganizationEntitlements(
+    invitation.project.organizationId
+  );
+  const memberLimit = entitlements.limits.project_members;
 
-  let teamMember;
+  let member;
   try {
-    teamMember = await addTeamMemberWithTeamLimit({
-      teamId: invitation.team.id,
+    member = await addProjectAndOrganizationMemberWithProjectLimit({
+      organizationId: invitation.project.organizationId,
+      projectId: invitation.project.id,
       userId,
       role: invitation.role,
       memberLimit,
@@ -483,7 +511,7 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
     throw error;
   }
 
-  await sendEvent(invitation.team.id, 'member.created', teamMember);
+  await sendEvent(invitation.project.id, 'member.created', member);
 
   if (invitation.sentViaEmail) {
     await deleteInvitation({ token: inviteToken });
@@ -493,4 +521,3 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
 
   res.status(204).end();
 };
-

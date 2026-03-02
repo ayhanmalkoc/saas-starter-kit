@@ -1,5 +1,4 @@
 interface PlanChangeParams {
-  teamSlug: string;
   priceId: string;
   quantity?: number;
   subscriptionId?: string | null;
@@ -10,7 +9,7 @@ const buildRequestBody = ({
   priceId,
   quantity,
   subscriptionId,
-}: Omit<PlanChangeParams, 'teamSlug'>) => {
+}: PlanChangeParams) => {
   const payload: Record<string, unknown> = {
     price: priceId,
   };
@@ -76,7 +75,6 @@ const sendPlanChangeRequest = async ({
 };
 
 export const handlePlanChange = async ({
-  teamSlug,
   priceId,
   quantity,
   subscriptionId,
@@ -85,7 +83,7 @@ export const handlePlanChange = async ({
   if (!apiBasePath) {
     return {
       error: {
-        message: `Could not resolve billing endpoint for team "${teamSlug}".`,
+        message: 'Could not resolve billing endpoint for current workspace.',
       },
     };
   }

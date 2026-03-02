@@ -10,28 +10,27 @@ import { useRouter } from 'next/router';
 import type { ApiResponse } from 'types';
 import { defaultHeaders, maxLengthPolicies } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
 import { availableRoles } from '@/lib/permissions';
-import type { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 
 interface InviteViaEmailProps {
-  team: Team;
+  project: Project;
   setVisible: (visible: boolean) => void;
 }
 
-const InviteViaEmail = ({ setVisible, team }: InviteViaEmailProps) => {
+const InviteViaEmail = ({ setVisible, project }: InviteViaEmailProps) => {
   const router = useRouter();
   const { t } = useTranslation('common');
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
   const invitationsUrl =
     buildWorkspaceApiPath({
       context: routeContext,
-      teamSlug: team.slug,
       suffix: 'invitations',
-    }) ?? buildTeamWorkspaceApiPath({ team, suffix: 'invitations' });
+    }) ?? buildProjectWorkspaceApiPath({ project, suffix: 'invitations' });
 
   const FormValidationSchema = Yup.object().shape({
     email: Yup.string()

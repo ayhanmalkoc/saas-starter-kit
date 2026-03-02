@@ -63,7 +63,6 @@ model User {
   invalid_login_attempts Int       @default(0)
   lockedAt               DateTime?
 
-  teamMembers         TeamMember[]
   organizationMembers OrganizationMember[]
   projectMembers      ProjectMember[]
   accounts            Account[]
@@ -81,7 +80,7 @@ model Organization {
   updatedAt       DateTime             @default(now()) @updatedAt
   members         OrganizationMember[]
   projects        Project[]
-  teams           Team[]
+  invitations     Invitation[]
   subscriptions   Subscription[]
   invoices        Invoice[]
 
@@ -109,12 +108,12 @@ model Project {
   name           String
   slug           String
   description    String?
-  legacyTeamId   String?         @unique
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @default(now()) @updatedAt
   organization   Organization    @relation(fields: [organizationId], references: [id], onDelete: Cascade)
   members        ProjectMember[]
-  teams          Team[]
+  invitations    Invitation[]
+  apiKeys        ApiKey[]
   subscriptions  Subscription[]
 
   @@unique([organizationId, slug])
@@ -136,49 +135,10 @@ model ProjectMember {
   @@index([userId])
 }
 
-model Team {
-  id              String         @id @default(uuid())
-  organizationId  String?
-  projectId       String?
-  name            String
-  slug            String         @unique
-  domain          String?        @unique
-  defaultRole     Role           @default(MEMBER)
-  billingId       String?
-  billingProvider String?
-  createdAt       DateTime       @default(now())
-  updatedAt       DateTime       @default(now()) @updatedAt
-  organization    Organization?  @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  project         Project?       @relation(fields: [projectId], references: [id], onDelete: SetNull)
-  members         TeamMember[]
-  invitations     Invitation[]
-  apiKeys         ApiKey[]
-  subscriptions   Subscription[]
-  invoices        Invoice[]
-
-  @@index([billingId])
-  @@index([organizationId])
-  @@index([projectId])
-}
-
-model TeamMember {
-  id        String   @id @default(uuid())
-  teamId    String
-  userId    String
-  role      Role     @default(MEMBER)
-  createdAt DateTime @default(now())
-  updatedAt DateTime @default(now()) @updatedAt
-
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
-
-  @@unique([teamId, userId])
-  @@index([userId])
-}
-
 model Invitation {
   id             String   @id @default(uuid())
-  teamId         String
+  organizationId String
+  projectId      String
   email          String?
   role           Role     @default(MEMBER)
   token          String   @unique
@@ -189,11 +149,14 @@ model Invitation {
   sentViaEmail   Boolean  @default(true)
   allowedDomains String[] @default([])
 
-  user User @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  user         User         @relation(fields: [invitedBy], references: [id], onDelete: Cascade)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project      @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@unique([teamId, email])
+  @@unique([projectId, email])
   @@index([email])
+  @@index([organizationId])
+  @@index([projectId])
 }
 
 model PasswordReset {
@@ -208,22 +171,21 @@ model PasswordReset {
 model ApiKey {
   id         String    @id @default(uuid())
   name       String
-  teamId     String
+  projectId  String
   hashedKey  String    @unique
   createdAt  DateTime  @default(now())
   updatedAt  DateTime  @default(now()) @updatedAt
   expiresAt  DateTime?
   lastUsedAt DateTime?
 
-  team Team @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  project Project @relation(fields: [projectId], references: [id], onDelete: Cascade)
 
-  @@index([teamId])
+  @@index([projectId])
 }
 
 model Subscription {
   id                 String    @id
-  teamId             String
-  organizationId     String?
+  organizationId     String
   projectId          String?
   customerId         String
   status             String
@@ -239,12 +201,10 @@ model Subscription {
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @default(now()) @updatedAt
 
-  team         Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
-  project      Project?      @relation(fields: [projectId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
+  project      Project?     @relation(fields: [projectId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
-  @@index([teamId])
   @@index([organizationId])
   @@index([projectId])
   @@index([priceId])
@@ -252,8 +212,7 @@ model Subscription {
 
 model Invoice {
   id               String    @id
-  teamId           String
-  organizationId   String?
+  organizationId   String
   status           String
   amount           Int
   currency         String
@@ -262,10 +221,8 @@ model Invoice {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  team         Team          @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  organization Organization? @relation(fields: [organizationId], references: [id], onDelete: SetNull)
+  organization Organization @relation(fields: [organizationId], references: [id], onDelete: Cascade)
 
-  @@index([teamId])
   @@index([organizationId])
   @@index([status])
 }

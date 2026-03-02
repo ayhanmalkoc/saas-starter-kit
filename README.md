@@ -55,7 +55,7 @@ Next.js-based SaaS starter kit saves you months of development by starting you o
 - [SAML Jackson](https://github.com/boxyhq/jackson) (Provides SAML SSO, Directory Sync)
   This is a service for handling SAML SSO (Single Sign-On). It's used to allow users to sign in with a single ID and password to any of several related systems i.e (using a single set of credentials). The implementation of SAML Jackson is primarily located within the files associated with authentication.
 - [Svix](https://www.svix.com/) (Provides Webhook Orchestration)
-  This is a service for handling webhooks. It's used to emit events on user/team CRUD operations, which can then be caught and handled by other parts of the application or external services. The integration of Svix is distributed throughout the codebase, primarily in areas where Create, Read, Update, and Delete (CRUD) operations are executed.
+  This is a service for handling webhooks. It's used to emit events on user/project CRUD operations, which can then be caught and handled by other parts of the application or external services. The integration of Svix is distributed throughout the codebase, primarily in areas where Create, Read, Update, and Delete (CRUD) operations are executed.
 - [Retraced](https://github.com/retracedhq/retraced) (Provides Audit Logs Service)
   This is a service for audit logging and data visibility. It helps track user activities within the application i.e (who did what and when in the application). The usage of Retraced would be dispersed throughout the codebase, likely in the files where important actions are performed.
 - [Stripe](https://stripe.com) (Provides Payments)
@@ -149,7 +149,7 @@ Once running, you can view caught emails at [http://localhost:8025](http://local
 npm run setup:stripe
 ```
 
-`setup:stripe` validates the plan catalog, bootstraps Organization/Project scope for legacy teams, seeds Stripe products/prices, syncs the catalog to DB, and backfills subscriptions for existing Stripe-linked teams.
+`setup:stripe` validates the plan catalog, bootstraps Organization/Project scope for legacy projects, seeds Stripe products/prices, syncs the catalog to DB, and backfills subscriptions for existing Stripe-linked projects.
 
 #### 7. Start the server
 
@@ -209,12 +209,12 @@ To get started you only need to configure the database by following the steps ab
 
 > **Note:** When `FEATURE_TEAM_PAYMENTS` is set to `false` (default for local development), all plan/entitlement checks are bypassed, giving you full access to features like API Keys, SSO, Webhooks, and Directory Sync without requiring a Stripe subscription.
 
-### Legacy Team Routes
+### Legacy Project Routes
 
-Hard cutover is active for team-slug routes:
+Hard cutover is active for project-slug routes:
 
-- `/teams/:slug/*` is removed.
-- `/api/teams/:slug/*` is removed.
+- `/projects/:slug/*` is removed.
+- `/api/projects/:slug/*` is removed.
 
 Use canonical org/project routes only:
 
@@ -244,7 +244,7 @@ The default login options are email and GitHub. Configure below:
 1. Create an account on [Stripe](https://stripe.com/).
 2. Add the [Stripe API secret key](https://dashboard.stripe.com/apikeys) to the `.env` file as `STRIPE_SECRET_KEY`.
 3. Set `STRIPE_SYNC_SECRET` in your `.env` file (this must match the `x-stripe-sync-secret` header expected by the sync endpoint).
-4. Run `npm run setup:stripe` to validate plan inheritance, bootstrap Organization/Project scope for legacy teams, create/update Stripe products/prices, sync catalog data, and backfill subscriptions into your local database.
+4. Run `npm run setup:stripe` to validate plan inheritance, bootstrap Organization/Project scope for legacy projects, create/update Stripe products/prices, sync catalog data, and backfill subscriptions into your local database.
 5. Create a webhook in the [Stripe dashboard](https://dashboard.stripe.com/webhooks). The URL is your app hostname plus `/api/webhooks/stripe`. If you want to set this up locally you will need to use the [Stripe CLI forwarder](https://docs.stripe.com/webhooks#test-webhook).
 6. Once created, add the signing secret to the `.env` file as `STRIPE_WEBHOOK_SECRET`.
 
@@ -275,11 +275,11 @@ The default login options are email and GitHub. Configure below:
 - Sign in with GitHub [[Creating a Github OAuth App](https://docs.github.com/en/developers/apps/building-oauth-apps/creating-an-oauth-app)]
 - Directory Sync (SCIM)
 - Update account
-- Create team
-- Delete team
-- Invite users to the team
-- Manage team members
-- Update team settings
+- Create project
+- Delete project
+- Invite users to the project
+- Manage project members
+- Update project settings
 - Update member role
 - Webhooks & Events
 - Webhook
@@ -316,7 +316,7 @@ Please try to create bug reports that are:
 
 ## 🤩 Community
 
-- [Discord](https://discord.gg/uyb7pYt4Pa) (For live discussion with the Open-Source Community and BoxyHQ team)
+- [Discord](https://discord.gg/uyb7pYt4Pa) (For live discussion with the Open-Source Community and BoxyHQ project)
 - [Twitter](https://twitter.com/BoxyHQ) / [LinkedIn](https://www.linkedin.com/company/boxyhq) (Follow us)
 - [Youtube](https://www.youtube.com/@boxyhq) (Watch community events and tutorials)
 - [GitHub Issues](https://github.com/boxyhq/saas-starter-kit/issues) (Contributions, report issues, and product ideas)

@@ -1,7 +1,7 @@
 import { ApiError } from '@/lib/errors';
 import { sendAudit } from '@/lib/retraced';
 import { findOrCreateApp, findWebhook, updateWebhook } from '@/lib/svix';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { EndpointIn } from 'svix';
@@ -12,17 +12,16 @@ import {
   updateWebhookEndpointSchema,
   validateWithSchema,
 } from '@/lib/zod';
-import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import { requireOrganizationEntitlement } from '@/lib/billing/entitlements';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   const { method } = req;
 
   try {
-    if (!env.teamFeatures.webhook) {
+    if (!env.workspaceFeatures.webhook) {
       throw new ApiError(404, 'Not Found');
     }
 
@@ -53,9 +52,11 @@ export default async function handler(
 
 // Get a Webhook
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, { feature: 'webhooks' });
-  throwIfNotAllowed(teamMember, 'team_webhook', 'read');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
+    feature: 'webhooks',
+  });
+  throwIfNotAllowed(projectMember, 'project_webhook', 'read');
 
   const { endpointId } = validateWithSchema(
     getWebhookSchema,
@@ -64,7 +65,10 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   );
 
-  const app = await findOrCreateApp(teamMember.team.name, teamMember.team.id);
+  const app = await findOrCreateApp(
+    projectMember.project.name,
+    projectMember.project.id
+  );
 
   if (!app) {
     throw new ApiError(400, 'Bad request.');
@@ -79,9 +83,11 @@ const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
 
 // Update a Webhook
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  await requireTeamEntitlement(teamMember.teamId, { feature: 'webhooks' });
-  throwIfNotAllowed(teamMember, 'team_webhook', 'update');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  await requireOrganizationEntitlement(projectMember.organizationId, {
+    feature: 'webhooks',
+  });
+  throwIfNotAllowed(projectMember, 'project_webhook', 'update');
 
   const { name, url, eventTypes, endpointId } = validateWithSchema(
     updateWebhookEndpointSchema,
@@ -91,7 +97,10 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   );
 
-  const app = await findOrCreateApp(teamMember.team.name, teamMember.team.id);
+  const app = await findOrCreateApp(
+    projectMember.project.name,
+    projectMember.project.id
+  );
 
   if (!app) {
     throw new ApiError(400, 'Bad request.');
@@ -114,12 +123,11 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
   sendAudit({
     action: 'webhook.update',
     crud: 'u',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   recordMetric('webhook.updated');
 
   res.status(200).json({ data: webhook });
 };
-

@@ -29,7 +29,7 @@ export class LoginPage {
 
   constructor(public readonly page: Page) {
     this.IDP_LOGIN_URL = `${process.env.MOCKSAML_ORIGIN}/saml/login`;
-    this.ACS_URL = `${process.env.JACKSON_URL || process.env.APP_URL}/api/oauth/saml`;
+    this.ACS_URL = `${process.env.APP_URL}/api/oauth/saml`;
 
     this.emailBox = this.page.locator('input[name="email"]');
     this.passwordBox = this.page.locator('input[name="password"]');
@@ -41,7 +41,7 @@ export class LoginPage {
       name: 'Continue with SSO',
     });
     this.ssoEmailBox = this.page.locator('input[name="email"]');
-    this.slugInput = this.page.locator('input[name="slug"]');
+    this.slugInput = this.page.locator('input[name="projectSlug"]');
     this.welcomeBackHeading = this.page.getByText('Welcome back', {
       exact: true,
     });
@@ -67,7 +67,7 @@ export class LoginPage {
       name: 'Sign In',
     });
     this.joinTeamButton = this.page.getByRole('button', {
-      name: 'Join the Team',
+      name: 'Join the Project',
     });
     this.mockSAMLLoginHeading = this.page.getByRole('heading', {
       name: 'SAML SSO Login',
@@ -87,8 +87,10 @@ export class LoginPage {
     await expect(this.multipleTeamErrorText).toBeVisible();
   }
 
-  async loggedInCheck(teamSlug: string) {
-    await this.page.waitForURL(`/teams/${teamSlug}/${loggedInPath}`);
+  async loggedInCheck(projectSlug: string, projectSlug = 'default') {
+    await this.page.waitForURL(
+      `/orgs/${projectSlug}/projects/${projectSlug}/${loggedInPath}`
+    );
     await expect(this.pageHeading).toBeVisible();
   }
 
@@ -114,8 +116,8 @@ export class LoginPage {
     }
   }
 
-  async ssoLoginWithSlug(teamSlug: string) {
-    await this.slugInput.fill(teamSlug);
+  async ssoLoginWithSlug(projectSlug: string) {
+    await this.slugInput.fill(projectSlug);
     await this.continueWithSSOButton.click();
     await expect(this.mockSAMLLoginHeading).toBeVisible();
     await this.signInButton.click();
@@ -128,9 +130,15 @@ export class LoginPage {
     await this.idpSignInButton.click();
   }
 
-  async logout(name: string) {
-    await this.page.locator('button').filter({ hasText: name }).click();
-    await this.page.getByRole('button', { name: 'Sign out' }).click();
+  async logout() {
+    await this.page
+      .locator('.dropdown.dropdown-end > div[tabindex="0"]')
+      .first()
+      .click();
+
+    const signOutButton = this.page.getByRole('button', { name: 'Sign out' });
+    await expect(signOutButton).toBeVisible();
+    await signOutButton.click();
     await expect(this.welcomeBackHeading).toBeVisible();
   }
 

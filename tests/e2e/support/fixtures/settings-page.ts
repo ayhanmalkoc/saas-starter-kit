@@ -2,8 +2,8 @@ import type { Page, Locator } from '@playwright/test';
 import { expect } from '@playwright/test';
 
 export class SettingsPage {
-  private readonly newTeamMenu: Locator;
-  private readonly newTeamNameInput: Locator;
+  private readonly newProjectMenu: Locator;
+  private readonly newProjectNameInput: Locator;
   private readonly createTeamDialogButton: Locator;
   private readonly removeTeamButton: Locator;
   private readonly removeTeamConfirmPrompt: Locator;
@@ -16,20 +16,20 @@ export class SettingsPage {
     public readonly page: Page,
     public readonly username: string
   ) {
-    this.newTeamMenu = this.page.getByRole('link', { name: 'New Team' });
-    this.newTeamNameInput = this.page.getByPlaceholder('Team Name');
+    this.newProjectMenu = this.page.getByRole('link', { name: 'New Project' });
+    this.newProjectNameInput = this.page.getByPlaceholder('Project Name');
     this.createTeamDialogButton = this.page
       .getByRole('dialog')
-      .getByRole('button', { name: 'Create Team' });
+      .getByRole('button', { name: 'Create Project' });
     this.removeTeamButton = this.page.getByRole('button', {
-      name: 'Remove Team',
+      name: 'Remove Project',
     });
     this.removeTeamConfirmPrompt = this.page.getByText(
-      `Are you sure you want to delete the team? Deleting the team will delete all resources and data associated with the team forever.`
+      `Are you sure you want to delete the project? Deleting the project will delete all resources and data associated with the project forever.`
     );
     this.updateTeamSuccessMessage = 'Changes saved successfully.';
-    this.createTeamSuccessMessage = 'Team created successfully.';
-    this.removeTeamSuccessMessage = 'Team removed successfully.';
+    this.createTeamSuccessMessage = 'Project created successfully.';
+    this.removeTeamSuccessMessage = 'Project removed successfully.';
 
     this.deleteButton = page.getByRole('button', { name: 'Delete' });
   }
@@ -51,12 +51,12 @@ export class SettingsPage {
 
   async isSettingsPageVisible() {
     await expect(
-      this.page.getByRole('heading', { name: 'Team Settings' })
+      this.page.getByRole('heading', { name: 'Project Settings' })
     ).toBeVisible();
   }
 
-  async fillTeamName(teamName: string) {
-    await this.page.locator('input[name="name"]').fill(teamName);
+  async fillTeamName(projectName: string) {
+    await this.page.locator('input[name="name"]').fill(projectName);
   }
 
   async isSaveButtonDisabled() {
@@ -67,7 +67,9 @@ export class SettingsPage {
 
   async isTeamNameLengthErrorVisible() {
     await expect(
-      await this.page.getByText('Team name should have at most 50 characters')
+      await this.page.getByText(
+        'Project name should have at most 50 characters'
+      )
     ).toBeVisible();
   }
 
@@ -93,27 +95,29 @@ export class SettingsPage {
     await this.page.getByRole('button', { name: 'Save Changes' }).click();
   }
 
-  async updateTeamName(newTeamName: string) {
-    await this.fillTeamName(newTeamName);
+  async updateTeamName(newProjectName: string) {
+    await this.fillTeamName(newProjectName);
     await this.clickSaveButton();
     await expect(
       this.page
         .getByRole('status')
-        .and(this.page.getByText(this.updateTeamSuccessMessage))
+        .filter({ hasText: this.updateTeamSuccessMessage })
+        .last()
     ).toBeVisible();
   }
 
-  async fillTeamSlug(teamSlug: string) {
-    await this.page.locator('input[name="slug"]').fill(teamSlug);
+  async fillTeamSlug(projectSlug: string) {
+    await this.page.locator('input[name="slug"]').fill(projectSlug);
   }
 
-  async updateTeamSlug(newTeamSlug: string) {
-    await this.fillTeamSlug(newTeamSlug);
+  async updateTeamSlug(newProjectSlug: string) {
+    await this.fillTeamSlug(newProjectSlug);
     await this.clickSaveButton();
     await expect(
       this.page
         .getByRole('status')
-        .and(this.page.getByText(this.updateTeamSuccessMessage))
+        .filter({ hasText: this.updateTeamSuccessMessage })
+        .last()
     ).toBeVisible();
   }
 
@@ -127,46 +131,53 @@ export class SettingsPage {
     await expect(
       this.page
         .getByRole('status')
-        .and(this.page.getByText(this.updateTeamSuccessMessage))
+        .filter({ hasText: this.updateTeamSuccessMessage })
+        .last()
     ).toBeVisible();
   }
 
-  async checkTeamName(teamName: string) {
-    await expect(this.page.locator('input[name="name"]')).toHaveValue(teamName);
+  async checkTeamName(projectName: string) {
+    await expect(this.page.locator('input[name="name"]')).toHaveValue(
+      projectName
+    );
   }
 
-  async checkTeamSlug(teamSlug: string) {
-    await expect(this.page.locator('input[name="slug"]')).toHaveValue(teamSlug);
+  async checkTeamSlug(projectSlug: string) {
+    await expect(this.page.locator('input[name="slug"]')).toHaveValue(
+      projectSlug
+    );
   }
 
   async checkDomain(domain: string) {
     await expect(this.page.locator('input[name="domain"]')).toHaveValue(domain);
   }
 
-  async createNewTeam(teamName: string) {
+  async createNewTeam(projectName: string) {
     await this.page.getByText('Example').first().click();
-    await this.newTeamMenu.click();
+    await this.newProjectMenu.click();
     await expect(
-      this.page.getByRole('heading', { name: 'Create Team' })
+      this.page.getByRole('heading', { name: 'Create Project' })
     ).toBeVisible();
-    await this.newTeamNameInput.fill(teamName);
+    await this.newProjectNameInput.fill(projectName);
     await this.createTeamDialogButton.click();
     await expect(
       this.page
         .getByRole('status')
-        .and(this.page.getByText(this.createTeamSuccessMessage))
+        .filter({ hasText: this.createTeamSuccessMessage })
+        .last()
     ).toBeVisible();
   }
 
-  async removeTeam(teamSlug: string) {
-    this.goto(teamSlug);
+  async removeTeam(projectSlug: string) {
+    this.goto(projectSlug);
     this.removeTeamButton.click();
     await expect(this.removeTeamConfirmPrompt).toBeVisible();
     this.deleteButton.click();
     await expect(
       this.page
         .getByRole('status')
-        .and(this.page.getByText(this.removeTeamSuccessMessage))
+        .filter({ hasText: this.removeTeamSuccessMessage })
+        .last()
     ).toBeVisible();
   }
 
@@ -175,8 +186,12 @@ export class SettingsPage {
     await this.page.waitForURL(`/settings/${pageName}`);
   }
 
-  async goto(teamSlug?: string) {
-    await this.page.goto(`/teams/${teamSlug}/settings`);
-    await this.page.waitForURL(`/teams/${teamSlug}/settings`);
+  async goto(projectSlug?: string, projectSlug = 'default') {
+    await this.page.goto(
+      `/orgs/${projectSlug}/projects/${projectSlug}/settings`
+    );
+    await this.page.waitForURL(
+      `/orgs/${projectSlug}/projects/${projectSlug}/settings`
+    );
   }
 }

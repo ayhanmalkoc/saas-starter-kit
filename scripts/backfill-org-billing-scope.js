@@ -3,55 +3,60 @@ const { PrismaClient } = require('@prisma/client');
 const db = new PrismaClient();
 
 async function main() {
-  console.log('Backfilling organization/project scope on subscriptions/invoices...');
+  console.log(
+    'Backfilling missing subscription organization scope from canonical project relation...'
+  );
 
-  const teams = await db.team.findMany({
+  const subscriptionsToRepair = await db.subscription.findMany({
     where: {
-      organizationId: {
-        not: null,
-      },
+      organizationId: null,
+      projectId: { not: null },
+      project: { isNot: null },
     },
     select: {
       id: true,
-      organizationId: true,
-      projectId: true,
+      project: {
+        select: {
+          organizationId: true,
+        },
+      },
     },
   });
 
   let updatedSubscriptions = 0;
-  let updatedInvoices = 0;
 
-  for (const team of teams) {
-    if (!team.organizationId) {
+  for (const subscription of subscriptionsToRepair) {
+    const organizationId = subscription.project?.organizationId;
+    if (!organizationId) {
       continue;
     }
 
-    const subResult = await db.subscription.updateMany({
+    await db.subscription.update({
       where: {
-        teamId: team.id,
-        organizationId: null,
+        id: subscription.id,
       },
       data: {
-        organizationId: team.organizationId,
-        projectId: team.projectId ?? null,
+        organizationId,
       },
     });
-    updatedSubscriptions += subResult.count;
 
-    const invoiceResult = await db.invoice.updateMany({
-      where: {
-        teamId: team.id,
-        organizationId: null,
-      },
-      data: {
-        organizationId: team.organizationId,
-      },
-    });
-    updatedInvoices += invoiceResult.count;
+    updatedSubscriptions += 1;
+  }
+
+  const invoicesWithoutOrganization = await db.invoice.count({
+    where: {
+      organizationId: null,
+    },
+  });
+
+  if (invoicesWithoutOrganization > 0) {
+    console.warn(
+      `Found ${invoicesWithoutOrganization} invoice rows without organization scope. Manual remediation may be required.`
+    );
   }
 
   console.log(
-    `Backfill complete. Updated subscriptions: ${updatedSubscriptions}, updated invoices: ${updatedInvoices}`
+    `Backfill complete. Updated subscriptions: ${updatedSubscriptions}, invoices_without_organization: ${invoicesWithoutOrganization}`
   );
 }
 

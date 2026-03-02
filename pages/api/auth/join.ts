@@ -4,14 +4,16 @@ import { sendVerificationEmail } from '@/lib/email/sendVerificationEmail';
 import { isEmailAllowed } from '@/lib/email/utils';
 import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
-import { createTeam, getTeam, isTeamExists } from 'models/team';
+import {
+  createOrganizationWithDefaultProject,
+  getOrganizationBySlug,
+} from 'models/organization';
 import { createUser, getUser } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import { getInvitation, isInvitationExpired } from 'models/invitation';
 import { validateRecaptcha } from '@/lib/recaptcha';
 import { slackNotify } from '@/lib/slack';
-import { Team } from '@prisma/client';
 import { createVerificationToken } from 'models/verificationToken';
 import { userJoinSchema, validateWithSchema } from '@/lib/zod';
 import { isValidCallbackUrl } from '@/lib/email/urlUtils';
@@ -43,8 +45,14 @@ export default async function handler(
 
 // Signup the user
 const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
-  const { name, password, team, inviteToken, recaptchaToken, callbackUrl } =
-    req.body;
+  const {
+    name,
+    password,
+    organizationName,
+    inviteToken,
+    recaptchaToken,
+    callbackUrl,
+  } = req.body;
 
   // Validation order: recaptcha first, then schema/business rules.
   await validateRecaptcha(recaptchaToken);
@@ -66,7 +74,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     }
   }
 
-  // Validate core user fields before email/team rules.
+  // Validate core user fields before email/organization rules.
   validateWithSchema(userJoinSchema, {
     name,
     email,
@@ -77,7 +85,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   if (!isEmailAllowed(email)) {
     throw new ApiError(
       400,
-      `We currently only accept work email addresses for sign-up. Please use your work email to create an account. If you don't have a work email, feel free to contact our support team for assistance.`
+      `We currently only accept work email addresses for sign-up. Please use your work email to create an account. If you don't have a work email, feel free to contact support for assistance.`
     );
   }
 
@@ -85,20 +93,20 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     throw new ApiError(400, 'An user with this email already exists.');
   }
 
-  // If there is no invitation, validate team + derived slug and ensure uniqueness.
+  // If there is no invitation, validate org name + derived slug and ensure uniqueness.
   if (!invitation) {
-    if (!team) {
-      throw new ApiError(400, 'A team name is required.');
+    if (!organizationName) {
+      throw new ApiError(400, 'An organization name is required.');
     }
 
-    const slug = slugify(team);
+    const slug = slugify(organizationName);
 
-    validateWithSchema(userJoinSchema, { team, slug });
+    validateWithSchema(userJoinSchema, { organizationName, slug });
 
-    const slugCollisions = await isTeamExists(slug);
+    const existingOrganization = await getOrganizationBySlug(slug);
 
-    if (slugCollisions > 0) {
-      throw new ApiError(400, 'A team with this slug already exists.');
+    if (existingOrganization) {
+      throw new ApiError(400, 'An organization with this slug already exists.');
     }
   }
 
@@ -109,18 +117,18 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     emailVerified: invitation ? new Date() : null,
   });
 
-  let userTeam: Team | null = null;
+  let workspaceName: string | null = null;
 
-  // Create team if user is not invited
-  // So we can create the team with the user as the owner
+  // Create organization + default project if user is not invited.
   if (!invitation) {
-    userTeam = await createTeam({
-      userId: user.id,
-      name: team,
-      slug: slugify(team),
+    const workspace = await createOrganizationWithDefaultProject({
+      ownerUserId: user.id,
+      organizationName,
+      organizationSlug: slugify(organizationName),
     });
+    workspaceName = workspace.organization.name;
   } else {
-    userTeam = await getTeam({ slug: invitation.team.slug });
+    workspaceName = invitation.project.organization.name;
   }
 
   // Send account verification email
@@ -150,7 +158,7 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
     fields: {
       Name: user.name,
       Email: user.email,
-      Team: userTeam?.name,
+      Organization: workspaceName,
     },
   });
 

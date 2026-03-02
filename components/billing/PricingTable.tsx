@@ -5,13 +5,13 @@ import toast from 'react-hot-toast';
 import { Button } from 'react-daisyui';
 import { useTranslation } from 'next-i18next';
 import { useRouter } from 'next/router';
-import useTeam from 'hooks/useTeam';
-import useTeams from 'hooks/useTeams';
+import useProject from 'hooks/useProject';
+import useProjects from 'hooks/useProjects';
 import { Price, Prisma, Service, Subscription } from '@prisma/client';
 import PaymentButton from './PaymentButton';
 import { handlePlanChange } from './planService';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -27,20 +27,20 @@ const PricingTable = ({
 }: PricingTableProps) => {
   const router = useRouter();
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
-  const { team: teamFromSlug } = useTeam();
-  const { teams } = useTeams();
+  const { project: projectFromRoute } = useProject();
+  const { projects } = useProjects();
 
-  // Create a fallback to the first team if we don't have a team from the slug (e.g. on /pricing public page)
-  const team = teamFromSlug || (teams && teams.length > 0 ? teams[0] : null);
+  // Create a fallback to the first project if we don't have a project from the slug (e.g. on /pricing public page)
+  const project =
+    projectFromRoute || (projects && projects.length > 0 ? projects[0] : null);
 
-  const billingProductsUrl = team?.slug
+  const billingProductsUrl = project?.slug
     ? (buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: 'payments/products',
       }) ??
-      buildTeamWorkspaceApiPath({
-        team,
+      buildProjectWorkspaceApiPath({
+        project,
         suffix: 'payments/products',
       }))
     : null;
@@ -65,7 +65,7 @@ const PricingTable = ({
   const { t } = useTranslation('common');
   const salesEmail =
     process.env.NEXT_PUBLIC_SALES_EMAIL?.trim() || 'sales@example.com';
-  const isTeamContext = Boolean(team?.slug);
+  const isTeamContext = Boolean(project?.slug);
   const [billingInterval, setBillingInterval] = useState<'month' | 'year'>(
     'month'
   );
@@ -77,9 +77,9 @@ const PricingTable = ({
     }
   }, [isTeamContext, tier]);
 
-  // Auto-trigger checkout if plan param exists and user is logged in (has team)
+  // Auto-trigger checkout if plan param exists and user is logged in (has project)
   useEffect(() => {
-    if (router.isReady && router.query.plan && team?.slug) {
+    if (router.isReady && router.query.plan && project?.slug) {
       const planId = router.query.plan as string;
       // Prevent infinite loop if plan ID is invalid or user cancels
       // But initiatePlanChange handles the flow.
@@ -107,15 +107,15 @@ const PricingTable = ({
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [router.isReady, router.query.plan, team?.slug]);
+  }, [router.isReady, router.query.plan, project?.slug]);
 
   const initiatePlanChange = async (
     priceId: string,
     quantity?: number,
     subscriptionId?: string | null
   ) => {
-    if (!team?.slug) {
-      // If no team, redirect to join or login
+    if (!project?.slug) {
+      // If no project, redirect to join or login
       router.push(
         `/auth/join?callbackUrl=${encodeURIComponent(
           `/pricing?plan=${priceId}`
@@ -125,16 +125,14 @@ const PricingTable = ({
     }
 
     const data = await handlePlanChange({
-      teamSlug: team.slug,
       priceId,
       quantity,
       subscriptionId,
       apiBasePath:
         buildWorkspaceApiPath({
           context: routeContext,
-          teamSlug: team.slug,
         }) ??
-        buildTeamWorkspaceApiPath({ team }) ??
+        buildProjectWorkspaceApiPath({ project }) ??
         undefined,
     });
 
@@ -161,10 +159,10 @@ const PricingTable = ({
       return true;
     }
 
-    // If user is logged in (has team) and has NO active paid subscription,
+    // If user is logged in (has project) and has NO active paid subscription,
     // and the price amount is 0, this is their current (Free) plan.
     if (
-      team?.slug &&
+      project?.slug &&
       !currentSubscription &&
       (price.amount === 0 ||
         price.amount === null ||
@@ -226,7 +224,7 @@ const PricingTable = ({
   const containerMaxWidth =
     !isTeamContext && tier === 'individual' ? 'max-w-7xl' : 'max-w-4xl';
   // Individual: 3 columns (Free, Basic, Pro)
-  // Business: 2 columns (Team, Enterprise)
+  // Business: 2 columns (Project, Enterprise)
   const gridCols =
     !isTeamContext && tier === 'individual'
       ? 'grid-cols-1 md:grid-cols-3'

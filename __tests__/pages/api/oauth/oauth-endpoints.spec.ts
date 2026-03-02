@@ -8,7 +8,7 @@ const samlResponseMock = jest.fn();
 jest.mock('@/lib/env', () => ({
   __esModule: true,
   default: {
-    teamFeatures: {
+    workspaceFeatures: {
       sso: true,
     },
   },
@@ -78,11 +78,11 @@ const createRes = () => {
 describe('OAuth API endpoints', () => {
   beforeEach(() => {
     jest.clearAllMocks();
-    (env as any).teamFeatures.sso = true;
+    (env as any).workspaceFeatures.sso = true;
   });
 
-  it('returns 404 for /api/oauth/authorize when team feature is disabled', async () => {
-    (env as any).teamFeatures.sso = false;
+  it('returns 404 for /api/oauth/authorize when project feature is disabled', async () => {
+    (env as any).workspaceFeatures.sso = false;
     const req = { method: 'GET', query: {}, body: {} } as any;
     const res = createRes();
 

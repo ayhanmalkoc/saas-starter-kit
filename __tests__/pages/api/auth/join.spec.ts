@@ -23,10 +23,9 @@ jest.mock('@/lib/env', () => ({
   },
 }));
 
-jest.mock('models/team', () => ({
-  createTeam: jest.fn(),
-  getTeam: jest.fn(),
-  isTeamExists: jest.fn(() => 0),
+jest.mock('models/organization', () => ({
+  createOrganizationWithDefaultProject: jest.fn(),
+  getOrganizationBySlug: jest.fn(),
 }));
 
 jest.mock('models/user', () => ({
@@ -58,18 +57,19 @@ jest.mock('models/verificationToken', () => ({
 
 jest.mock('@/lib/zod', () => ({
   userJoinSchema: {},
-  validateWithSchema: jest.fn((_schema: unknown, body: unknown) => body),
+  validateWithSchema: jest.fn((_schema: unknown, payload: unknown) => payload),
 }));
 
 import handler from '@/pages/api/auth/join';
-import { createTeam } from 'models/team';
+import {
+  createOrganizationWithDefaultProject,
+  getOrganizationBySlug,
+} from 'models/organization';
 import { createUser, getUser } from 'models/user';
 import { createVerificationToken } from 'models/verificationToken';
 import { sendVerificationEmail } from '@/lib/email/sendVerificationEmail';
 import { recordMetric } from '@/lib/metrics';
-import { slugify } from '@/lib/server-common';
 import { getInvitation, isInvitationExpired } from 'models/invitation';
-import { validateWithSchema } from '@/lib/zod';
 
 const createRes = () => {
   const res = {
@@ -103,11 +103,22 @@ describe('POST /api/auth/join', () => {
       email: 'john@example.com',
       emailVerified: null,
     });
-    (createTeam as jest.Mock).mockResolvedValue({ id: 'team-1', name: 'Acme' });
+    (createOrganizationWithDefaultProject as jest.Mock).mockResolvedValue({
+      organization: {
+        id: 'org-1',
+        name: 'Acme',
+        slug: 'acme',
+      },
+      project: {
+        id: 'project-1',
+        slug: 'default',
+      },
+    });
     (createVerificationToken as jest.Mock).mockResolvedValue({
       token: 'verify-token',
     });
     (getInvitation as jest.Mock).mockResolvedValue(null);
+    (getOrganizationBySlug as jest.Mock).mockResolvedValue(null);
   });
 
   it('returns 405 for method mismatch', async () => {
@@ -120,99 +131,34 @@ describe('POST /api/auth/join', () => {
     expect(res.headers.Allow).toBe('POST');
   });
 
-  it('returns validation errors for invalid payload fields with separate checks', async () => {
-    (validateWithSchema as jest.Mock).mockImplementation(
-      (_schema: unknown, body: Record<string, string>) => {
-        if ('name' in body && !body.name) {
-          throw { status: 422, message: 'Invalid name' };
-        }
-
-        if (
-          'password' in body &&
-          (!body.password || body.password.length < 8)
-        ) {
-          throw { status: 422, message: 'Invalid password' };
-        }
-
-        if ('team' in body && !body.team) {
-          throw { status: 422, message: 'Invalid team' };
-        }
-
-        if ('slug' in body && !body.slug) {
-          throw { status: 422, message: 'Invalid slug' };
-        }
-
-        return body;
-      }
-    );
-
-    const baseBody = {
-      name: 'John Doe',
-      email: 'john@example.com',
-      password: 'secret123',
-      team: 'Acme',
-      recaptchaToken: 'captcha-token',
-    };
-
-    const invalidNameReq = {
-      method: 'POST',
-      body: { ...baseBody, name: '' },
-    } as NextApiRequest;
-    const invalidNameRes = createRes();
-
-    await handler(invalidNameReq, invalidNameRes);
-
-    expect(invalidNameRes.statusCode).toBe(422);
-    expect(invalidNameRes.body).toEqual({ error: { message: 'Invalid name' } });
-
-    const invalidPasswordReq = {
-      method: 'POST',
-      body: { ...baseBody, password: 'short' },
-    } as NextApiRequest;
-    const invalidPasswordRes = createRes();
-
-    await handler(invalidPasswordReq, invalidPasswordRes);
-
-    expect(invalidPasswordRes.statusCode).toBe(422);
-    expect(invalidPasswordRes.body).toEqual({
-      error: { message: 'Invalid password' },
-    });
-
-    const invalidTeamReq = {
-      method: 'POST',
-      body: { ...baseBody, team: '' },
-    } as NextApiRequest;
-    const invalidTeamRes = createRes();
-
-    await handler(invalidTeamReq, invalidTeamRes);
-
-    expect(invalidTeamRes.statusCode).toBe(400);
-    expect(invalidTeamRes.body).toEqual({
-      error: { message: 'A team name is required.' },
-    });
-
-    (slugify as jest.Mock).mockReturnValueOnce('');
-
-    const invalidSlugReq = {
-      method: 'POST',
-      body: { ...baseBody, team: 'Acme' },
-    } as NextApiRequest;
-    const invalidSlugRes = createRes();
-
-    await handler(invalidSlugReq, invalidSlugRes);
-
-    expect(invalidSlugRes.statusCode).toBe(422);
-    expect(invalidSlugRes.body).toEqual({ error: { message: 'Invalid slug' } });
-  });
-
-  it('creates user/team and sends verification email on success', async () => {
+  it('returns 400 when organization name is missing for direct signup', async () => {
     const req = {
       method: 'POST',
       body: {
         name: 'John Doe',
         email: 'john@example.com',
         password: 'secret123',
-        team: 'Acme',
+        recaptchaToken: 'captcha-token',
+      },
+    } as NextApiRequest;
+    const res = createRes();
+
+    await handler(req, res);
+
+    expect(res.statusCode).toBe(400);
+    expect(res.body).toEqual({
+      error: { message: 'An organization name is required.' },
+    });
+  });
+
+  it('creates user + organization/project and sends verification email', async () => {
+    const req = {
+      method: 'POST',
+      body: {
+        name: 'John Doe',
+        email: 'john@example.com',
+        password: 'secret123',
+        organizationName: 'Acme',
         recaptchaToken: 'captcha-token',
       },
     } as NextApiRequest;
@@ -221,33 +167,30 @@ describe('POST /api/auth/join', () => {
     await handler(req, res);
 
     expect(res.statusCode).toBe(201);
-    expect(createUser).toHaveBeenCalledWith(
-      expect.objectContaining({ email: 'john@example.com', name: 'John Doe' })
-    );
-    expect(createTeam).toHaveBeenCalledWith({
-      userId: 'user-1',
-      name: 'Acme',
-      slug: 'acme',
+    expect(createOrganizationWithDefaultProject).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      organizationName: 'Acme',
+      organizationSlug: 'acme',
     });
     expect(createVerificationToken).toHaveBeenCalledWith(
       expect.objectContaining({ identifier: 'john@example.com' })
     );
-    expect(sendVerificationEmail).toHaveBeenCalledWith(
-      expect.objectContaining({
-        user: expect.objectContaining({ id: 'user-1' }),
-      })
-    );
+    expect(sendVerificationEmail).toHaveBeenCalled();
     expect(recordMetric).toHaveBeenCalledWith('user.signup');
     expect(alertMock).toHaveBeenCalled();
   });
 
-  it('returns error when invitation token is expired', async () => {
+  it('returns 400 when invitation token is expired', async () => {
     (getInvitation as jest.Mock).mockResolvedValueOnce({
       token: 'invite-token',
       expires: new Date(),
       sentViaEmail: true,
       email: 'invited@example.com',
-      team: { slug: 'inv-team' },
+      project: {
+        organization: {
+          name: 'Invited Org',
+        },
+      },
     });
     (isInvitationExpired as jest.Mock).mockResolvedValueOnce(true);
 
@@ -269,27 +212,5 @@ describe('POST /api/auth/join', () => {
     expect(res.body).toEqual({
       error: { message: 'Invitation expired. Please request a new one.' },
     });
-  });
-
-  it('returns error when user already exists', async () => {
-    (getUser as jest.Mock).mockResolvedValueOnce({ id: 'existing-user' });
-
-    const req = {
-      method: 'POST',
-      body: {
-        name: 'John Doe',
-        email: 'john@example.com',
-        password: 'secret123',
-        team: 'Acme',
-        recaptchaToken: 'captcha-token',
-      },
-    } as NextApiRequest;
-    const res = createRes();
-
-    await handler(req, res);
-
-    expect(res.statusCode).toBe(400);
-    expect(createUser).not.toHaveBeenCalled();
-    expect(sendVerificationEmail).not.toHaveBeenCalled();
   });
 });

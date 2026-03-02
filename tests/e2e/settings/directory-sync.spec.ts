@@ -1,5 +1,5 @@
 import { test as base } from '@playwright/test';
-import { team, user } from '../support/helper';
+import { project, user } from '../support/helper';
 import { DirectorySyncPage, LoginPage } from '../support/fixtures';
 
 const DIRECTORY_NAME = 'TestConnection';
@@ -17,7 +17,7 @@ const test = base.extend<DSyncFixture>({
     await use(loginPage);
   },
   dsyncPage: async ({ page }, use) => {
-    const apiKeysPage = new DirectorySyncPage(page, team.slug);
+    const apiKeysPage = new DirectorySyncPage(page, project.slug);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(apiKeysPage);
   },
@@ -26,7 +26,7 @@ const test = base.extend<DSyncFixture>({
 test.beforeEach(async ({ loginPage }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
-  await loginPage.loggedInCheck(team.slug);
+  await loginPage.loggedInCheck(project.slug);
 });
 
 test('Should be able to create DSync connection', async ({ dsyncPage }) => {

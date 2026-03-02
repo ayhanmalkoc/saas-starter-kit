@@ -1,7 +1,7 @@
 import { test as base } from '@playwright/test';
 
 import { prisma } from '@/lib/prisma';
-import { user, team } from '../support/helper';
+import { user, project } from '../support/helper';
 import { LoginPage, SecurityPage, SettingsPage } from '../support/fixtures';
 
 type SessionFixture = {
@@ -31,7 +31,7 @@ const test = base.extend<SessionFixture>({
 test.beforeEach(async ({ loginPage }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
-  await loginPage.loggedInCheck(team.slug);
+  await loginPage.loggedInCheck(project.slug);
 });
 
 test.afterEach(async () => {
@@ -55,9 +55,9 @@ test('2 session are shown in security page ', async ({ browser }) => {
   const loginPage1 = new LoginPage(page1);
   await loginPage1.goto();
   await loginPage1.credentialLogin(user.email, user.password);
-  await loginPage1.loggedInCheck(team.slug);
+  await loginPage1.loggedInCheck(project.slug);
 
-  const settingsPage = new SettingsPage(page1, team.slug);
+  const settingsPage = new SettingsPage(page1, project.slug);
   await settingsPage.gotoSection('security');
 
   const securityPage = new SecurityPage(page1);
@@ -77,9 +77,9 @@ test('On Remove session user logs out', async ({ browser }) => {
   const loginPage1 = new LoginPage(page1);
   await loginPage1.goto();
   await loginPage1.credentialLogin(user.email, user.password);
-  await loginPage1.loggedInCheck(team.slug);
+  await loginPage1.loggedInCheck(project.slug);
 
-  const settingsPage = new SettingsPage(page1, team.slug);
+  const settingsPage = new SettingsPage(page1, project.slug);
   await settingsPage.gotoSection('security');
 
   const securityPage = new SecurityPage(page1);

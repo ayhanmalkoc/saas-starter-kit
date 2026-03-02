@@ -2,12 +2,14 @@ import { NextApiRequest, NextApiResponse } from 'next';
 import type Stripe from 'stripe';
 
 import { assertBusinessTierPrice } from '@/lib/billing/catalog';
-import { resolveBillingScopeFromTeamId } from '@/lib/billing/scope';
 import { getSession } from '@/lib/session';
-import { throwIfNoTeamAccess } from 'models/team';
+import { throwIfNoProjectAccess } from 'models/access';
 import { stripe } from '@/lib/stripe';
 import { updateSubscriptionSchema, validateWithSchema } from '@/lib/zod';
-import { getBlockingByBillingScope, getBySubscriptionId } from 'models/subscription';
+import {
+  getBlockingByBillingScope,
+  getBySubscriptionId,
+} from 'models/subscription';
 import { ApiError } from '@/lib/errors';
 
 type PlanChangeType = 'upgrade' | 'downgrade' | 'lateral';
@@ -98,7 +100,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   try {
     switch (req.method) {
       case 'POST':
@@ -125,25 +126,19 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
   );
 
   await getSession(req, res);
-  const teamMember = await throwIfNoTeamAccess(req, res);
+  const projectMember = await throwIfNoProjectAccess(req, res);
   await assertBusinessTierPrice(price);
-  const billingScope = await resolveBillingScopeFromTeamId(teamMember.teamId);
 
   const subscription = await getBySubscriptionId(subscriptionId);
-  const canAccessByOrganization =
-    Boolean(billingScope.organizationId) &&
-    subscription?.organizationId === billingScope.organizationId;
-
   if (
     !subscription ||
-    (subscription.teamId !== teamMember.teamId && !canAccessByOrganization)
+    subscription.organizationId !== projectMember.organizationId
   ) {
     throw new ApiError(404, 'Subscription not found');
   }
 
   const blockingScopeSubscriptions = await getBlockingByBillingScope({
-    teamId: teamMember.teamId,
-    organizationId: billingScope.organizationId,
+    organizationId: projectMember.organizationId,
   });
   if (blockingScopeSubscriptions.length > 1) {
     return res.status(409).json({
@@ -267,4 +262,3 @@ const handlePOST = async (req: NextApiRequest, res: NextApiResponse) => {
 
   res.json({ data: updatedSubscription, changeType, prorationBehavior });
 };
-

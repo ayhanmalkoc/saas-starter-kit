@@ -1,8 +1,8 @@
 import { Card } from '@/components/shared';
 import { Error, Loading } from '@/components/shared';
-import { TeamTab } from '@/components/team';
+import { ProjectTab } from '@/components/project';
 import useCanAccess from 'hooks/useCanAccess';
-import useTeam from 'hooks/useTeam';
+import useProject from 'hooks/useProject';
 import { useTranslation } from 'next-i18next';
 import dynamic from 'next/dynamic';
 import type { NextPageWithLayout } from 'types';
@@ -17,7 +17,7 @@ type AuditLogsPageProps = {
   auditLogToken: string | null;
   retracedHost: string | null;
   error: { message: string } | null;
-  teamFeatures: any;
+  workspaceFeatures: any;
 };
 
 const RetracedEventsBrowser = dynamic<RetracedEventsBrowserProps>(
@@ -31,11 +31,11 @@ const Events: NextPageWithLayout<AuditLogsPageProps> = ({
   auditLogToken,
   retracedHost,
   error,
-  teamFeatures,
+  workspaceFeatures,
 }) => {
   const { t } = useTranslation('common');
   const { canAccess } = useCanAccess();
-  const { isLoading, isError, team } = useTeam();
+  const { isLoading, isError, project } = useProject();
 
   if (isLoading) {
     return <Loading />;
@@ -45,19 +45,23 @@ const Events: NextPageWithLayout<AuditLogsPageProps> = ({
     return <Error message={isError.message} />;
   }
 
-  if (!team) {
-    return <Error message={t('team-not-found')} />;
+  if (!project) {
+    return <Error message={t('project-not-found')} />;
   }
 
   return (
     <>
-      <TeamTab activeTab="audit-logs" team={team} teamFeatures={teamFeatures} />
+      <ProjectTab
+        activeTab="audit-logs"
+        project={project}
+        workspaceFeatures={workspaceFeatures}
+      />
       <Card>
         <Card.Body>
           {error ? (
             <Error message={error.message} />
           ) : (
-            canAccess('team_audit_log', ['read']) &&
+            canAccess('project_audit_log', ['read']) &&
             auditLogToken && (
               <RetracedEventsBrowser
                 host={`${retracedHost}/viewer/v1`}
@@ -72,9 +76,4 @@ const Events: NextPageWithLayout<AuditLogsPageProps> = ({
   );
 };
 
-
 export default Events;
-
-
-
-

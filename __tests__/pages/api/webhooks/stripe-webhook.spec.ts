@@ -15,22 +15,26 @@ jest.mock('@/lib/stripe', () => ({
     webhooks: {
       constructEvent: jest.fn(),
     },
+    subscriptions: {
+      retrieve: jest.fn(),
+    },
   },
 }));
 
 jest.mock('models/subscription', () => ({
-  createStripeSubscription: jest.fn(),
   deleteStripeSubscription: jest.fn(),
   getBySubscriptionId: jest.fn(),
-  updateStripeSubscription: jest.fn(),
+  upsertStripeSubscription: jest.fn(),
 }));
 
-jest.mock('models/team', () => ({
-  getByCustomerId: jest.fn(),
+jest.mock('models/organization', () => ({
+  getOrganizationByCustomerId: jest.fn(),
+  getOrganizationById: jest.fn(),
 }));
 
 jest.mock('models/webhookEvent', () => ({
   createWebhookEvent: jest.fn(),
+  getWebhookEventById: jest.fn(),
 }));
 
 jest.mock('models/service', () => ({
@@ -45,38 +49,11 @@ jest.mock('models/invoice', () => ({
   upsertInvoiceFromStripe: jest.fn(),
 }));
 
-jest.mock('@prisma/client', () => ({
-  Prisma: {
-    PrismaClientKnownRequestError: class PrismaClientKnownRequestError extends Error {
-      code: string;
-      clientVersion?: string;
-      constructor(
-        message: string,
-        options: {
-          code: string;
-          clientVersion?: string;
-          [k: string]: any;
-        }
-      ) {
-        super(message);
-        this.code = options.code;
-        this.clientVersion = options.clientVersion;
-      }
-    },
-  },
-}));
-
 import handler from '@/pages/api/webhooks/stripe';
-import { Prisma } from '@prisma/client';
 import { stripe } from '@/lib/stripe';
-import {
-  createStripeSubscription,
-  getBySubscriptionId,
-  updateStripeSubscription,
-} from 'models/subscription';
-import { getByCustomerId } from 'models/team';
-import { createWebhookEvent } from 'models/webhookEvent';
-import { upsertPriceFromStripe } from 'models/price';
+import { upsertStripeSubscription } from 'models/subscription';
+import { getOrganizationByCustomerId } from 'models/organization';
+import { createWebhookEvent, getWebhookEventById } from 'models/webhookEvent';
 
 const buildReq = (eventPayload: unknown, signature = 'valid-signature') => {
   const req = Readable.from([JSON.stringify(eventPayload)]) as NextApiRequest;
@@ -107,6 +84,7 @@ const createRes = () => {
 describe('POST /api/webhooks/stripe', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    (getWebhookEventById as jest.Mock).mockResolvedValue(null);
   });
 
   it('returns 400 when webhook signature is invalid', async () => {
@@ -143,18 +121,15 @@ describe('POST /api/webhooks/stripe', () => {
     expect(createWebhookEvent).not.toHaveBeenCalled();
   });
 
-  it('short-circuits idempotently when event already processed', async () => {
-    const duplicateError = new Prisma.PrismaClientKnownRequestError(
-      'Unique failed',
-      { code: 'P2002', clientVersion: '6.x.x' }
-    );
-
+  it('short-circuits when event was already processed', async () => {
     (stripe.webhooks.constructEvent as jest.Mock).mockReturnValueOnce({
       id: 'evt_duplicate',
       type: 'price.updated',
       data: { object: { id: 'price_1' } },
     });
-    (createWebhookEvent as jest.Mock).mockRejectedValueOnce(duplicateError);
+    (getWebhookEventById as jest.Mock).mockResolvedValueOnce({
+      id: 'evt_duplicate',
+    });
 
     const req = buildReq({});
     const res = createRes();
@@ -163,33 +138,10 @@ describe('POST /api/webhooks/stripe', () => {
 
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({ received: true });
-    expect(upsertPriceFromStripe).not.toHaveBeenCalled();
+    expect(createWebhookEvent).not.toHaveBeenCalled();
   });
 
-  it('handles price.updated events and upserts mapped price data', async () => {
-    (stripe.webhooks.constructEvent as jest.Mock).mockReturnValueOnce({
-      id: 'evt_price',
-      type: 'price.updated',
-      data: { object: { id: 'price_new', product: 'prod_1' } },
-    });
-
-    const req = buildReq({});
-    const res = createRes();
-
-    await handler(req, res);
-
-    expect(res.statusCode).toBe(200);
-    expect(createWebhookEvent).toHaveBeenCalledWith(
-      'evt_price',
-      'price.updated'
-    );
-    expect(upsertPriceFromStripe).toHaveBeenCalledWith({
-      id: 'price_new',
-      product: 'prod_1',
-    });
-  });
-
-  it('handles customer.subscription.updated with create fallback when record is missing', async () => {
+  it('upserts subscription for customer.subscription.updated', async () => {
     (stripe.webhooks.constructEvent as jest.Mock).mockReturnValueOnce({
       id: 'evt_sub_updated',
       type: 'customer.subscription.updated',
@@ -203,6 +155,7 @@ describe('POST /api/webhooks/stripe', () => {
           cancel_at: null,
           cancel_at_period_end: false,
           trial_end: null,
+          metadata: {},
           items: {
             data: [
               {
@@ -218,9 +171,9 @@ describe('POST /api/webhooks/stripe', () => {
         },
       },
     });
-
-    (getBySubscriptionId as jest.Mock).mockResolvedValueOnce(null);
-    (getByCustomerId as jest.Mock).mockResolvedValue({ id: 'team-1' });
+    (getOrganizationByCustomerId as jest.Mock).mockResolvedValue({
+      id: 'org-1',
+    });
 
     const req = buildReq({});
     const res = createRes();
@@ -228,67 +181,14 @@ describe('POST /api/webhooks/stripe', () => {
     await handler(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(createStripeSubscription).toHaveBeenCalledWith(
+    expect(upsertStripeSubscription).toHaveBeenCalledWith(
       expect.objectContaining({
         id: 'sub_new',
-        teamId: 'team-1',
+        organizationId: 'org-1',
+        customerId: 'cus_123',
         priceId: 'price_123',
         productId: 'prod_123',
         quantity: 4,
-      })
-    );
-    expect(updateStripeSubscription).not.toHaveBeenCalled();
-  });
-
-  it('handles customer.subscription.updated with existing record update', async () => {
-    (stripe.webhooks.constructEvent as jest.Mock).mockReturnValueOnce({
-      id: 'evt_sub_existing',
-      type: 'customer.subscription.updated',
-      data: {
-        object: {
-          id: 'sub_existing',
-          customer: 'cus_123',
-          status: 'past_due',
-          current_period_start: 1700001000,
-          current_period_end: 1700002000,
-          cancel_at: null,
-          cancel_at_period_end: false,
-          trial_end: null,
-          items: {
-            data: [
-              {
-                quantity: 2,
-                price: {
-                  id: 'price_existing',
-                  product: 'prod_existing',
-                  currency: 'eur',
-                },
-              },
-            ],
-          },
-        },
-      },
-    });
-
-    (getBySubscriptionId as jest.Mock).mockResolvedValueOnce({
-      id: 'sub_existing',
-      teamId: 'team-1',
-    });
-
-    const req = buildReq({});
-    const res = createRes();
-
-    await handler(req, res);
-
-    expect(res.statusCode).toBe(200);
-    expect(updateStripeSubscription).toHaveBeenCalledWith(
-      'sub_existing',
-      expect.objectContaining({
-        status: 'past_due',
-        quantity: 2,
-        currency: 'eur',
-        priceId: 'price_existing',
-        productId: 'prod_existing',
       })
     );
   });

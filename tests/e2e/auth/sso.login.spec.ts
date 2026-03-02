@@ -1,5 +1,5 @@
 import { test as base } from '@playwright/test';
-import { user, team, secondTeam } from '../support/helper';
+import { user, project, secondProject } from '../support/helper';
 import { LoginPage, SSOPage, SettingsPage } from '../support/fixtures';
 
 const SSO_METADATA_URL = [
@@ -21,12 +21,12 @@ const test = base.extend<SSOLoginFixture>({
     await use(loginPage);
   },
   ssoPageTeam: async ({ page }, use) => {
-    const ssoPage = new SSOPage(page, team.slug);
+    const ssoPage = new SSOPage(page, project.slug);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(ssoPage);
   },
   ssoPageSecondTeam: async ({ page }, use) => {
-    const ssoPage = new SSOPage(page, secondTeam.slug);
+    const ssoPage = new SSOPage(page, secondProject.slug);
     // eslint-disable-next-line react-hooks/rules-of-hooks
     await use(ssoPage);
   },
@@ -37,13 +37,13 @@ const test = base.extend<SSOLoginFixture>({
   },
 });
 
-test('Create SSO connection for team', async ({
+test('Create SSO connection for project', async ({
   loginPage,
   ssoPageTeam: ssoPage,
 }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
-  await loginPage.loggedInCheck(team.slug);
+  await loginPage.loggedInCheck(project.slug);
   await ssoPage.goto();
   await ssoPage.createSSOConnection({ metadataUrl: SSO_METADATA_URL[0] });
 });
@@ -51,17 +51,17 @@ test('Create SSO connection for team', async ({
 test('Login with SSO', async ({ loginPage }) => {
   await loginPage.goto();
   await loginPage.ssoLogin(user.email);
-  await loginPage.loggedInCheck(team.slug);
+  await loginPage.loggedInCheck(project.slug);
 });
 
-test('Create a new team', async ({ settingsPage, loginPage }) => {
+test('Create a new project', async ({ settingsPage, loginPage }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
-  await loginPage.loggedInCheck(team.slug);
-  await settingsPage.createNewTeam(secondTeam.name);
+  await loginPage.loggedInCheck(project.slug);
+  await settingsPage.createNewTeam(secondProject.name);
 });
 
-test('SSO login with 2 teams & one SSO connection', async ({
+test('SSO login with 2 projects & one SSO connection', async ({
   loginPage,
   settingsPage,
 }) => {
@@ -70,7 +70,7 @@ test('SSO login with 2 teams & one SSO connection', async ({
   await settingsPage.isLoggedIn();
 });
 
-test('Create SSO connection for new team', async ({
+test('Create SSO connection for new project', async ({
   loginPage,
   ssoPageSecondTeam: ssoPage,
   settingsPage,
@@ -83,7 +83,7 @@ test('Create SSO connection for new team', async ({
   await ssoPage.createSSOConnection({ metadataUrl: SSO_METADATA_URL[1] });
 });
 
-test('SSO login with 2 teams & two SSO connection', async ({
+test('SSO login with 2 projects & two SSO connection', async ({
   loginPage,
   ssoPageSecondTeam: ssoPage,
 }) => {
@@ -92,7 +92,7 @@ test('SSO login with 2 teams & two SSO connection', async ({
 
   await loginPage.isMultipleTeamErrorVisible();
 
-  await loginPage.ssoLoginWithSlug(team.slug);
+  await loginPage.ssoLoginWithSlug('default');
   await ssoPage.goto();
 
   await ssoPage.openEditSSOConnectionView();
@@ -115,10 +115,10 @@ test('Delete SSO connection', async ({
   await ssoPage.checkEmptyConnectionList();
 });
 
-test('Remove second team', async ({ loginPage, settingsPage }) => {
+test('Remove second project', async ({ loginPage, settingsPage }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
   await settingsPage.isLoggedIn();
 
-  await settingsPage.removeTeam(secondTeam.slug);
+  await settingsPage.removeTeam(secondProject.slug);
 });

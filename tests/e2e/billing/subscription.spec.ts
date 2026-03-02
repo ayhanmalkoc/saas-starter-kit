@@ -1,6 +1,6 @@
 import { test as base } from '@playwright/test';
 import { BillingPage, LoginPage } from '../support/fixtures';
-import { team, user } from '../support/helper';
+import { project, user } from '../support/helper';
 
 type BillingFixture = {
   loginPage: LoginPage;
@@ -12,17 +12,17 @@ const test = base.extend<BillingFixture>({
     await runFixture(new LoginPage(page));
   },
   billingPage: async ({ page }, runFixture) => {
-    await runFixture(new BillingPage(page, team.slug));
+    await runFixture(new BillingPage(page, project.slug));
   },
 });
 
 test.beforeEach(async ({ page, loginPage }) => {
   await loginPage.goto();
   await loginPage.credentialLogin(user.email, user.password);
-  await loginPage.loggedInCheck(team.slug);
+  await loginPage.loggedInCheck(project.slug);
 
   await page.route(
-    `**/api/teams/${team.slug}/payments/products`,
+    `**/api/orgs/${project.slug}/projects/default/payments/products`,
     async (route) => {
       await route.fulfill({
         status: 200,
@@ -87,7 +87,7 @@ test('fail path: should show error toast when billing portal API fails', async (
   billingPage,
 }) => {
   await page.route(
-    `**/api/teams/${team.slug}/payments/create-portal-link`,
+    `**/api/orgs/${project.slug}/projects/default/payments/create-portal-link`,
     async (route) => {
       await route.fulfill({
         status: 500,

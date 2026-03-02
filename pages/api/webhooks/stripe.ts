@@ -8,14 +8,15 @@ import {
   getBySubscriptionId,
   upsertStripeSubscription,
 } from 'models/subscription';
-import { ensureOrganizationAndProjectForTeam } from 'models/organization';
-import { getByCustomerId, getFirstTeamByOrganizationId, getTeam } from 'models/team';
+import {
+  getOrganizationByCustomerId,
+  getOrganizationById,
+} from 'models/organization';
 import { createWebhookEvent, getWebhookEventById } from 'models/webhookEvent';
 import { Prisma } from '@prisma/client';
 import { upsertServiceFromStripe } from 'models/service';
 import { upsertPriceFromStripe } from 'models/price';
 import { upsertInvoiceFromStripe } from 'models/invoice';
-import type { Team } from '@prisma/client';
 
 export const config = {
   api: {
@@ -134,43 +135,11 @@ export default async function POST(req: NextApiRequest, res: NextApiResponse) {
   return res.status(200).json({ received: true });
 }
 
-async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
-  const invoice = _event.data.object as Stripe.Invoice;
-  const customerId = invoice.customer as string | null;
-  if (!customerId) {
-    return;
-  }
-  const team = await resolveTeamForInvoice({ invoice, customerId });
-  if (!team) {
-    return;
-  }
-  const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
-  await upsertInvoiceFromStripe(
-    invoice,
-    team.id,
-    billingScope.organizationId
-  );
-}
+const resolveOrganizationByCustomer = async (customerId: string) => {
+  return await getOrganizationByCustomerId(customerId);
+};
 
-async function handleInvoicePaymentFailed(_event: Stripe.Event) {
-  const invoice = _event.data.object as Stripe.Invoice;
-  const customerId = invoice.customer as string | null;
-  if (!customerId) {
-    return;
-  }
-  const team = await resolveTeamForInvoice({ invoice, customerId });
-  if (!team) {
-    return;
-  }
-  const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
-  await upsertInvoiceFromStripe(
-    invoice,
-    team.id,
-    billingScope.organizationId
-  );
-}
-
-const resolveTeamForInvoice = async ({
+const resolveOrganizationForInvoice = async ({
   invoice,
   customerId,
 }: {
@@ -185,20 +154,47 @@ const resolveTeamForInvoice = async ({
   if (subscriptionId) {
     const existingSubscription = await getBySubscriptionId(subscriptionId);
 
-    if (existingSubscription?.teamId) {
-      try {
-        const teamFromSubscription = await getTeam({
-          id: existingSubscription.teamId,
-        });
-        return teamFromSubscription;
-      } catch {
-        // fall back to customer-level lookup
-      }
+    if (existingSubscription?.organizationId) {
+      return await getOrganizationById(existingSubscription.organizationId);
     }
   }
 
-  return await getByCustomerId(customerId);
+  return await resolveOrganizationByCustomer(customerId);
 };
+
+async function handleInvoicePaymentSucceeded(_event: Stripe.Event) {
+  const invoice = _event.data.object as Stripe.Invoice;
+  const customerId = invoice.customer as string | null;
+  if (!customerId) {
+    return;
+  }
+  const organization = await resolveOrganizationForInvoice({
+    invoice,
+    customerId,
+  });
+  if (!organization) {
+    return;
+  }
+
+  await upsertInvoiceFromStripe(invoice, organization.id);
+}
+
+async function handleInvoicePaymentFailed(_event: Stripe.Event) {
+  const invoice = _event.data.object as Stripe.Invoice;
+  const customerId = invoice.customer as string | null;
+  if (!customerId) {
+    return;
+  }
+  const organization = await resolveOrganizationForInvoice({
+    invoice,
+    customerId,
+  });
+  if (!organization) {
+    return;
+  }
+
+  await upsertInvoiceFromStripe(invoice, organization.id);
+}
 
 async function handleCustomerUpdated(event: Stripe.Event) {
   void event;
@@ -233,42 +229,32 @@ const upsertSubscriptionFromStripe = async (
     return;
   }
 
-  const metadataTeamId =
-    typeof subscription.metadata?.teamId === 'string' &&
-    subscription.metadata.teamId.trim()
-      ? subscription.metadata.teamId.trim()
-      : null;
   const metadataOrganizationId =
     typeof subscription.metadata?.organizationId === 'string' &&
     subscription.metadata.organizationId.trim()
       ? subscription.metadata.organizationId.trim()
       : null;
 
-  let team: Team | null = null;
+  const metadataProjectId =
+    typeof subscription.metadata?.projectId === 'string' &&
+    subscription.metadata.projectId.trim()
+      ? subscription.metadata.projectId.trim()
+      : null;
 
-  if (metadataTeamId) {
-    try {
-      team = await getTeam({ id: metadataTeamId });
-    } catch {
-      team = null;
-    }
+  let organization = metadataOrganizationId
+    ? await getOrganizationById(metadataOrganizationId)
+    : null;
+
+  if (!organization) {
+    organization = await resolveOrganizationByCustomer(customerId);
   }
 
-  if (!team && metadataOrganizationId) {
-    team = await getFirstTeamByOrganizationId(metadataOrganizationId);
-  }
-
-  if (!team) {
-    team = await getByCustomerId(customerId);
-  }
-
-  if (!team) {
+  if (!organization) {
     console.warn(
-      `No team found for Stripe customer ${customerId}. Skipping subscription ${subscription.id}.`
+      `No organization found for Stripe customer ${customerId}. Skipping subscription ${subscription.id}.`
     );
     return;
   }
-  const billingScope = await ensureOrganizationAndProjectForTeam(team.id);
 
   const subscriptionItem = subscription.items.data[0];
   const priceId = subscriptionItem?.price?.id ?? null;
@@ -279,9 +265,8 @@ const upsertSubscriptionFromStripe = async (
 
   await upsertStripeSubscription({
     id: subscription.id,
-    teamId: team.id,
-    organizationId: billingScope.organizationId,
-    projectId: billingScope.projectId,
+    organizationId: organization.id,
+    projectId: metadataProjectId,
     customerId,
     status: subscription.status,
     quantity: subscriptionItem?.quantity ?? null,

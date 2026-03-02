@@ -1,6 +1,6 @@
 import { Loading } from '@/components/shared';
-import { buildTeamWorkspaceAppPath } from '@/lib/routing/workspace-routes';
-import useTeams from 'hooks/useTeams';
+import { buildProjectWorkspaceAppPath } from '@/lib/routing/workspace-routes';
+import useProjects from 'hooks/useProjects';
 import { GetServerSidePropsContext } from 'next';
 import { serverSideTranslations } from 'next-i18next/serverSideTranslations';
 import { useRouter } from 'next/router';
@@ -9,29 +9,29 @@ import type { NextPageWithLayout } from 'types';
 
 const Dashboard: NextPageWithLayout = () => {
   const router = useRouter();
-  const { teams, isLoading } = useTeams();
+  const { projects, isLoading } = useProjects();
 
   useEffect(() => {
-    if (isLoading || !teams) {
+    if (isLoading || !projects) {
       return;
     }
 
-    if (teams.length > 0) {
-      const settingsPath = buildTeamWorkspaceAppPath({
-        team: teams[0],
+    if (projects.length > 0) {
+      const settingsPath = buildProjectWorkspaceAppPath({
+        project: projects[0],
         suffix: 'settings',
       });
 
       if (!settingsPath) {
-        router.push('/teams?newTeam=true');
+        router.push('/orgs?newProject=true');
         return;
       }
 
       router.push(settingsPath);
     } else {
-      router.push('/teams?newTeam=true');
+      router.push('/orgs?newProject=true');
     }
-  }, [isLoading, router, teams]);
+  }, [isLoading, router, projects]);
 
   return <Loading />;
 };

@@ -20,18 +20,18 @@ Before any flow:
 
 ## Command Reference
 
-| Command                             | Purpose                                                                                                                                             | Requires running app (`npm run dev` / `npm run start`) |
-| ----------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `npm run setup:db`                  | Reset local Docker stack + apply Prisma schema + initialize Svix/Retraced DBs                                                                       | No                                                     |
-| `npm run org:bootstrap`             | Backfill OpenAI-style Organization/Project scope from existing Team records                                                                         | No                                                     |
-| `npm run stripe:cleanup`            | Archive all active Stripe products/prices (destructive in selected Stripe account)                                                                  | No                                                     |
-| `npm run setup:stripe`              | Validate plan model, bootstrap org/project scope, seed Stripe products/prices, sync catalog to DB, backfill subscriptions, then backfill org-scope billing rows | No                                                     |
-| `npm run stripe:sync-db`            | Sync Stripe products/prices directly into DB (no API call)                                                                                          | No                                                     |
-| `npm run stripe:sync-subscriptions` | Backfill subscriptions from Stripe customers into DB and then backfill org-scope billing rows                                                       | No                                                     |
-| `npm run billing:backfill-org-scope` | Backfill legacy team-scoped subscription/invoice rows to organization/project scope                                                                  | No                                                     |
-| `npm run sync-stripe`               | Sync via `/api/admin/stripe/sync` endpoint                                                                                                          | Yes                                                    |
-| `npm run dev`                       | Start local Next.js dev server on `:4002`                                                                                                           | N/A                                                    |
-| `npm run build-ci && npm run start` | Start app in production mode                                                                                                                        | N/A                                                    |
+| Command                              | Purpose                                                                                                                                                         | Requires running app (`npm run dev` / `npm run start`) |
+| ------------------------------------ | --------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `npm run setup:db`                   | Reset local Docker stack + apply Prisma schema + initialize Svix/Retraced DBs                                                                                   | No                                                     |
+| `npm run org:bootstrap`              | Backfill OpenAI-style Organization/Project scope from legacy workspace records                                                                                  | No                                                     |
+| `npm run stripe:cleanup`             | Archive all active Stripe products/prices (destructive in selected Stripe account)                                                                              | No                                                     |
+| `npm run setup:stripe`               | Validate plan model, bootstrap org/project scope, seed Stripe products/prices, sync catalog to DB, backfill subscriptions, then backfill org-scope billing rows | No                                                     |
+| `npm run stripe:sync-db`             | Sync Stripe products/prices directly into DB (no API call)                                                                                                      | No                                                     |
+| `npm run stripe:sync-subscriptions`  | Backfill subscriptions from Stripe customers into DB and then backfill org-scope billing rows                                                                   | No                                                     |
+| `npm run billing:backfill-org-scope` | Backfill legacy subscription/invoice rows to organization/project scope                                                                                         | No                                                     |
+| `npm run sync-stripe`                | Sync via `/api/admin/stripe/sync` endpoint                                                                                                                      | Yes                                                    |
+| `npm run dev`                        | Start local Next.js dev server on `:4002`                                                                                                                       | N/A                                                    |
+| `npm run build-ci && npm run start`  | Start app in production mode                                                                                                                                    | N/A                                                    |
 
 ## 1) Fresh Clone (Local Dev Bootstrap)
 
@@ -142,7 +142,7 @@ Production rules:
 After running the selected flow:
 
 1. Pricing page loads expected plans.
-2. Team billing page shows current subscription correctly.
+2. Project billing page shows current subscription correctly.
 3. Feature-gated pages (e.g., audit logs/webhooks/SSO) match plan entitlements.
 4. Stripe webhook endpoint is reachable and signature secret is valid where applicable.
 

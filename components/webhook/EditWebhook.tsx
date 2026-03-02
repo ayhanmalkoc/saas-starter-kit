@@ -1,5 +1,5 @@
 import { Error, Loading } from '@/components/shared';
-import type { Team } from '@prisma/client';
+import type { Project } from '@prisma/client';
 import type { FormikHelpers } from 'formik';
 import useWebhook from 'hooks/useWebhook';
 import useWebhooks from 'hooks/useWebhooks';
@@ -13,7 +13,7 @@ import type { ApiResponse } from 'types';
 import ModalForm from './Form';
 import { defaultHeaders } from '@/lib/common';
 import {
-  buildTeamWorkspaceApiPath,
+  buildProjectWorkspaceApiPath,
   buildWorkspaceApiPath,
   getWorkspaceRouteContextFromQuery,
 } from '@/lib/routing/workspace-routes';
@@ -22,18 +22,18 @@ import { useRouter } from 'next/router';
 const EditWebhook = ({
   visible,
   setVisible,
-  team,
+  project,
   endpoint,
 }: {
   visible: boolean;
   setVisible: (visible: boolean) => void;
-  team: Team;
+  project: Project;
   endpoint: EndpointOut;
 }) => {
   const router = useRouter();
-  const { isLoading, isError, webhook } = useWebhook(team.slug, endpoint.id);
+  const { isLoading, isError, webhook } = useWebhook(endpoint.id);
   const { t } = useTranslation('common');
-  const { mutateWebhooks } = useWebhooks(team.slug);
+  const { mutateWebhooks } = useWebhooks();
   const routeContext = getWorkspaceRouteContextFromQuery(router.query);
 
   if (isLoading || !webhook) {
@@ -51,11 +51,10 @@ const EditWebhook = ({
     const webhookUrl =
       buildWorkspaceApiPath({
         context: routeContext,
-        teamSlug: team.slug,
         suffix: `webhooks/${endpoint.id}`,
       }) ??
-      buildTeamWorkspaceApiPath({
-        team,
+      buildProjectWorkspaceApiPath({
+        project: project,
         suffix: `webhooks/${endpoint.id}`,
       });
 

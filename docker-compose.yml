@@ -107,5 +107,5 @@ services:
     command: /nsqd
     restart: always
     ports:
-      - "4150:4150"
-      - "4151:4151"
+      - '4150:4150'
+      - '4151:4151'

@@ -26,7 +26,7 @@ const SSO: NextPageWithLayout<
 
   const formik = useFormik({
     initialValues: {
-      slug: '',
+      projectSlug: '',
       email: '',
     },
     validationSchema: Yup.object().shape(
@@ -38,8 +38,8 @@ const SSO: NextPageWithLayout<
               .max(maxLengthPolicies.email),
           }
         : {
-            slug: Yup.string()
-              .required('Team slug is required')
+            projectSlug: Yup.string()
+              .required('Project slug is required')
               .max(maxLengthPolicies.slug),
           }
     ),
@@ -55,14 +55,14 @@ const SSO: NextPageWithLayout<
         toast.error(error.message);
         return;
       }
-      if (data.useSlug) {
+      if (data.useProjectSlug) {
         formik.resetForm();
         setUseEmail(false);
-        toast.error(t('multiple-sso-teams'));
+        toast.error(t('multiple-sso-projects'));
         return;
       }
       await signIn('boxyhq-saml', undefined, {
-        tenant: data.teamId,
+        tenant: data.projectId,
         product: jacksonProductId,
       });
     },
@@ -97,12 +97,16 @@ const SSO: NextPageWithLayout<
             ) : (
               <InputWithLabel
                 type="text"
-                label="Team slug"
-                name="slug"
+                label="Project slug"
+                name="projectSlug"
                 placeholder="boxyhq"
-                value={formik.values.slug}
-                descriptionText="Contact your administrator to get your team slug"
-                error={formik.touched.slug ? formik.errors.slug : undefined}
+                value={formik.values.projectSlug}
+                descriptionText="Contact your administrator to get your project slug"
+                error={
+                  formik.touched.projectSlug
+                    ? formik.errors.projectSlug
+                    : undefined
+                }
                 onChange={formik.handleChange}
               />
             )}

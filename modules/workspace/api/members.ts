@@ -3,14 +3,15 @@ import { sendAudit } from '@/lib/retraced';
 import { sendEvent } from '@/lib/svix';
 import { Role } from '@prisma/client';
 import {
-  getTeamMembers,
-  removeTeamMember,
-  throwIfNoTeamAccess,
-} from 'models/team';
+  countProjectMembers,
+  getProjectMembers,
+  removeProjectMember,
+  updateProjectMember,
+} from 'models/projectMember';
+import { throwIfNoProjectAccess } from 'models/access';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
-import { countTeamMembers, updateTeamMember } from 'models/teamMember';
 import { validateMembershipOperation } from '@/lib/rbac';
 import {
   deleteMemberSchema,
@@ -22,7 +23,6 @@ export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   const { method } = req;
 
   try {
@@ -53,39 +53,42 @@ export default async function handler(
   }
 }
 
-// Get members of a team
+// Get members of a project
 const handleGET = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_member', 'read');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  throwIfNotAllowed(projectMember, 'project_member', 'read');
 
-  const members = await getTeamMembers(teamMember.team.slug);
+  const members = await getProjectMembers(projectMember.projectId);
 
   recordMetric('member.fetched');
 
   res.status(200).json({ data: members });
 };
 
-// Delete the member from the team
+// Delete the member from the project
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_member', 'delete');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  throwIfNotAllowed(projectMember, 'project_member', 'delete');
 
   const { memberId } = validateWithSchema(
     deleteMemberSchema,
     req.query as { memberId: string }
   );
 
-  await validateMembershipOperation(memberId, teamMember);
+  await validateMembershipOperation(memberId, projectMember);
 
-  const teamMemberRemoved = await removeTeamMember(teamMember.teamId, memberId);
+  const memberRemoved = await removeProjectMember(
+    projectMember.projectId,
+    memberId
+  );
 
-  await sendEvent(teamMember.teamId, 'member.removed', teamMemberRemoved);
+  await sendEvent(projectMember.projectId, 'member.removed', memberRemoved);
 
   sendAudit({
     action: 'member.remove',
     crud: 'd',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   recordMetric('member.removed');
@@ -93,24 +96,24 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
   res.status(200).json({ data: {} });
 };
 
-// Leave a team
+// Leave a project
 const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team', 'leave');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  throwIfNotAllowed(projectMember, 'project', 'leave');
 
-  // Keep owner-count checks index-friendly; monitor performance for large teams.
-  const totalTeamOwners = await countTeamMembers({
+  // Keep owner-count checks index-friendly; monitor performance for large projects.
+  const totalProjectOwners = await countProjectMembers({
     where: {
       role: Role.OWNER,
-      teamId: teamMember.teamId,
+      projectId: projectMember.projectId,
     },
   });
 
-  if (totalTeamOwners <= 1) {
-    throw new ApiError(400, 'A team should have at least one owner.');
+  if (totalProjectOwners <= 1) {
+    throw new ApiError(400, 'A project should have at least one owner.');
   }
 
-  await removeTeamMember(teamMember.teamId, teamMember.user.id);
+  await removeProjectMember(projectMember.projectId, projectMember.user.id);
 
   recordMetric('member.left');
 
@@ -119,22 +122,22 @@ const handlePUT = async (req: NextApiRequest, res: NextApiResponse) => {
 
 // Update the role of a member
 const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
-  const teamMember = await throwIfNoTeamAccess(req, res);
-  throwIfNotAllowed(teamMember, 'team_member', 'update');
+  const projectMember = await throwIfNoProjectAccess(req, res);
+  throwIfNotAllowed(projectMember, 'project_member', 'update');
 
   const { memberId, role } = validateWithSchema(
     updateMemberSchema,
     req.body as { memberId: string; role: Role }
   );
 
-  await validateMembershipOperation(memberId, teamMember, {
+  await validateMembershipOperation(memberId, projectMember, {
     role,
   });
 
-  const memberUpdated = await updateTeamMember({
+  const memberUpdated = await updateProjectMember({
     where: {
-      teamId_userId: {
-        teamId: teamMember.teamId,
+      projectId_userId: {
+        projectId: projectMember.projectId,
         userId: memberId,
       },
     },
@@ -146,12 +149,11 @@ const handlePATCH = async (req: NextApiRequest, res: NextApiResponse) => {
   sendAudit({
     action: 'member.update',
     crud: 'u',
-    user: teamMember.user,
-    team: teamMember.team,
+    user: projectMember.user,
+    project: projectMember.project,
   });
 
   recordMetric('member.role.updated');
 
   res.status(200).json({ data: memberUpdated });
 };
-

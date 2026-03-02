@@ -5,11 +5,11 @@ import { useTranslation } from 'next-i18next';
 
 import type { ApiResponse } from 'types';
 import { defaultHeaders } from '@/lib/common';
-import { buildTeamWorkspaceApiPath } from '@/lib/routing/workspace-routes';
-import type { InvitationWithTeamContext } from '@/hooks/useInvitation';
+import { buildProjectWorkspaceApiPath } from '@/lib/routing/workspace-routes';
+import type { InvitationWithProjectContext } from '@/hooks/useInvitation';
 
 interface AcceptInvitationProps {
-  invitation: InvitationWithTeamContext;
+  invitation: InvitationWithProjectContext;
 }
 
 const AcceptInvitation = ({ invitation }: AcceptInvitationProps) => {
@@ -17,8 +17,8 @@ const AcceptInvitation = ({ invitation }: AcceptInvitationProps) => {
   const { t } = useTranslation('common');
 
   const acceptInvitation = async () => {
-    const invitationsUrl = buildTeamWorkspaceApiPath({
-      team: invitation.team,
+    const invitationsUrl = buildProjectWorkspaceApiPath({
+      project: invitation.project,
       suffix: 'invitations',
     });
 

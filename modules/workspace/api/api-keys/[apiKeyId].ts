@@ -1,26 +1,30 @@
 import { deleteApiKey } from 'models/apiKey';
-import { getCurrentUserWithTeam, throwIfNoTeamAccess } from 'models/team';
+import {
+  getCurrentUserWithProject,
+  throwIfNoProjectAccess,
+} from 'models/access';
 import { throwIfNotAllowed } from 'models/user';
 import type { NextApiRequest, NextApiResponse } from 'next';
 import { recordMetric } from '@/lib/metrics';
 import env from '@/lib/env';
 import { ApiError } from '@/lib/errors';
 import { deleteApiKeySchema, validateWithSchema } from '@/lib/zod';
-import { throwIfNoAccessToApiKey } from '@/lib/guards/team-api-key';
-import { requireTeamEntitlement } from '@/lib/billing/entitlements';
+import { throwIfNoAccessToApiKey } from '@/lib/guards/project-api-key';
+import { requireOrganizationEntitlement } from '@/lib/billing/entitlements';
 
 export default async function handler(
   req: NextApiRequest,
   res: NextApiResponse
 ) {
-
   try {
-    if (!env.teamFeatures.apiKey) {
+    if (!env.workspaceFeatures.apiKey) {
       throw new ApiError(404, 'Not Found');
     }
 
-    const teamMember = await throwIfNoTeamAccess(req, res);
-    await requireTeamEntitlement(teamMember.teamId, { feature: 'api_keys' });
+    const projectMember = await throwIfNoProjectAccess(req, res);
+    await requireOrganizationEntitlement(projectMember.organizationId, {
+      feature: 'api_keys',
+    });
 
     switch (req.method) {
       case 'DELETE':
@@ -42,13 +46,13 @@ export default async function handler(
 
 // Delete an API key
 const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
-  const user = await getCurrentUserWithTeam(req, res);
+  const user = await getCurrentUserWithProject(req, res);
 
-  throwIfNotAllowed(user, 'team_api_key', 'delete');
+  throwIfNotAllowed(user, 'project_api_key', 'delete');
 
   const { apiKeyId } = validateWithSchema(deleteApiKeySchema, req.query);
 
-  await throwIfNoAccessToApiKey(apiKeyId, user.team.id);
+  await throwIfNoAccessToApiKey(apiKeyId, user.project.id);
 
   await deleteApiKey(apiKeyId);
 
@@ -56,4 +60,3 @@ const handleDELETE = async (req: NextApiRequest, res: NextApiResponse) => {
 
   res.status(204).end();
 };
-

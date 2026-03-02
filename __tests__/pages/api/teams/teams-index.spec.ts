@@ -4,10 +4,13 @@ jest.mock('@/lib/server-common', () => ({
   slugify: jest.fn((value: string) => value.toLowerCase().replace(/\s+/g, '-')),
 }));
 
-jest.mock('models/team', () => ({
-  createTeam: jest.fn(),
-  getTeams: jest.fn(),
-  isTeamExists: jest.fn(),
+jest.mock('models/organization', () => ({
+  createOrganizationWithDefaultProject: jest.fn(),
+  getOrganizationBySlug: jest.fn(),
+}));
+
+jest.mock('models/project', () => ({
+  getProjectsByUserId: jest.fn(),
 }));
 
 jest.mock('models/user', () => ({
@@ -19,12 +22,16 @@ jest.mock('@/lib/metrics', () => ({
 }));
 
 jest.mock('@/lib/zod', () => ({
-  createTeamSchema: {},
+  createProjectSchema: {},
   validateWithSchema: jest.fn((_: unknown, payload: any) => payload),
 }));
 
-import handler from '@/pages/api/teams/index';
-import { createTeam, getTeams, isTeamExists } from 'models/team';
+import handler from '@/pages/api/orgs/index';
+import {
+  createOrganizationWithDefaultProject,
+  getOrganizationBySlug,
+} from 'models/organization';
+import { getProjectsByUserId } from 'models/project';
 import { getCurrentUser } from 'models/user';
 import { recordMetric } from '@/lib/metrics';
 
@@ -50,7 +57,7 @@ const createRes = () => {
   return res;
 };
 
-describe('/api/teams', () => {
+describe('/api/orgs', () => {
   beforeEach(() => {
     jest.clearAllMocks();
     (getCurrentUser as jest.Mock).mockResolvedValue({ id: 'user-1' });
@@ -72,7 +79,7 @@ describe('/api/teams', () => {
   });
 
   it('returns 403 when role-based service denial is raised', async () => {
-    (getTeams as jest.Mock).mockRejectedValueOnce({
+    (getProjectsByUserId as jest.Mock).mockRejectedValueOnce({
       status: 403,
       message: 'Forbidden',
     });
@@ -86,8 +93,10 @@ describe('/api/teams', () => {
     expect(res.body).toEqual({ error: { message: 'Forbidden' } });
   });
 
-  it('GET returns teams and records metric', async () => {
-    (getTeams as jest.Mock).mockResolvedValueOnce([{ id: 'team-1' }]);
+  it('GET returns projects and records metric', async () => {
+    (getProjectsByUserId as jest.Mock).mockResolvedValueOnce([
+      { id: 'project-1' },
+    ]);
 
     const req = { method: 'GET' } as NextApiRequest;
     const res = createRes();
@@ -95,46 +104,74 @@ describe('/api/teams', () => {
     await handler(req, res);
 
     expect(res.statusCode).toBe(200);
-    expect(res.body).toEqual({ data: [{ id: 'team-1' }] });
-    expect(recordMetric).toHaveBeenCalledWith('team.fetched');
+    expect(res.body).toEqual({ data: [{ id: 'project-1' }] });
+    expect(recordMetric).toHaveBeenCalledWith('project.fetched');
   });
 
   it('POST returns duplicate slug validation error', async () => {
-    (isTeamExists as jest.Mock).mockResolvedValueOnce(true);
+    (getOrganizationBySlug as jest.Mock).mockResolvedValueOnce({
+      id: 'org-1',
+    });
 
-    const req = { method: 'POST', body: { name: 'My Team' } } as NextApiRequest;
+    const req = {
+      method: 'POST',
+      body: { name: 'My Project' },
+    } as NextApiRequest;
     const res = createRes();
 
     await handler(req, res);
 
     expect(res.statusCode).toBe(400);
     expect(res.body).toEqual({
-      error: { message: 'A team with the slug already exists.' },
+      error: { message: 'An organization with this slug already exists.' },
     });
   });
 
-  it('POST creates a team and records metric', async () => {
-    (isTeamExists as jest.Mock).mockResolvedValueOnce(false);
-    (createTeam as jest.Mock).mockResolvedValueOnce({
-      id: 'team-1',
-      name: 'My Team',
-      slug: 'my-team',
+  it('POST creates an organization/project and records metric', async () => {
+    (getOrganizationBySlug as jest.Mock).mockResolvedValueOnce(null);
+    (createOrganizationWithDefaultProject as jest.Mock).mockResolvedValueOnce({
+      organization: {
+        id: 'org-1',
+        name: 'My Project',
+        slug: 'my-project',
+        billingId: null,
+        billingProvider: null,
+      },
+      project: {
+        id: 'project-1',
+        name: 'My Project',
+        slug: 'default',
+      },
     });
 
-    const req = { method: 'POST', body: { name: 'My Team' } } as NextApiRequest;
+    const req = {
+      method: 'POST',
+      body: { name: 'My Project' },
+    } as NextApiRequest;
     const res = createRes();
 
     await handler(req, res);
 
-    expect(createTeam).toHaveBeenCalledWith({
-      userId: 'user-1',
-      name: 'My Team',
-      slug: 'my-team',
+    expect(createOrganizationWithDefaultProject).toHaveBeenCalledWith({
+      ownerUserId: 'user-1',
+      organizationName: 'My Project',
+      organizationSlug: 'my-project',
     });
     expect(res.statusCode).toBe(200);
     expect(res.body).toEqual({
-      data: { id: 'team-1', name: 'My Team', slug: 'my-team' },
+      data: {
+        id: 'project-1',
+        name: 'My Project',
+        slug: 'default',
+        organization: {
+          id: 'org-1',
+          name: 'My Project',
+          slug: 'my-project',
+          billingId: null,
+          billingProvider: null,
+        },
+      },
     });
-    expect(recordMetric).toHaveBeenCalledWith('team.created');
+    expect(recordMetric).toHaveBeenCalledWith('project.created');
   });
 });

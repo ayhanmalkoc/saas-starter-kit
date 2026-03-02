@@ -337,6 +337,18 @@ Local billing reset/sync with new scope bootstrap:
 npm run setup:stripe
 ```
 
+### ORG-NATIVE V2 Progress Snapshot (as of March 2, 2026)
+
+- PR-ORG-1: Complete
+- PR-ORG-2: Complete
+- PR-ORG-3: Complete
+- PR-ORG-4: Complete
+- PR-ORG-5: Complete
+- PR-ORG-6: Complete
+- PR-ORG-7: Complete
+- PR-ORG-8: Complete
+- PR-ORG-9: Complete
+
 ## ORG-NATIVE V2 Hard Cutover Plan (Team-Free Internal Model)
 
 Goal:
@@ -390,6 +402,12 @@ Acceptance criteria:
 - DB has no foreign key dependency to Team tables.
 - Migration script is idempotent where applicable and has rollback notes.
 
+Status update:
+
+- Completed on `org` branch (March 1, 2026).
+- `Team`/`TeamMember` runtime schema removed and replaced with org/project-native membership model.
+- Schema migration + backfill artifacts added for destructive Team-core removal and rollback notes.
+
 ### PR-ORG-2: Domain and Service Layer Rewrite
 
 Scope:
@@ -412,6 +430,12 @@ Acceptance criteria:
 - Runtime code path has no dependency on Team slug/id for authorization.
 - No production service import from removed Team model files.
 
+Status update:
+
+- Completed on `org` branch (March 1, 2026).
+- Team-centric services removed from runtime path and access guards switched to organization/project access checks.
+- Core API/service layer reads/writes now resolve by org/project identifiers.
+
 ### PR-ORG-3: Billing Core Org-Only Cutover
 
 Scope:
@@ -431,6 +455,15 @@ Acceptance criteria:
 - Billing code has zero runtime dependency on Team ids/slugs.
 - Duplicate-subscription guardrails continue to pass in org scope.
 
+Status update:
+
+- Completed on `org` branch (March 1, 2026).
+- Entitlements API cut over to organization-authoritative contract:
+  - `getOrganizationEntitlements`
+  - `requireOrganizationEntitlement`
+  - `hasOrganizationEntitlement`
+- Checkout/products/subscription update flows now use org/project context directly without Team fallback.
+
 ### PR-ORG-4: Native API Surface (No Team Adapters)
 
 Scope:
@@ -446,6 +479,18 @@ Acceptance criteria:
 
 - `/api/teams/*` no longer exists in build output.
 - Org/project API handlers do not mutate query with team slug compatibility.
+
+Status update:
+
+- Completed on `org` branch (March 1, 2026).
+- Removed org/project API compatibility adapter route:
+  - deleted `pages/api/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].ts`
+- Added direct native API route files under:
+  - `pages/api/orgs/[orgSlug]/projects/[projectSlug]/*`
+  - `pages/api/orgs/index.ts`
+- Removed legacy team API entrypoint:
+  - deleted `pages/api/teams/index.ts`
+- Build output now contains canonical `/api/orgs/...` endpoints and no `/api/teams/*` entries.
 
 ### PR-ORG-5: Native UI Surface and Navigation
 
@@ -466,6 +511,19 @@ Acceptance criteria:
 - UI has no hardcoded `/teams/*` route generation.
 - Navigation, SSR, and client mutations are org/project-native.
 
+Status update:
+
+- Completed on `org` branch (March 1, 2026).
+- Replaced org/project compatibility page dispatch with direct native page routes:
+  - removed `pages/orgs/[orgSlug]/projects/[projectSlug]/[[...path]].tsx`
+  - added explicit pages for `settings`, `members`, `sso`, `directory-sync`, `audit-logs`, `billing`, `webhooks`, `api-keys`, `products`, and base index.
+- Removed remaining Team shell pages:
+  - deleted `pages/teams/index.tsx`
+  - deleted `pages/teams/switch.tsx`
+- Added canonical organization list page:
+  - `pages/orgs/index.tsx`
+- Updated dashboard + UI navigation to org/project-only targets (`/orgs`, `/orgs/:orgSlug/projects/:projectSlug/*`) and removed runtime `/teams`/`/api/teams` route generation.
+
 ### PR-ORG-6: Hooks, Routing, and Module Canonicalization
 
 Scope:
@@ -482,6 +540,27 @@ Acceptance criteria:
 - Runtime hook and routing layers do not expose Team context abstractions.
 - No fallback URL builder emits `/teams` or `/api/teams`.
 
+Status update:
+
+- Completed on `org` branch (March 1, 2026).
+- Replaced Team-oriented runtime hooks with project-native variants:
+  - removed `hooks/useTeam.ts`
+  - removed `hooks/useTeams.ts`
+  - removed `hooks/useTeamMembers.ts`
+  - added `hooks/useProject.ts`
+  - added `hooks/useProjects.ts`
+  - added `hooks/useProjectMembers.ts`
+- Removed compatibility routing helper:
+  - deleted `lib/routing/org-project-compat.ts`
+- Simplified workspace route builders to canonical org/project context only in:
+  - `lib/routing/workspace-routes.ts`
+- Canonicalized shell module naming to remove Team abstraction leakage in navigation/dropdown runtime components:
+  - `components/shared/shell/WorkspaceNavigation.tsx`
+  - `components/shared/WorkspaceDropdown.tsx`
+- Validation checks:
+  - `rg` runtime scan returns no matches for `useTeam*`, `/teams`/`/api/teams`, and `org-project-compat`.
+  - CI gates green: `check-format`, `check-lint`, `check-types`, `test`, `build-ci`.
+
 ### PR-ORG-7: Integration Layer Alignment
 
 Scope:
@@ -495,6 +574,28 @@ Acceptance criteria:
 
 - External integration metadata no longer depends on Team identifiers.
 - Join/invitation/auth flows complete without Team references.
+
+Status update:
+
+- Completed on `org` branch (March 1, 2026).
+- Audit integration contract is now project-native:
+  - `lib/retraced.ts` request shape switched from `team` to `project`.
+  - project lifecycle audit actions use `project.update` / `project.delete`.
+  - workspace API audit emitters now pass `project: projectMember.project`.
+- Auth and SSO verification flows are org/project-native:
+  - signup payload now uses `organizationName` in `pages/api/auth/join.ts` and `components/auth/Join.tsx`.
+  - SSO verify contract now uses `projectSlug` and `useProjectSlug` in:
+    - `pages/api/auth/sso/verify.ts`
+    - `pages/auth/sso/index.tsx`
+- Invitation flow wording and email contract were canonicalized:
+  - migrated invite email sender/template to project-native modules:
+    - `lib/email/sendProjectInviteEmail.ts`
+    - `components/emailTemplates/ProjectInvite.tsx`
+  - invitation UI and page copy now use project wording in runtime invitation views.
+- Invitation member-limit evaluation removed Team fallback:
+  - `entitlements.limits.project_members` is authoritative in `modules/workspace/api/invitations.ts`.
+- Validation:
+  - `check-format`, `check-lint`, `check-types`, `test`, and `build-ci` all pass on this branch state.
 
 ### PR-ORG-8: Test, Script, and Documentation Hardening
 
@@ -520,6 +621,58 @@ Acceptance criteria:
   - `npm run test`
   - `npm run test:e2e`
   - `npm run build-ci`
+
+Status update:
+
+- Completed on `org` branch (March 2, 2026).
+- Runtime critical Team route/guard patterns were removed:
+  - guard modules renamed to project-native paths:
+    - `lib/guards/project-api-key.ts`
+    - `lib/guards/project-sso.ts`
+    - `lib/guards/project-dsync.ts`
+  - runtime scan shows no matches for `/teams`, `/api/teams`, or legacy `team-*` guard paths in `components|hooks|lib|modules|pages`.
+- Test hardening is fully green on canonical org/project contracts:
+  - e2e fixtures and route intercepts use canonical `/orgs/:org/projects/default/*` and `/api/orgs/:org/projects/default/*`.
+  - e2e state-leak and routing regressions fixed for settings flows (slug update navigation and webhook delete mocking).
+  - middleware route test table stays canonical on `/api/orgs/...`.
+- Documentation hardening updates applied:
+  - `docs/testing-strategy.md`
+  - `docs/environment-commands-playbook.md`
+  - `docs/production-readiness-guide.md`
+  - Added major release notes:
+    - `docs/release-notes/org-project-v2-major.md`
+- Gate status:
+  - Passed: `check-format`, `check-lint`, `check-types`, `test`, `test:e2e`, `build-ci`.
+
+### PR-ORG-9: Final Team Term Purge (No Compatibility Residue)
+
+Scope:
+
+- Remove last `team`-named runtime/component contracts and UI copy keys.
+- Remove remaining team-only operational scripts and package command entries.
+- Canonicalize seed/backfill scripts to org/project-only model.
+- Normalize active test code terminology to project-native naming.
+
+Acceptance criteria:
+
+- `rg` scan outside historical artifacts (docs + prisma migrations) returns no `team`/`teams` tokens in active code.
+- Runtime, scripts, and tests stay green on core CI gates.
+
+Status update:
+
+- Completed on `org` branch (March 2, 2026).
+- Removed `components/team/*` completely and migrated implementations to `components/project/*`.
+- Removed legacy delete script surface:
+  - deleted `delete-team.js`
+  - removed `delete-team` from `package.json` scripts.
+- Rewrote active operational scripts to canonical org/project behavior:
+  - `scripts/bootstrap-org-project-model.js` (no-op guard on native model)
+  - `scripts/sync-stripe-subscriptions.js` (org customer + project metadata mapping)
+  - `scripts/backfill-org-billing-scope.js` (subscription org-scope repair from project relation)
+  - `prisma/seed.ts` (org/project/member/invitation-native seed flow)
+- Canonicalized runtime/UI/test naming to project-first terminology and localized keys.
+- Validation:
+  - Passed: `check-format`, `check-lint`, `check-types`, `test`, `build-ci`.
 
 ### Validation and Release Gate
 

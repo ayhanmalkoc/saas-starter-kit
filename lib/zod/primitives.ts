@@ -27,15 +27,26 @@ export const email = z
     `Email should have at most ${maxLengthPolicies.email} characters`
   );
 
-export const teamName = z
+export const projectName = z
   .string({
-    required_error: 'Team name is required',
-    invalid_type_error: 'Team name must be a string',
+    required_error: 'Project name is required',
+    invalid_type_error: 'Project name must be a string',
   })
-  .min(1, 'Team Name is required')
+  .min(1, 'Project Name is required')
   .max(
-    maxLengthPolicies.team,
-    `Team name should have at most ${maxLengthPolicies.team} characters`
+    maxLengthPolicies.project,
+    `Project name should have at most ${maxLengthPolicies.project} characters`
+  );
+
+export const organizationName = z
+  .string({
+    required_error: 'Organization name is required',
+    invalid_type_error: 'Organization name must be a string',
+  })
+  .min(1, 'Organization name is required')
+  .max(
+    maxLengthPolicies.project,
+    `Organization name should have at most ${maxLengthPolicies.project} characters`
   );
 
 export const name = (length: number = maxLengthPolicies.name) =>
